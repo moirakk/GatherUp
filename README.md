@@ -1,13 +1,14 @@
 # GatherUp
 
-GatherUp 是一个面向小型线下活动组织者的流程管理工具。
+GatherUp 是一个面向线下活动组织者的流程管理工具。
 
-第一版聚焦线下观影活动，帮助组织者在同一个平台里完成报名、付款截图确认、选座、通知和导出名单。
+它希望覆盖从校园活动、官方会议到好友私下聚会、同好活动的全流程组织，帮助组织者在同一个平台里完成报名、付款截图确认、选座、通知、签到和导出名单。
 
 ## 当前内容
 
 - [Web App 工程骨架](./src)
 - [产品框架](./docs/product-v0.1.md)
+- [活动类型体系](./docs/activity-taxonomy-v0.1.md)
 - [页面信息架构](./docs/information-architecture-v0.1.md)
 - [视觉方向](./docs/visual-direction-v0.1.md)
 - [数据模型与业务规则](./docs/data-rules-v0.1.md)

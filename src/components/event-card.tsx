@@ -14,12 +14,15 @@ export function EventCard({ event }: EventCardProps) {
   return (
     <article className="event-card">
       <div className="event-card-top">
-        <span className="tag">{event.type}</span>
+        <span className="tag">{event.customTypeLabel}</span>
         <StatusBadge>{event.status}</StatusBadge>
       </div>
 
       <div>
         <h3>{event.name}</h3>
+        <p className="event-meta compact">
+          {event.category} · {event.template}
+        </p>
         <p className="event-meta">
           <CalendarDays size={15} aria-hidden="true" />
           {event.startsAt}

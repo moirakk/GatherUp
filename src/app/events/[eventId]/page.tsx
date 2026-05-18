@@ -18,7 +18,7 @@ export default async function EventPage({ params }: EventPageProps) {
     <div className="detail-layout">
       <section className="hero-card">
         <div className="event-card-top">
-          <span className="tag">{event.type}</span>
+          <span className="tag">{event.customTypeLabel}</span>
           <StatusBadge>{event.status}</StatusBadge>
         </div>
         <h1>{event.name}</h1>
@@ -56,6 +56,8 @@ export default async function EventPage({ params }: EventPageProps) {
           <div><dt>时间</dt><dd>{event.startsAt}</dd></div>
           <div><dt>地址</dt><dd>{event.address}</dd></div>
           <div><dt>报名截止</dt><dd>{event.deadline}</dd></div>
+          <div><dt>活动场景</dt><dd>{event.category}</dd></div>
+          <div><dt>流程模板</dt><dd>{event.template}</dd></div>
           <div><dt>多人报名</dt><dd>{event.allowMulti ? `支持，最多 ${event.maxPeoplePerOrder} 人` : "不支持"}</dd></div>
           <div><dt>订单编号</dt><dd>{event.orderPrefix}-0001</dd></div>
         </dl>

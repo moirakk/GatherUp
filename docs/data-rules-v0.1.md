@@ -76,7 +76,9 @@ v0.1 的核心闭环是：
 - `id`
 - `organizer_id`
 - `name`
-- `type`
+- `category`
+- `template`
+- `custom_type_label`
 - `city`
 - `venue_name`
 - `address`
@@ -98,18 +100,27 @@ v0.1 的核心闭环是：
 - `created_at`
 - `updated_at`
 
-### 活动类型
+### 活动场景
 
-v0.1 只实现：
+v0.1 建议先支持：
 
-- `movie_screening`：线下观影。
-
-后续扩展：
-
-- `birthday_cafe`：生咖。
+- `community`：同好活动。
+- `campus`：校园活动。
+- `conference`：会议会务。
+- `private`：好友聚会。
 - `workshop`：工作坊。
-- `meetup`：同好聚会。
-- `board_game`：桌游局。
+- `market`：快闪/市集。
+
+### 流程模板
+
+- `basic_registration`：基础报名。
+- `payment_registration`：报名收款。
+- `seating`：选座活动。
+- `checkin`：签到活动。
+- `time_slot`：分时预约。
+- `record_only`：记录型聚会。
+
+线下观影、生咖、校园讲座、官方会议、好友聚餐等不应作为唯一固定枚举，而应作为 `custom_type_label` 或场景 + 模板组合呈现。
 
 ### 可见性
 
@@ -395,4 +406,3 @@ v0.1 只实现：
 - 个性化推荐。
 - 复杂影院座位图导入。
 - 多管理员细粒度权限。
-

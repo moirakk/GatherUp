@@ -3,12 +3,22 @@
 
 create extension if not exists pgcrypto;
 
-create type event_type as enum (
-  'movie_screening',
-  'birthday_cafe',
+create type event_category as enum (
+  'community',
+  'campus',
+  'conference',
+  'private',
   'workshop',
-  'meetup',
-  'board_game'
+  'market'
+);
+
+create type event_template as enum (
+  'basic_registration',
+  'payment_registration',
+  'seating',
+  'checkin',
+  'time_slot',
+  'record_only'
 );
 
 create type event_visibility as enum ('public', 'unlisted');
@@ -73,7 +83,9 @@ create table public.events (
   id uuid primary key default gen_random_uuid(),
   organizer_id uuid not null references public.users(id) on delete restrict,
   name text not null,
-  type event_type not null default 'movie_screening',
+  category event_category not null default 'community',
+  template event_template not null default 'basic_registration',
+  custom_type_label text,
   city text not null,
   venue_name text not null,
   address text,
@@ -213,6 +225,7 @@ create table public.audit_logs (
 
 create index events_organizer_id_idx on public.events(organizer_id);
 create index events_visibility_status_idx on public.events(visibility, status);
+create index events_category_template_idx on public.events(category, template);
 create index events_city_starts_at_idx on public.events(city, starts_at);
 create index registrations_event_id_idx on public.registrations(event_id);
 create index registrations_user_id_idx on public.registrations(user_id);
