@@ -441,6 +441,10 @@ h3 {
   width: 100%;
 }
 
+.action-card .button.full + .button.full {
+  margin-top: 10px;
+}
+
 .metric-card strong {
   display: block;
   margin-bottom: 6px;
@@ -534,6 +538,11 @@ h3 {
   margin: 0;
 }
 
+.info-list dd svg {
+  margin-right: 4px;
+  vertical-align: -2px;
+}
+
 .stack {
   display: grid;
   gap: 12px;
@@ -622,7 +631,7 @@ h3 {
 
 .progress-rail {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(92px, 1fr));
   gap: 8px;
   margin-bottom: 22px;
   color: var(--muted);
@@ -651,6 +660,76 @@ h3 {
 .flow-section {
   display: grid;
   gap: 18px;
+}
+
+.choice-grid,
+.option-list {
+  display: grid;
+  gap: 12px;
+}
+
+.choice-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.choice-card,
+.option-card {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fffefa;
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+  transition: 160ms ease;
+}
+
+.choice-card:hover,
+.option-card:hover {
+  border-color: var(--sage);
+  transform: translateY(-1px);
+}
+
+.choice-card {
+  display: grid;
+  gap: 8px;
+  min-height: 150px;
+  padding: 18px;
+}
+
+.choice-card strong,
+.choice-card span {
+  display: block;
+}
+
+.choice-card span {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.choice-card.selected,
+.option-card.selected {
+  border-color: rgba(143, 163, 145, 0.9);
+  background: #eef4ee;
+}
+
+.option-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 52px;
+  padding: 12px 14px;
+}
+
+.option-card span {
+  line-height: 1.5;
+}
+
+.option-card strong {
+  color: var(--sage-deep);
+  font-size: 12px;
+  white-space: nowrap;
 }
 
 .attendee-list {
@@ -930,6 +1009,7 @@ h3 {
   }
 
   .progress-rail,
+  .choice-grid,
   .inline-field,
   .summary-list div {
     grid-template-columns: 1fr;
