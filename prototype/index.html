@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>GatherUp Prototype</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <button class="brand" type="button" data-view="square" aria-label="返回活动广场">
+          <span class="brand-mark">G</span>
+          <span>
+            <strong>GatherUp</strong>
+            <small>活动组织工作台</small>
+          </span>
+        </button>
+
+        <nav class="desktop-nav" aria-label="主导航">
+          <button class="nav-item active" type="button" data-view="square">活动广场</button>
+          <button class="nav-item" type="button" data-view="mine">我的活动</button>
+          <button class="nav-item" type="button" data-view="organizer">组织工作台</button>
+          <button class="nav-item" type="button" data-view="profile">个人中心</button>
+        </nav>
+
+        <div class="topbar-actions">
+          <button class="icon-button" type="button" data-view="create" aria-label="创建活动">
+            <span aria-hidden="true">＋</span>
+          </button>
+          <button class="avatar-button" type="button" data-view="profile" aria-label="个人中心">
+            <span>比</span>
+          </button>
+        </div>
+      </header>
+
+      <main id="app" class="view-shell" aria-live="polite"></main>
+
+      <nav class="mobile-nav" aria-label="移动端导航">
+        <button class="mobile-item active" type="button" data-view="square">
+          <span>⌂</span>
+          广场
+        </button>
+        <button class="mobile-item" type="button" data-view="mine">
+          <span>◷</span>
+          我的
+        </button>
+        <button class="mobile-item" type="button" data-view="organizer">
+          <span>▦</span>
+          组织
+        </button>
+        <button class="mobile-item" type="button" data-view="profile">
+          <span>○</span>
+          账号
+        </button>
+      </nav>
+    </div>
+
+    <script src="./app.js"></script>
+  </body>
+</html>
