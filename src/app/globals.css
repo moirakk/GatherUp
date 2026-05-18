@@ -266,6 +266,7 @@ h3 {
   border: 1px solid var(--line);
   background: var(--surface);
   color: var(--muted);
+  cursor: pointer;
   transition: 160ms ease;
 }
 
@@ -407,7 +408,17 @@ h3 {
   padding: 0 16px;
   border: 1px solid transparent;
   border-radius: 8px;
+  cursor: pointer;
   font-weight: 700;
+  transition: 160ms ease;
+}
+
+.button:hover {
+  transform: translateY(-1px);
+}
+
+.button:active {
+  transform: translateY(0);
 }
 
 .button.primary {
@@ -700,7 +711,14 @@ h3 {
   border-radius: 8px;
   background: rgba(240, 238, 232, 0.6);
   color: var(--muted);
+  cursor: pointer;
   text-align: center;
+  transition: 160ms ease;
+}
+
+.upload-box:hover {
+  border-color: var(--sage);
+  background: rgba(231, 238, 230, 0.64);
 }
 
 .upload-box strong {
@@ -715,6 +733,16 @@ h3 {
   width: min(260px, 100%);
   color: var(--muted);
   font-size: 13px;
+}
+
+.validation-note {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #f3ead7;
+  color: #876b31;
+  font-size: 13px;
+  line-height: 1.5;
 }
 
 .success-panel {

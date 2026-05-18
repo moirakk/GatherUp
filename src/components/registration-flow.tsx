@@ -19,6 +19,7 @@ export function RegistrationFlow({ event }: RegistrationFlowProps) {
   const [quantity, setQuantity] = useState(1);
   const [attendeeIds, setAttendeeIds] = useState(["GU-MIKI"]);
   const [screenshotName, setScreenshotName] = useState("");
+  const [message, setMessage] = useState("");
 
   const orderNumber = `${event.orderPrefix}-0029`;
   const amount = event.price * quantity;
@@ -44,12 +45,24 @@ export function RegistrationFlow({ event }: RegistrationFlowProps) {
   }
 
   function submitProfile() {
+    setMessage("");
+
     if (isFreeEvent) {
       setStep("waiting");
       return;
     }
 
     setStep("payment");
+  }
+
+  function submitPayment() {
+    if (!screenshotName) {
+      setMessage("请先选择付款截图，再提交给组织者确认。");
+      return;
+    }
+
+    setMessage("");
+    setStep("waiting");
   }
 
   return (
@@ -142,15 +155,20 @@ export function RegistrationFlow({ event }: RegistrationFlowProps) {
                 <input
                   type="file"
                   accept="image/*"
-                  onChange={(event) => setScreenshotName(event.target.files?.[0]?.name ?? "")}
+                  onChange={(event) => {
+                    const nextFileName = event.target.files?.[0]?.name ?? "";
+                    setScreenshotName(nextFileName);
+                    setMessage(nextFileName ? "已选择截图，可以提交给组织者确认。" : "");
+                  }}
                 />
               </label>
 
+              {message && <p className="validation-note">{message}</p>}
+
               <button
                 className="button primary"
-                disabled={!screenshotName}
                 type="button"
-                onClick={() => setStep("waiting")}
+                onClick={submitPayment}
               >
                 提交截图，等待确认
               </button>
