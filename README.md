@@ -10,10 +10,12 @@ GatherUp 是一个面向小型线下活动组织者的流程管理工具。
 - [页面信息架构](./docs/information-architecture-v0.1.md)
 - [视觉方向](./docs/visual-direction-v0.1.md)
 - [数据模型与业务规则](./docs/data-rules-v0.1.md)
+- [数据库 Schema 草案](./docs/database-schema-v0.1.md)
 - [原型页面说明](./docs/prototype-screens-v0.1.md)
 - [技术架构](./docs/technical-architecture-v0.1.md)
 - [MVP 开发任务清单](./docs/mvp-backlog-v0.1.md)
 - [静态原型](./prototype)
+- [Supabase SQL 草案](./supabase)
 
 ## 静态原型
 
