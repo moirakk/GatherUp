@@ -313,7 +313,8 @@ h3 {
 .event-grid,
 .metrics-grid,
 .form-layout,
-.workspace-grid {
+.workspace-grid,
+.registration-layout {
   display: grid;
   gap: 16px;
 }
@@ -329,7 +330,8 @@ h3 {
 
 .form-layout,
 .workspace-grid,
-.detail-layout {
+.detail-layout,
+.registration-layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(320px, 0.38fr);
   gap: 16px;
@@ -417,6 +419,11 @@ h3 {
 .button.secondary {
   border-color: var(--line);
   background: var(--surface);
+}
+
+.button:disabled {
+  cursor: not-allowed;
+  opacity: 0.52;
 }
 
 .button.full {
@@ -602,6 +609,134 @@ h3 {
   padding: 9px 12px;
 }
 
+.progress-rail {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 22px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.progress-rail span {
+  min-height: 34px;
+  padding: 9px 10px;
+  border-radius: 8px;
+  background: var(--surface-soft);
+  text-align: center;
+}
+
+.progress-rail .active {
+  background: var(--sage);
+  color: #fffdf9;
+}
+
+.progress-rail .done {
+  background: #e7eee6;
+  color: #58705b;
+}
+
+.flow-section {
+  display: grid;
+  gap: 18px;
+}
+
+.attendee-list {
+  display: grid;
+  gap: 10px;
+  padding-top: 4px;
+}
+
+.inline-field {
+  display: grid;
+  grid-template-columns: 160px minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.inline-field input {
+  min-height: 42px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fffefa;
+  color: var(--text);
+  padding: 9px 12px;
+}
+
+.summary-list {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+}
+
+.summary-list div {
+  display: grid;
+  grid-template-columns: 96px 1fr;
+  gap: 12px;
+  align-items: center;
+}
+
+.summary-list dt {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.summary-list dd {
+  margin: 0;
+  font-weight: 650;
+}
+
+.upload-box {
+  display: grid;
+  min-height: 150px;
+  place-items: center;
+  gap: 8px;
+  padding: 22px;
+  border: 1px dashed rgba(143, 163, 145, 0.72);
+  border-radius: 8px;
+  background: rgba(240, 238, 232, 0.6);
+  color: var(--muted);
+  text-align: center;
+}
+
+.upload-box strong {
+  color: var(--text);
+}
+
+.upload-box span {
+  font-size: 13px;
+}
+
+.upload-box input {
+  width: min(260px, 100%);
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.success-panel {
+  place-items: start;
+}
+
+.success-panel svg {
+  color: var(--sage-deep);
+}
+
+.notice-strip {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(221, 216, 206, 0.82);
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
 .seat-panel {
   overflow-x: auto;
   padding: 16px;
@@ -731,7 +866,8 @@ h3 {
   .metrics-grid,
   .form-layout,
   .workspace-grid,
-  .detail-layout {
+  .detail-layout,
+  .registration-layout {
     grid-template-columns: 1fr;
   }
 
@@ -763,5 +899,11 @@ h3 {
   .info-list div {
     grid-template-columns: 1fr;
     gap: 4px;
+  }
+
+  .progress-rail,
+  .inline-field,
+  .summary-list div {
+    grid-template-columns: 1fr;
   }
 }

@@ -44,9 +44,9 @@ export default async function EventPage({ params }: EventPageProps) {
           <div><strong>2. 上传付款截图</strong><span>订单生成后等待组织者确认。</span></div>
           <div><strong>3. 付款确认后选座</strong><span>同一订单可按人数选择座位。</span></div>
         </div>
-        <Link className="button primary full" href="/me">
+        <Link className="button primary full" href={`/events/${event.id}/register`}>
           <TicketCheck size={17} />
-          模拟报名
+          立即报名
         </Link>
       </aside>
 
