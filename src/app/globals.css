@@ -57,6 +57,61 @@ select {
   background: linear-gradient(180deg, rgba(255, 253, 249, 0.88), rgba(246, 243, 238, 0.96));
 }
 
+.login-shell {
+  display: grid;
+  min-height: 100vh;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 0.42fr);
+  gap: 18px;
+  align-items: center;
+  padding: clamp(18px, 4vw, 56px);
+  background: linear-gradient(135deg, rgba(255, 253, 249, 0.96), rgba(217, 227, 226, 0.5));
+}
+
+.login-panel,
+.login-aside {
+  border: 1px solid rgba(221, 216, 206, 0.9);
+  border-radius: 8px;
+  background: rgba(255, 253, 249, 0.92);
+  box-shadow: var(--shadow);
+}
+
+.login-panel {
+  display: grid;
+  gap: 22px;
+  max-width: 720px;
+  padding: clamp(22px, 4vw, 38px);
+}
+
+.login-aside {
+  display: grid;
+  gap: 16px;
+  padding: 24px;
+}
+
+.login-aside svg {
+  color: var(--sage-deep);
+}
+
+.login-brand {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.login-brand strong,
+.login-brand span {
+  display: block;
+}
+
+.login-brand strong {
+  font-size: 18px;
+}
+
+.login-brand span {
+  color: var(--muted);
+  font-size: 13px;
+}
+
 .topbar {
   position: sticky;
   top: 0;
@@ -152,7 +207,8 @@ h3 {
 }
 
 .icon-button,
-.avatar-button {
+.avatar-button,
+.account-pill {
   display: grid;
   width: 40px;
   height: 40px;
@@ -165,6 +221,15 @@ h3 {
 .avatar-button {
   background: var(--rose);
   color: #fffdf9;
+  font-weight: 700;
+}
+
+.account-pill {
+  width: auto;
+  min-width: 64px;
+  padding: 0 11px;
+  color: var(--muted);
+  font-size: 12px;
   font-weight: 700;
 }
 
@@ -720,12 +785,17 @@ h3 {
 }
 
 .choice-grid,
-.option-list {
+.option-list,
+.demo-account-grid {
   display: grid;
   gap: 12px;
 }
 
 .choice-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.demo-account-grid {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
@@ -1110,6 +1180,10 @@ h3 {
   backdrop-filter: blur(16px);
 }
 
+.mobile-nav.participant-nav {
+  grid-template-columns: repeat(2, 1fr);
+}
+
 .mobile-nav a {
   display: grid;
   min-height: 52px;
@@ -1140,6 +1214,8 @@ h3 {
   .setup-grid,
   .detail-layout,
   .order-detail-layout,
+  .login-shell,
+  .demo-account-grid,
   .registration-layout {
     grid-template-columns: 1fr;
   }

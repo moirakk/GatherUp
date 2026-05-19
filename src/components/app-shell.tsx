@@ -1,8 +1,64 @@
+"use client";
+
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { CalendarRange, LayoutDashboard, Plus, UserRound } from "lucide-react";
+import { useEffect, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { CalendarRange, LayoutDashboard, LogOut, Plus, UserRound } from "lucide-react";
+
+import { buildExpiredSessionCookies, readDemoSession, type DemoSession } from "@/lib/auth";
 
 export function AppShell({ children }: { children: ReactNode }) {
+  const pathname = usePathname();
+  const router = useRouter();
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+  const [session, setSession] = useState<DemoSession | null>(null);
+
+  useEffect(() => {
+    const currentSession = readDemoSession(document.cookie);
+    setSession(currentSession);
+    setIsCheckingAuth(false);
+
+    if (!currentSession && pathname !== "/login") {
+      router.replace(`/login?next=${encodeURIComponent(pathname)}`);
+      return;
+    }
+
+    if (currentSession?.role !== "organizer" && pathname.startsWith("/organizer")) {
+      router.replace("/me");
+    }
+  }, [pathname, router]);
+
+  if (pathname === "/login") {
+    return <>{children}</>;
+  }
+
+  if (isCheckingAuth || !session || (session.role !== "organizer" && pathname.startsWith("/organizer"))) {
+    return (
+      <main className="login-shell">
+        <section className="login-panel">
+          <div className="login-brand">
+            <span className="brand-mark">G</span>
+            <div>
+              <strong>GatherUp</strong>
+              <span>正在确认登录状态。</span>
+            </div>
+          </div>
+        </section>
+      </main>
+    );
+  }
+
+  function logout() {
+    buildExpiredSessionCookies().forEach((cookie) => {
+      document.cookie = cookie;
+    });
+    setSession(null);
+    router.replace("/login");
+  }
+
+  const isOrganizer = session.role === "organizer";
+
   return (
     <div className="app-shell">
       <header className="topbar">
@@ -17,22 +73,30 @@ export function AppShell({ children }: { children: ReactNode }) {
         <nav className="desktop-nav" aria-label="主导航">
           <Link href="/">活动广场</Link>
           <Link href="/me">我的活动</Link>
-          <Link href="/organizer">组织工作台</Link>
+          {isOrganizer && <Link href="/organizer">组织工作台</Link>}
         </nav>
 
         <div className="topbar-actions">
-          <Link className="icon-button" href="/organizer/events/new" aria-label="创建活动">
-            <Plus size={19} />
-          </Link>
+          {isOrganizer && (
+            <Link className="icon-button" href="/organizer/events/new" aria-label="创建活动">
+              <Plus size={19} />
+            </Link>
+          )}
+          <span className="account-pill" title={`${session.email} · ${session.gatherUpId}`}>
+            {isOrganizer ? "组织者" : "参与者"}
+          </span>
           <Link className="avatar-button" href="/me" aria-label="个人中心">
-            比
+            {session.name.slice(0, 1)}
           </Link>
+          <button className="icon-button" type="button" aria-label="退出登录" onClick={logout}>
+            <LogOut size={18} />
+          </button>
         </div>
       </header>
 
       <main className="page-shell">{children}</main>
 
-      <nav className="mobile-nav" aria-label="移动端导航">
+      <nav className={`mobile-nav ${isOrganizer ? "" : "participant-nav"}`} aria-label="移动端导航">
         <Link href="/">
           <CalendarRange size={18} />
           广场
@@ -41,10 +105,12 @@ export function AppShell({ children }: { children: ReactNode }) {
           <UserRound size={18} />
           我的
         </Link>
-        <Link href="/organizer">
-          <LayoutDashboard size={18} />
-          组织
-        </Link>
+        {isOrganizer && (
+          <Link href="/organizer">
+            <LayoutDashboard size={18} />
+            组织
+          </Link>
+        )}
       </nav>
     </div>
   );
