@@ -1,9 +1,9 @@
-import { Download, LinkIcon } from "lucide-react";
+import { CalendarCheck, Download, LinkIcon, MapPinned, QrCode } from "lucide-react";
 
 import { MetricCard } from "@/components/metric-card";
 import { SeatMap } from "@/components/seat-map";
 import { StatusBadge } from "@/components/status-badge";
-import { getEvent, getEventRegistrations } from "@/lib/mock-data";
+import { getEvent, getEventRegistrations, getEventSetup } from "@/lib/mock-data";
 
 type OrganizerEventPageProps = {
   params: Promise<{ eventId: string }>;
@@ -13,6 +13,9 @@ export default async function OrganizerEventPage({ params }: OrganizerEventPageP
   const { eventId } = await params;
   const event = getEvent(eventId);
   const registrations = getEventRegistrations(eventId);
+  const setup = getEventSetup(eventId);
+  const totalSurveyVotes = setup.surveyOptions.reduce((sum, option) => sum + option.votes, 0);
+  const totalVenueVotes = setup.venueOptions.reduce((sum, option) => sum + option.votes, 0);
 
   return (
     <>
@@ -29,12 +32,61 @@ export default async function OrganizerEventPage({ params }: OrganizerEventPageP
       </section>
 
       <section className="metrics-grid">
-        <MetricCard label="总报名" value={event.registered} />
-        <MetricCard label="已付款" value={event.paid} />
-        <MetricCard label="已选座" value={event.seated} />
+        <MetricCard label="数调反馈" value={totalSurveyVotes} />
+        <MetricCard label="地点投票" value={totalVenueVotes} />
+        <MetricCard label="待确认付款" value={registrations.filter((item) => item.paymentStatus === "待审核").length} />
       </section>
 
       <section className="workspace-grid">
+        <article className="content-card">
+          <div className="section-heading">
+            <div>
+              <h2>筹备配置</h2>
+              <p className="subtle">先确认时间、地点和收款信息，再开放正式报名。</p>
+            </div>
+            <QrCode size={20} />
+          </div>
+          <dl className="summary-list">
+            <div><dt>当前阶段</dt><dd>{setup.setupStatus}</dd></div>
+            <div><dt>收款方式</dt><dd>{setup.paymentQrStatus} · {setup.paymentMethod}</dd></div>
+            <div><dt>下一步</dt><dd>{setup.nextAction}</dd></div>
+          </dl>
+          <div className="button-row">
+            <button className="button primary" type="button"><QrCode size={16} />更新收款码</button>
+            <button className="button secondary" type="button"><LinkIcon size={16} />开放报名链接</button>
+          </div>
+        </article>
+
+        <article className="content-card">
+          <div className="section-heading">
+            <h2>数调结果</h2>
+            <CalendarCheck size={20} />
+          </div>
+          <div className="result-list">
+            {setup.surveyOptions.map((option) => (
+              <div className={option.selected ? "result-row selected" : "result-row"} key={option.label}>
+                <span>{option.label}</span>
+                <strong>{option.votes} 票</strong>
+              </div>
+            ))}
+          </div>
+        </article>
+
+        <article className="content-card">
+          <div className="section-heading">
+            <h2>地点投票</h2>
+            <MapPinned size={20} />
+          </div>
+          <div className="result-list">
+            {setup.venueOptions.map((option) => (
+              <div className={option.selected ? "result-row selected" : "result-row"} key={option.label}>
+                <span>{option.label}</span>
+                <strong>{option.votes} 票</strong>
+              </div>
+            ))}
+          </div>
+        </article>
+
         <article className="content-card">
           <div className="section-heading">
             <h2>报名与付款</h2>

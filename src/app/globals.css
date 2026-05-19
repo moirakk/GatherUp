@@ -315,6 +315,7 @@ h3 {
 .metrics-grid,
 .form-layout,
 .workspace-grid,
+.setup-grid,
 .registration-layout {
   display: grid;
   gap: 16px;
@@ -322,6 +323,11 @@ h3 {
 
 .event-grid {
   grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.setup-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-bottom: 16px;
 }
 
 .metrics-grid {
@@ -366,6 +372,11 @@ h3 {
   min-height: 210px;
   flex-direction: column;
   justify-content: space-between;
+}
+
+.setup-card {
+  display: grid;
+  gap: 14px;
 }
 
 .event-card-top,
@@ -517,6 +528,47 @@ h3 {
   margin-top: 4px;
   color: var(--muted);
   font-size: 13px;
+}
+
+.setup-checklist,
+.result-list {
+  display: grid;
+  gap: 8px;
+}
+
+.setup-checklist span,
+.result-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 42px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--surface-soft);
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.setup-checklist span {
+  justify-content: flex-start;
+}
+
+.setup-checklist .done,
+.result-row.selected {
+  background: #e7eee6;
+  color: #58705b;
+}
+
+.setup-checklist .pending {
+  background: #f3ead7;
+  color: #876b31;
+}
+
+.result-row strong {
+  color: var(--text);
+  white-space: nowrap;
 }
 
 .info-list {
@@ -973,6 +1025,7 @@ h3 {
   .metrics-grid,
   .form-layout,
   .workspace-grid,
+  .setup-grid,
   .detail-layout,
   .registration-layout {
     grid-template-columns: 1fr;

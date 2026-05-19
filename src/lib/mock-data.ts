@@ -38,6 +38,22 @@ export type Registration = {
   createdAt: string;
 };
 
+export type PollOption = {
+  label: string;
+  votes: number;
+  selected?: boolean;
+};
+
+export type EventSetup = {
+  eventId: string;
+  setupStatus: "草稿配置" | "数调中" | "待开放报名" | "报名已开放";
+  paymentQrStatus: "未配置" | "已配置";
+  paymentMethod: "微信收款码" | "支付宝收款码" | "银行转账";
+  surveyOptions: PollOption[];
+  venueOptions: PollOption[];
+  nextAction: string;
+};
+
 export const events: GatherEvent[] = [
   {
     id: "ryuichi-masterpiece",
@@ -174,6 +190,56 @@ export const events: GatherEvent[] = [
   }
 ];
 
+export const eventSetups: EventSetup[] = [
+  {
+    eventId: "ryuichi-masterpiece",
+    setupStatus: "数调中",
+    paymentQrStatus: "已配置",
+    paymentMethod: "微信收款码",
+    surveyOptions: [
+      { label: "6月21日 周日 14:00", votes: 18 },
+      { label: "6月22日 周一 19:30", votes: 34, selected: true },
+      { label: "6月23日 周二 19:30", votes: 27 }
+    ],
+    venueOptions: [
+      { label: "百丽宫影城 环贸店", votes: 29, selected: true },
+      { label: "大光明电影院", votes: 21 },
+      { label: "百美汇影城 静安店", votes: 15 }
+    ],
+    nextAction: "确认数调和地点结果后，开放正式报名与付款截图上传。"
+  },
+  {
+    eventId: "spring-rerun",
+    setupStatus: "待开放报名",
+    paymentQrStatus: "已配置",
+    paymentMethod: "支付宝收款码",
+    surveyOptions: [
+      { label: "6月28日 周日 15:00", votes: 9 },
+      { label: "6月29日 周一 19:00", votes: 17, selected: true }
+    ],
+    venueOptions: [
+      { label: "浙影时代影城", votes: 16, selected: true },
+      { label: "杭州百美汇影城", votes: 8 }
+    ],
+    nextAction: "报名可开放，等待组织者发布活动链接。"
+  },
+  {
+    eventId: "campus-club-fair",
+    setupStatus: "报名已开放",
+    paymentQrStatus: "未配置",
+    paymentMethod: "微信收款码",
+    surveyOptions: [
+      { label: "7月12日 周日 10:00", votes: 142, selected: true },
+      { label: "7月12日 周日 14:00", votes: 98 }
+    ],
+    venueOptions: [
+      { label: "大学生活动中心", votes: 156, selected: true },
+      { label: "图书馆报告厅", votes: 72 }
+    ],
+    nextAction: "免费活动无需收款码，重点处理签到名单和现场动线。"
+  }
+];
+
 export const registrations: Registration[] = [
   {
     orderNumber: "RYU-0001",
@@ -207,4 +273,8 @@ export function getEvent(eventId: string) {
 
 export function getEventRegistrations(eventId: string) {
   return registrations.filter((registration) => registration.eventId === eventId);
+}
+
+export function getEventSetup(eventId: string) {
+  return eventSetups.find((setup) => setup.eventId === eventId) ?? eventSetups[0];
 }
