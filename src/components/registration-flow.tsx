@@ -53,6 +53,15 @@ export function RegistrationFlow({ event, setup }: RegistrationFlowProps) {
   const registrationOpen = setup.setupStatus === "待开放报名" || setup.setupStatus === "报名已开放";
   const paymentReady = isFreeEvent || setup.paymentQrStatus === "已配置";
   const canEnterRegistration = registrationOpen && paymentReady;
+  const participantStage = step === "locked"
+    ? "已提交意向，等待报名开放"
+    : step === "profile"
+      ? "正式报名中，尚未付款"
+      : step === "payment"
+        ? "已生成订单，待上传付款截图"
+        : step === "waiting"
+          ? isFreeEvent ? "报名已提交，等待组织者确认" : "付款截图待审核"
+          : "意向收集中，尚未占名额";
 
   const attendeeSlots = useMemo(() => {
     return Array.from({ length: quantity }, (_, index) => attendeeIds[index] ?? "");
@@ -202,6 +211,11 @@ export function RegistrationFlow({ event, setup }: RegistrationFlowProps) {
                 ))}
               </div>
 
+              <div className="guard-panel">
+                <CalendarCheck size={18} />
+                <span>截止前可修改，系统以后会保留最后一次提交和修改记录。当前提交只代表意向，不占名额。</span>
+              </div>
+
               {message && <p className="validation-note">{message}</p>}
 
               <button className="button primary" type="button" onClick={submitSurvey}>
@@ -237,6 +251,11 @@ export function RegistrationFlow({ event, setup }: RegistrationFlowProps) {
                 ))}
               </div>
 
+              <div className="guard-panel">
+                <MapPinned size={18} />
+                <span>地点投票不是最终场地确认。组织者定案后，你会收到报名开放提醒。</span>
+              </div>
+
               {message && <p className="validation-note">{message}</p>}
 
               <button className="button primary" type="button" onClick={submitLocationVote}>
@@ -253,6 +272,10 @@ export function RegistrationFlow({ event, setup }: RegistrationFlowProps) {
                 当前活动阶段为「{setup.setupStatus}」，收款配置为「{setup.paymentQrStatus}」。
                 组织者确认时间、地点和收款二维码后，系统才会开放正式报名与付款截图上传。
               </p>
+              <div className="state-summary">
+                <strong>你现在的状态：已提交意向，但还没有正式报名，也没有占用名额。</strong>
+                <span>报名开放后，系统会通过站内消息、微信/邮箱/手机号中的可用方式提醒你。</span>
+              </div>
               <div className="guard-panel">
                 <ShieldCheck size={18} />
                 <span>这一步会阻止恶意用户提前占坑、提前付款或绕过组织者确认。</span>
@@ -269,6 +292,11 @@ export function RegistrationFlow({ event, setup }: RegistrationFlowProps) {
                   <p className="subtle">数调和地点投票已完成，组织者已开放报名。提交后生成订单号，用于付款和名单核对。</p>
                 </div>
                 <TicketCheck size={22} />
+              </div>
+
+              <div className="state-summary">
+                <strong>你现在还没有付款，也还没有选座。</strong>
+                <span>提交后会生成订单号；付款确认前不会开放选座。</span>
               </div>
 
               <div className="form-grid">
@@ -299,6 +327,11 @@ export function RegistrationFlow({ event, setup }: RegistrationFlowProps) {
                 ))}
               </div>
 
+              <div className="guard-panel">
+                <UsersRound size={18} />
+                <span>{event.allowMulti ? `本活动允许多人报名，最多 ${event.maxPeoplePerOrder} 人。同行人需要填写 GatherUp ID，方便对账、选座和入场核验。` : "本活动不允许多人报名，每个订单固定 1 人。"}</span>
+              </div>
+
               <button className="button primary" type="button" onClick={submitProfile}>
                 <ShieldCheck size={17} />
                 生成订单
@@ -320,8 +353,15 @@ export function RegistrationFlow({ event, setup }: RegistrationFlowProps) {
                 <div><dt>订单号</dt><dd>{orderNumber}</dd></div>
                 <div><dt>付款金额</dt><dd>¥{amount}</dd></div>
                 <div><dt>收款方式</dt><dd>{setup.paymentMethod}</dd></div>
+                <div><dt>收款人</dt><dd>组织者：GatherUp 活动发起人</dd></div>
                 <div><dt>付款备注</dt><dd>{orderNumber} + {nickname}</dd></div>
+                <div><dt>预计确认</dt><dd>组织者通常在 24 小时内处理</dd></div>
               </dl>
+
+              <div className="guard-panel">
+                <CreditCard size={18} />
+                <span>如果付款截图被驳回，组织者需要填写原因，你可以重新上传。活动取消时，退款规则会显示在订单详情页。</span>
+              </div>
 
               <label className="upload-box">
                 <FileImage size={24} />
@@ -357,7 +397,11 @@ export function RegistrationFlow({ event, setup }: RegistrationFlowProps) {
               <p className="subtle">
                 订单 {orderNumber} 已进入组织者确认队列。组织者确认付款后，系统才会开放选座或签到。
               </p>
-              <Link className="button secondary" href="/me">查看我的活动</Link>
+              <div className="state-summary">
+                <strong>{isFreeEvent ? "你已提交报名，等待组织者确认。" : "你已提交付款截图，但付款尚未确认。"}</strong>
+                <span>确认前不会开放选座；确认后订单详情页会显示下一步入口。</span>
+              </div>
+              <Link className="button secondary" href={`/me/orders/${orderNumber}`}>查看订单详情</Link>
             </div>
           )}
         </article>
@@ -366,6 +410,7 @@ export function RegistrationFlow({ event, setup }: RegistrationFlowProps) {
           <h2>当前流程</h2>
           <dl className="summary-list">
             <div><dt>身份</dt><dd>{step === "role" ? "待确认" : "参与者"}</dd></div>
+            <div><dt>参与状态</dt><dd>{participantStage}</dd></div>
             <div><dt>活动阶段</dt><dd>{setup.setupStatus}</dd></div>
             <div><dt>收款配置</dt><dd>{setup.paymentQrStatus}</dd></div>
             <div><dt>数调</dt><dd>{selectedSchedules.length ? `${selectedSchedules.length} 个可参加时间` : "未提交"}</dd></div>
@@ -378,7 +423,7 @@ export function RegistrationFlow({ event, setup }: RegistrationFlowProps) {
           </dl>
           <div className="notice-strip">
             <UsersRound size={16} />
-            <span>组织者完成活动配置和收款二维码后，参与者才会进入订单与付款确认。</span>
+            <span>只有正式报名并完成付款确认后，才算成功占位；数调和地点投票只是意向。</span>
           </div>
         </aside>
       </section>

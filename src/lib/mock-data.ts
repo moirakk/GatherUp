@@ -36,6 +36,9 @@ export type Registration = {
   paymentStatus: "未付款" | "待审核" | "付款已确认" | "已驳回" | "已退款";
   seatStatus: string;
   createdAt: string;
+  confirmationEta: string;
+  paymentProof?: string;
+  refundPolicy: string;
 };
 
 export type PollOption = {
@@ -251,7 +254,10 @@ export const registrations: Registration[] = [
     registrationStatus: "已确认",
     paymentStatus: "付款已确认",
     seatStatus: "C5, C6",
-    createdAt: "2026-05-18"
+    createdAt: "2026-05-18",
+    confirmationEta: "已确认",
+    paymentProof: "wechat-pay-ryu-0001.jpg",
+    refundPolicy: "开场前 48 小时可联系组织者登记退款，手续费按实际支付渠道规则处理。"
   },
   {
     orderNumber: "SPR-0007",
@@ -263,7 +269,25 @@ export const registrations: Registration[] = [
     registrationStatus: "已提交",
     paymentStatus: "待审核",
     seatStatus: "未开放",
-    createdAt: "2026-05-18"
+    createdAt: "2026-05-18",
+    confirmationEta: "预计 24 小时内确认",
+    paymentProof: "alipay-spr-0007.jpg",
+    refundPolicy: "活动未成团会原路退款；个人取消需在报名截止前联系组织者。"
+  },
+  {
+    orderNumber: "SPR-0029",
+    eventId: "spring-rerun",
+    nickname: "比奇堡miki",
+    quantity: 1,
+    attendeeIds: ["GU-MIKI"],
+    amount: 72,
+    registrationStatus: "已提交",
+    paymentStatus: "待审核",
+    seatStatus: "未开放",
+    createdAt: "2026-05-19",
+    confirmationEta: "预计 24 小时内确认",
+    paymentProof: "pending-upload-preview.jpg",
+    refundPolicy: "活动未成团会原路退款；个人取消需在报名截止前联系组织者。"
   }
 ];
 
@@ -277,4 +301,8 @@ export function getEventRegistrations(eventId: string) {
 
 export function getEventSetup(eventId: string) {
   return eventSetups.find((setup) => setup.eventId === eventId) ?? eventSetups[0];
+}
+
+export function getRegistration(orderNumber: string) {
+  return registrations.find((registration) => registration.orderNumber === orderNumber) ?? registrations[0];
 }

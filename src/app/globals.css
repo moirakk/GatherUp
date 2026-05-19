@@ -338,6 +338,7 @@ h3 {
 .form-layout,
 .workspace-grid,
 .detail-layout,
+.order-detail-layout,
 .registration-layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(320px, 0.38fr);
@@ -491,6 +492,10 @@ h3 {
 }
 
 .detail-layout .content-card {
+  grid-column: 1 / -1;
+}
+
+.order-detail-layout .content-card:nth-of-type(n + 2) {
   grid-column: 1 / -1;
 }
 
@@ -904,6 +909,25 @@ h3 {
   color: var(--sage-deep);
 }
 
+.state-summary {
+  display: grid;
+  gap: 6px;
+  padding: 14px;
+  border-radius: 8px;
+  background: #eef4ee;
+  color: #58705b;
+  line-height: 1.6;
+}
+
+.state-summary strong,
+.state-summary span {
+  display: block;
+}
+
+.state-summary span {
+  font-size: 13px;
+}
+
 .success-panel {
   place-items: start;
 }
@@ -922,6 +946,66 @@ h3 {
   color: var(--muted);
   font-size: 13px;
   line-height: 1.6;
+}
+
+.state-timeline {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 18px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.state-timeline span {
+  min-height: 34px;
+  padding: 9px 10px;
+  border-radius: 8px;
+  background: var(--surface-soft);
+  text-align: center;
+}
+
+.state-timeline .done {
+  background: #e7eee6;
+  color: #58705b;
+}
+
+.state-timeline .active {
+  background: var(--sage);
+  color: #fffdf9;
+}
+
+.inline-field.readonly {
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--surface-soft);
+}
+
+.inline-field.readonly strong {
+  color: var(--text);
+}
+
+.notice-list {
+  display: grid;
+  gap: 10px;
+}
+
+.notice-list div {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  padding: 12px;
+  border-radius: 8px;
+  background: var(--surface-soft);
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.notice-list svg {
+  flex: 0 0 auto;
+  color: var(--sage-deep);
 }
 
 .seat-panel {
@@ -1055,6 +1139,7 @@ h3 {
   .workspace-grid,
   .setup-grid,
   .detail-layout,
+  .order-detail-layout,
   .registration-layout {
     grid-template-columns: 1fr;
   }
@@ -1092,6 +1177,7 @@ h3 {
   .progress-rail,
   .choice-grid,
   .inline-field,
+  .state-timeline,
   .summary-list div {
     grid-template-columns: 1fr;
   }
