@@ -1,9 +1,9 @@
 import Link from "next/link";
-import { ClipboardList, CreditCard, MapPin, TicketCheck, UserRoundCog, UsersRound } from "lucide-react";
+import { ClipboardList, CreditCard, MapPin, TicketCheck, UsersRound } from "lucide-react";
 
 import { MetricCard } from "@/components/metric-card";
 import { StatusBadge } from "@/components/status-badge";
-import { getEvent } from "@/lib/mock-data";
+import { getEvent, getEventSetup } from "@/lib/mock-data";
 
 type EventPageProps = {
   params: Promise<{ eventId: string }>;
@@ -12,6 +12,7 @@ type EventPageProps = {
 export default async function EventPage({ params }: EventPageProps) {
   const { eventId } = await params;
   const event = getEvent(eventId);
+  const setup = getEventSetup(eventId);
   const remaining = event.capacity - event.registered;
 
   return (
@@ -38,20 +39,17 @@ export default async function EventPage({ params }: EventPageProps) {
       </section>
 
       <aside className="action-card">
-        <h2>进入活动</h2>
+        <h2>参与者入口</h2>
         <div className="step-list">
-          <div><strong>1. 先确认身份</strong><span>组织者配置活动；参与者登录后继续。</span></div>
-          <div><strong>2. 参与数调和地点投票</strong><span>先确定时间和场地，再进入正式报名。</span></div>
-          <div><strong>3. 报名付款与确认</strong><span>组织者已配置收款二维码后，参与者上传付款截图。</span></div>
+          <div><strong>1. 登录后参与</strong><span>同一 GatherUp ID 仅能提交一份数调和地点投票。</span></div>
+          <div><strong>2. 先数调和地点投票</strong><span>正式报名不会在筹备阶段提前开放。</span></div>
+          <div><strong>3. 等组织者开放报名</strong><span>收款二维码配置完成后，才可生成订单和上传付款截图。</span></div>
         </div>
         <Link className="button primary full" href={`/events/${event.id}/register`}>
           <TicketCheck size={17} />
-          我是参与者
+          登录并参与
         </Link>
-        <Link className="button secondary full" href="/organizer/events/new">
-          <UserRoundCog size={17} />
-          我是组织者
-        </Link>
+        <p className="subtle guard-copy">组织者入口不会在公开活动页暴露，请从组织工作台进入对应活动。</p>
       </aside>
 
       <section className="content-card">
@@ -64,6 +62,8 @@ export default async function EventPage({ params }: EventPageProps) {
           <div><dt>流程模板</dt><dd>{event.template}</dd></div>
           <div><dt>多人报名</dt><dd>{event.allowMulti ? `支持，最多 ${event.maxPeoplePerOrder} 人` : "不支持"}</dd></div>
           <div><dt>订单编号</dt><dd>{event.orderPrefix}-0001</dd></div>
+          <div><dt>当前阶段</dt><dd>{setup.setupStatus}</dd></div>
+          <div><dt>收款配置</dt><dd>{setup.paymentQrStatus}</dd></div>
           <div><dt>前置流程</dt><dd><ClipboardList size={14} /> 数调、地点投票、组织者收款配置</dd></div>
         </dl>
       </section>

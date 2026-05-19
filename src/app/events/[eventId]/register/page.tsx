@@ -1,5 +1,5 @@
 import { RegistrationFlow } from "@/components/registration-flow";
-import { getEvent } from "@/lib/mock-data";
+import { getEvent, getEventSetup } from "@/lib/mock-data";
 
 type RegisterPageProps = {
   params: Promise<{ eventId: string }>;
@@ -8,6 +8,7 @@ type RegisterPageProps = {
 export default async function RegisterPage({ params }: RegisterPageProps) {
   const { eventId } = await params;
   const event = getEvent(eventId);
+  const setup = getEventSetup(eventId);
 
-  return <RegistrationFlow event={event} />;
+  return <RegistrationFlow event={event} setup={setup} />;
 }

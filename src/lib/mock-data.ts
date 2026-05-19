@@ -1,4 +1,4 @@
-export type EventStatus = "报名中" | "即将截止" | "付款确认中" | "已成团" | "已结束";
+export type EventStatus = "草稿配置" | "数调中" | "待开放报名" | "报名中" | "即将截止" | "付款确认中" | "已成团" | "已结束";
 export type EventCategory = "同好活动" | "校园活动" | "会议会务" | "好友聚会" | "工作坊" | "快闪/市集";
 export type EventTemplate = "基础报名" | "报名收款" | "选座活动" | "签到活动" | "分时预约" | "记录型聚会";
 
@@ -71,7 +71,7 @@ export const events: GatherEvent[] = [
     registered: 42,
     paid: 31,
     seated: 24,
-    status: "报名中",
+    status: "数调中",
     allowMulti: true,
     maxPeoplePerOrder: 4,
     orderPrefix: "RYU",
@@ -94,7 +94,7 @@ export const events: GatherEvent[] = [
     registered: 26,
     paid: 18,
     seated: 0,
-    status: "即将截止",
+    status: "待开放报名",
     allowMulti: false,
     maxPeoplePerOrder: 1,
     orderPrefix: "SPR",

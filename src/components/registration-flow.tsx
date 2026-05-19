@@ -7,6 +7,7 @@ import {
   CheckCircle2,
   CreditCard,
   FileImage,
+  LockKeyhole,
   MapPinned,
   ShieldCheck,
   TicketCheck,
@@ -14,18 +15,20 @@ import {
   UsersRound
 } from "lucide-react";
 
-import type { GatherEvent } from "@/lib/mock-data";
+import type { EventSetup, GatherEvent } from "@/lib/mock-data";
 
 type RegistrationFlowProps = {
   event: GatherEvent;
+  setup: EventSetup;
 };
 
-type FlowStep = "role" | "survey" | "location" | "profile" | "payment" | "waiting";
+type FlowStep = "role" | "survey" | "location" | "locked" | "profile" | "payment" | "waiting";
 
 const flowSteps: Array<{ key: FlowStep; label: string }> = [
-  { key: "role", label: "确认身份" },
+  { key: "role", label: "登录身份" },
   { key: "survey", label: "数调" },
   { key: "location", label: "地点投票" },
+  { key: "locked", label: "等待开放" },
   { key: "profile", label: "报名" },
   { key: "payment", label: "付款确认" }
 ];
@@ -33,7 +36,7 @@ const flowSteps: Array<{ key: FlowStep; label: string }> = [
 const scheduleOptions = ["6月21日 周日 14:00", "6月22日 周一 19:30", "6月23日 周二 19:30"];
 const baseLocationOptions = ["大光明电影院", "百美汇影城 静安店"];
 
-export function RegistrationFlow({ event }: RegistrationFlowProps) {
+export function RegistrationFlow({ event, setup }: RegistrationFlowProps) {
   const [step, setStep] = useState<FlowStep>("role");
   const [nickname, setNickname] = useState("比奇堡miki");
   const [contact, setContact] = useState("moirahoumiki@example.com");
@@ -47,6 +50,9 @@ export function RegistrationFlow({ event }: RegistrationFlowProps) {
   const orderNumber = `${event.orderPrefix}-0029`;
   const amount = event.price * quantity;
   const isFreeEvent = amount === 0;
+  const registrationOpen = setup.setupStatus === "待开放报名" || setup.setupStatus === "报名已开放";
+  const paymentReady = isFreeEvent || setup.paymentQrStatus === "已配置";
+  const canEnterRegistration = registrationOpen && paymentReady;
 
   const attendeeSlots = useMemo(() => {
     return Array.from({ length: quantity }, (_, index) => attendeeIds[index] ?? "");
@@ -103,7 +109,7 @@ export function RegistrationFlow({ event }: RegistrationFlowProps) {
     }
 
     setMessage("");
-    setStep("profile");
+    setStep(canEnterRegistration ? "profile" : "locked");
   }
 
   function submitProfile() {
@@ -134,7 +140,7 @@ export function RegistrationFlow({ event }: RegistrationFlowProps) {
           <p className="eyebrow">活动报名</p>
           <h1>{event.name}</h1>
           <p className="subtle">
-            参与者需先登录并完成数调、地点投票；组织者确认活动配置和收款二维码后，再进入报名付款。
+            参与者需先登录并完成数调、地点投票；组织者确认时间、地点和收款配置后，才开放报名付款。
           </p>
         </div>
       </section>
@@ -152,22 +158,22 @@ export function RegistrationFlow({ event }: RegistrationFlowProps) {
               <div className="section-heading">
                 <div>
                   <h2>先确认你的身份</h2>
-                  <p className="subtle">组织者需要先配置活动信息、数调、地点投票和收款二维码；参与者登录后再参与后续流程。</p>
+                  <p className="subtle">当前为模拟登录状态。真实版本中，同一 GatherUp ID 对同一活动只能提交一份数调和一份地点投票。</p>
                 </div>
                 <UserRoundCog size={22} />
               </div>
 
-              <div className="choice-grid">
+              <div className="choice-grid single">
                 <button className="choice-card selected" type="button" onClick={() => setStep("survey")}>
                   <UsersRound size={20} />
-                  <strong>我是参与者</strong>
-                  <span>登录后参与数调、地点投票，再报名付款。</span>
+                  <strong>已登录为参与者：GU-MIKI</strong>
+                  <span>继续参与数调和地点投票。组织者入口不会从公开活动页进入。</span>
                 </button>
-                <Link className="choice-card" href="/organizer/events/new">
-                  <UserRoundCog size={20} />
-                  <strong>我是组织者</strong>
-                  <span>先创建活动，配置收款二维码和参与规则。</span>
-                </Link>
+              </div>
+
+              <div className="guard-panel">
+                <LockKeyhole size={18} />
+                <span>防刷规则：登录后提交、每人一票、可修改但保留记录、异常重复提交进入审核。</span>
               </div>
             </div>
           )}
@@ -177,7 +183,7 @@ export function RegistrationFlow({ event }: RegistrationFlowProps) {
               <div className="section-heading">
                 <div>
                   <h2>数调：选择可参加时间</h2>
-                  <p className="subtle">这一步用于帮组织者确定最合适的活动时间，付款不会在这里发生。</p>
+                  <p className="subtle">这一步用于帮组织者确定最合适的活动时间。当前阶段不会生成订单，也不会发生付款。</p>
                 </div>
                 <CalendarCheck size={22} />
               </div>
@@ -209,7 +215,7 @@ export function RegistrationFlow({ event }: RegistrationFlowProps) {
               <div className="section-heading">
                 <div>
                   <h2>地点投票</h2>
-                  <p className="subtle">参与者先投票表达偏好，组织者最终确认后才开放正式报名。</p>
+                  <p className="subtle">参与者先投票表达偏好。组织者确认最终地点并开放报名后，才进入订单流程。</p>
                 </div>
                 <MapPinned size={22} />
               </div>
@@ -234,8 +240,24 @@ export function RegistrationFlow({ event }: RegistrationFlowProps) {
               {message && <p className="validation-note">{message}</p>}
 
               <button className="button primary" type="button" onClick={submitLocationVote}>
-                提交地点偏好，继续报名
+                提交地点偏好
               </button>
+            </div>
+          )}
+
+          {step === "locked" && (
+            <div className="flow-section success-panel">
+              <LockKeyhole size={34} />
+              <h2>已提交数调和地点偏好</h2>
+              <p className="subtle">
+                当前活动阶段为「{setup.setupStatus}」，收款配置为「{setup.paymentQrStatus}」。
+                组织者确认时间、地点和收款二维码后，系统才会开放正式报名与付款截图上传。
+              </p>
+              <div className="guard-panel">
+                <ShieldCheck size={18} />
+                <span>这一步会阻止恶意用户提前占坑、提前付款或绕过组织者确认。</span>
+              </div>
+              <Link className="button secondary" href="/me">查看我的活动</Link>
             </div>
           )}
 
@@ -244,7 +266,7 @@ export function RegistrationFlow({ event }: RegistrationFlowProps) {
               <div className="section-heading">
                 <div>
                   <h2>正式报名</h2>
-                  <p className="subtle">数调和地点投票已完成。提交后会生成订单号，用于后续付款和名单核对。</p>
+                  <p className="subtle">数调和地点投票已完成，组织者已开放报名。提交后生成订单号，用于付款和名单核对。</p>
                 </div>
                 <TicketCheck size={22} />
               </div>
@@ -289,7 +311,7 @@ export function RegistrationFlow({ event }: RegistrationFlowProps) {
               <div className="section-heading">
                 <div>
                   <h2>上传付款截图</h2>
-                  <p className="subtle">当前版本先由组织者人工确认，确认后再开放选座或签到。</p>
+                  <p className="subtle">付款截图会绑定订单号。组织者确认后，才开放选座或签到。</p>
                 </div>
                 <CreditCard size={22} />
               </div>
@@ -297,6 +319,7 @@ export function RegistrationFlow({ event }: RegistrationFlowProps) {
               <dl className="summary-list">
                 <div><dt>订单号</dt><dd>{orderNumber}</dd></div>
                 <div><dt>付款金额</dt><dd>¥{amount}</dd></div>
+                <div><dt>收款方式</dt><dd>{setup.paymentMethod}</dd></div>
                 <div><dt>付款备注</dt><dd>{orderNumber} + {nickname}</dd></div>
               </dl>
 
@@ -343,6 +366,8 @@ export function RegistrationFlow({ event }: RegistrationFlowProps) {
           <h2>当前流程</h2>
           <dl className="summary-list">
             <div><dt>身份</dt><dd>{step === "role" ? "待确认" : "参与者"}</dd></div>
+            <div><dt>活动阶段</dt><dd>{setup.setupStatus}</dd></div>
+            <div><dt>收款配置</dt><dd>{setup.paymentQrStatus}</dd></div>
             <div><dt>数调</dt><dd>{selectedSchedules.length ? `${selectedSchedules.length} 个可参加时间` : "未提交"}</dd></div>
             <div><dt>地点偏好</dt><dd>{selectedLocation || "未选择"}</dd></div>
             <div><dt>订单号</dt><dd>{orderNumber}</dd></div>
