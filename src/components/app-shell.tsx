@@ -21,11 +21,6 @@ export function AppShell({ children }: { children: ReactNode }) {
 
     if (!currentSession && pathname !== "/login") {
       router.replace(`/login?next=${encodeURIComponent(pathname)}`);
-      return;
-    }
-
-    if (currentSession?.role !== "organizer" && pathname.startsWith("/organizer")) {
-      router.replace("/me");
     }
   }, [pathname, router]);
 
@@ -33,7 +28,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     return <>{children}</>;
   }
 
-  if (isCheckingAuth || !session || (session.role !== "organizer" && pathname.startsWith("/organizer"))) {
+  if (isCheckingAuth || !session) {
     return (
       <main className="login-shell">
         <section className="login-panel">
@@ -57,8 +52,6 @@ export function AppShell({ children }: { children: ReactNode }) {
     router.replace("/login");
   }
 
-  const isOrganizer = session.role === "organizer";
-
   return (
     <div className="app-shell">
       <header className="topbar">
@@ -73,17 +66,15 @@ export function AppShell({ children }: { children: ReactNode }) {
         <nav className="desktop-nav" aria-label="主导航">
           <Link href="/">活动广场</Link>
           <Link href="/me">我的活动</Link>
-          {isOrganizer && <Link href="/organizer">组织工作台</Link>}
+          <Link href="/organizer">工作台</Link>
         </nav>
 
         <div className="topbar-actions">
-          {isOrganizer && (
-            <Link className="icon-button" href="/organizer/events/new" aria-label="创建活动">
-              <Plus size={19} />
-            </Link>
-          )}
+          <Link className="icon-button" href="/organizer/events/new" aria-label="创建活动">
+            <Plus size={19} />
+          </Link>
           <span className="account-pill" title={`${session.email} · ${session.gatherUpId}`}>
-            {isOrganizer ? "组织者" : "参与者"}
+            已登录
           </span>
           <Link className="avatar-button" href="/me" aria-label="个人中心">
             {session.name.slice(0, 1)}
@@ -96,7 +87,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       <main className="page-shell">{children}</main>
 
-      <nav className={`mobile-nav ${isOrganizer ? "" : "participant-nav"}`} aria-label="移动端导航">
+      <nav className="mobile-nav" aria-label="移动端导航">
         <Link href="/">
           <CalendarRange size={18} />
           广场
@@ -105,12 +96,10 @@ export function AppShell({ children }: { children: ReactNode }) {
           <UserRound size={18} />
           我的
         </Link>
-        {isOrganizer && (
-          <Link href="/organizer">
-            <LayoutDashboard size={18} />
-            组织
-          </Link>
-        )}
+        <Link href="/organizer">
+          <LayoutDashboard size={18} />
+          工作台
+        </Link>
       </nav>
     </div>
   );

@@ -1,10 +1,6 @@
-export type DemoRole = "participant" | "organizer";
-
 export type DemoAccount = {
-  label: string;
   email: string;
   password: string;
-  role: DemoRole;
   name: string;
   gatherUpId: string;
   description: string;
@@ -12,35 +8,22 @@ export type DemoAccount = {
 
 export type DemoSession = {
   email: string;
-  role: DemoRole;
   name: string;
   gatherUpId: string;
 };
 
 export const SESSION_COOKIE = "gatherup_session";
 export const USER_COOKIE = "gatherup_user";
-export const ROLE_COOKIE = "gatherup_role";
 export const NAME_COOKIE = "gatherup_name";
 export const ID_COOKIE = "gatherup_id";
 
 export const demoAccounts: DemoAccount[] = [
   {
-    label: "参与者账号",
     email: "miki@gatherup.local",
     password: "gatherup123",
-    role: "participant",
     name: "比奇堡miki",
     gatherUpId: "GU-MIKI",
-    description: "可查看活动、参与数调、投票、报名和订单。"
-  },
-  {
-    label: "组织者账号",
-    email: "organizer@gatherup.local",
-    password: "gatherup123",
-    role: "organizer",
-    name: "GatherUp 组织者",
-    gatherUpId: "GU-ORG",
-    description: "可进入组织工作台，配置活动和处理报名。"
+    description: "同一个账号可参与活动、查看订单，也可以创建和管理自己的活动。"
   }
 ];
 
@@ -73,7 +56,6 @@ export function readDemoSession(cookieSource: string): DemoSession | null {
 
   return {
     email,
-    role: (readCookieValue(cookieSource, ROLE_COOKIE) as DemoRole) || account?.role || "participant",
     name: readCookieValue(cookieSource, NAME_COOKIE) || account?.name || "GatherUp 用户",
     gatherUpId: readCookieValue(cookieSource, ID_COOKIE) || account?.gatherUpId || "GU-USER"
   };
@@ -86,7 +68,6 @@ export function buildSessionCookies(account: DemoAccount) {
   return [
     `${SESSION_COOKIE}=demo-session; ${cookieOptions}`,
     `${USER_COOKIE}=${encodeURIComponent(account.email)}; ${cookieOptions}`,
-    `${ROLE_COOKIE}=${account.role}; ${cookieOptions}`,
     `${NAME_COOKIE}=${encodeURIComponent(account.name)}; ${cookieOptions}`,
     `${ID_COOKIE}=${encodeURIComponent(account.gatherUpId)}; ${cookieOptions}`
   ];
@@ -95,7 +76,7 @@ export function buildSessionCookies(account: DemoAccount) {
 export function buildExpiredSessionCookies() {
   const cookieOptions = "path=/; max-age=0; SameSite=Lax";
 
-  return [SESSION_COOKIE, USER_COOKIE, ROLE_COOKIE, NAME_COOKIE, ID_COOKIE].map(
+  return [SESSION_COOKIE, USER_COOKIE, NAME_COOKIE, ID_COOKIE, "gatherup_role"].map(
     (cookieName) => `${cookieName}=; ${cookieOptions}`
   );
 }

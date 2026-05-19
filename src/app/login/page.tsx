@@ -1,16 +1,10 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { LockKeyhole, Mail, ShieldCheck } from "lucide-react";
 
-import {
-  buildSessionCookies,
-  demoAccounts,
-  findDemoAccount,
-  readDemoSession,
-  type DemoAccount
-} from "@/lib/auth";
+import { buildSessionCookies, demoAccounts, findDemoAccount, readDemoSession } from "@/lib/auth";
 
 export default function LoginPage() {
   return (
@@ -44,21 +38,11 @@ function LoginForm() {
   const [password, setPassword] = useState(demoAccounts[0].password);
   const [message, setMessage] = useState("");
 
-  const selectedAccount = useMemo(() => {
-    return demoAccounts.find((account) => account.email === email) ?? demoAccounts[0];
-  }, [email]);
-
   useEffect(() => {
     if (readDemoSession(document.cookie)) {
       router.replace(nextPath.startsWith("/") ? nextPath : "/");
     }
   }, [nextPath, router]);
-
-  function useDemoAccount(account: DemoAccount) {
-    setEmail(account.email);
-    setPassword(account.password);
-    setMessage("");
-  }
 
   function login() {
     const matchedAccount = findDemoAccount(email);
@@ -87,8 +71,8 @@ function LoginForm() {
 
         <div>
           <p className="eyebrow">账号登录</p>
-          <h1>保护活动信息和订单状态</h1>
-          <p className="subtle">活动广场、参与流程、订单、组织者工作台都需要登录后查看。</p>
+          <h1>一个账号，完成参与和组织</h1>
+          <p className="subtle">登录后可以参加活动、查看历史订单，也可以在工作台里创建和管理自己的活动。</p>
         </div>
 
         <div className="form-grid">
@@ -110,20 +94,13 @@ function LoginForm() {
         </button>
 
         <div className="demo-account-grid">
-          {demoAccounts.map((account) => (
-            <button
-              className={`choice-card ${selectedAccount.email === account.email ? "selected" : ""}`}
-              key={account.email}
-              type="button"
-              onClick={() => useDemoAccount(account)}
-            >
-              <Mail size={18} />
-              <strong>{account.label}</strong>
-              <span>{account.email}</span>
-              <span>{account.gatherUpId} · {account.role === "organizer" ? "组织者" : "参与者"}</span>
-              <span>{account.description}</span>
-            </button>
-          ))}
+          <div className="choice-card selected">
+            <Mail size={18} />
+            <strong>演示账号</strong>
+            <span>{demoAccounts[0].email}</span>
+            <span>{demoAccounts[0].gatherUpId}</span>
+            <span>{demoAccounts[0].description}</span>
+          </div>
         </div>
       </section>
 
@@ -133,7 +110,7 @@ function LoginForm() {
         <div className="notice-list">
           <div>数调和地点投票需要绑定用户，避免重复提交。</div>
           <div>报名、付款截图、同行人 ID 和订单状态都属于个人信息。</div>
-          <div>组织者后台只能由活动创建者或管理员进入。</div>
+          <div>创建活动后，活动管理权限会绑定到创建者账号。</div>
         </div>
       </aside>
     </main>
