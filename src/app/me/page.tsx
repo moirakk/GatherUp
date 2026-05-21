@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { AccountPanel } from "@/components/account-panel";
 import { StatusBadge } from "@/components/status-badge";
 import { events, registrations } from "@/lib/mock-data";
 
@@ -13,7 +14,7 @@ export default function MyEventsPage() {
         <div>
           <p className="eyebrow">我的活动</p>
           <h1>待处理事项和历史参与活动</h1>
-          <p className="subtle">GatherUp ID：GU-MIKI · 公开 ID 剩余修改次数 2</p>
+          <p className="subtle">管理你的活动订单、账号资料和后续要处理的报名事项。</p>
         </div>
       </section>
 
@@ -22,6 +23,8 @@ export default function MyEventsPage() {
         <div className="metric-card"><strong>{pendingSeats}</strong><span>待选座</span></div>
         <div className="metric-card"><strong>4</strong><span>历史活动</span></div>
       </section>
+
+      <AccountPanel />
 
       <section className="stack">
         {registrations.map((registration) => {

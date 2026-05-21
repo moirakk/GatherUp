@@ -377,6 +377,7 @@ h3 {
 }
 
 .event-grid,
+.account-grid,
 .metrics-grid,
 .form-layout,
 .workspace-grid,
@@ -388,6 +389,11 @@ h3 {
 
 .event-grid {
   grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.account-grid {
+  grid-template-columns: 1fr 1.15fr 1.15fr;
+  margin-bottom: 16px;
 }
 
 .setup-grid {
@@ -431,6 +437,10 @@ h3 {
 .metric-card,
 .order-card {
   padding: 18px;
+}
+
+.account-card {
+  align-self: stretch;
 }
 
 .event-card {
@@ -1208,6 +1218,7 @@ h3 {
   }
 
   .event-grid,
+  .account-grid,
   .metrics-grid,
   .form-layout,
   .workspace-grid,
