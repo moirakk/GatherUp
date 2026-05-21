@@ -136,9 +136,9 @@ export function AccountPanel() {
         </div>
 
         <div className="notice-list">
-          <div>邮箱：已绑定，后续支持验证码登录和忘记密码。</div>
-          <div>手机号：预留，适合短信验证码和活动现场联系。</div>
-          <div>微信：预留，适合未来 Web / 小程序账号打通。</div>
+          <div>邮箱：已绑定，作为全球账号底座，后续支持验证码登录和忘记密码。</div>
+          <div>Google / Apple：预留，适合全球用户快捷登录和跨设备找回。</div>
+          <div>手机号 / 微信：预留，适合中国区活动、小程序和现场联系。</div>
         </div>
       </article>
     </section>

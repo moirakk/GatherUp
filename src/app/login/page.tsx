@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { LockKeyhole, Mail, ShieldCheck } from "lucide-react";
+import { Globe2, LockKeyhole, Mail, ShieldCheck } from "lucide-react";
 
 import { buildSessionCookies, demoAccounts, findDemoAccount, readDemoSession } from "@/lib/auth";
 
@@ -72,12 +72,12 @@ function LoginForm() {
         <div>
           <p className="eyebrow">账号登录</p>
           <h1>一个账号，完成参与和组织</h1>
-          <p className="subtle">登录后可以参加活动、查看历史订单，也可以在工作台里创建和管理自己的活动。</p>
+          <p className="subtle">邮箱是 GatherUp 的全球账号底座。后续可以绑定 Google、Apple、手机号和微信。</p>
         </div>
 
         <div className="form-grid">
           <label>
-            邮箱 / 手机号 / 微信绑定账号
+            邮箱
             <input value={email} onChange={(event) => setEmail(event.target.value)} />
           </label>
           <label>
@@ -102,15 +102,33 @@ function LoginForm() {
             <span>{demoAccounts[0].description}</span>
           </div>
         </div>
+
+        <div className="provider-grid">
+          <div className="provider-card active">
+            <Mail size={17} />
+            <strong>邮箱</strong>
+            <span>全球账号底座</span>
+          </div>
+          <div className="provider-card">
+            <Globe2 size={17} />
+            <strong>Google / Apple</strong>
+            <span>全球快捷登录</span>
+          </div>
+          <div className="provider-card">
+            <ShieldCheck size={17} />
+            <strong>微信 / 手机号</strong>
+            <span>地区化增强</span>
+          </div>
+        </div>
       </section>
 
       <aside className="login-aside">
         <ShieldCheck size={28} />
-        <h2>为什么必须登录？</h2>
+        <h2>为什么用统一账号？</h2>
         <div className="notice-list">
-          <div>数调和地点投票需要绑定用户，避免重复提交。</div>
-          <div>报名、付款截图、同行人 ID 和订单状态都属于个人信息。</div>
-          <div>创建活动后，活动管理权限会绑定到创建者账号。</div>
+          <div>邮箱账号可以跨国家、跨设备、跨平台找回。</div>
+          <div>Google、Apple、微信等只是登录方式，都会绑定到同一个 GatherUp 用户。</div>
+          <div>活动、订单、付款截图和管理权限都绑定到稳定的用户 ID。</div>
         </div>
       </aside>
     </main>
