@@ -28,12 +28,33 @@ export type AuthProviderOption = {
 export type PasswordSignInResult =
   | {
       ok: true;
-      account: DemoAccount;
+      account: DemoAccount | PrototypeAccount;
     }
   | {
       ok: false;
       message: string;
     };
+
+export type PrototypeAccountResult =
+  | {
+      ok: true;
+      account: PrototypeAccount;
+    }
+  | {
+      ok: false;
+      message: string;
+    };
+
+export type PrototypeAccount = DemoAccount & {
+  createdAt: string;
+  emailVerified: boolean;
+};
+
+export type PrototypeAccountInput = {
+  email: string;
+  password: string;
+  name: string;
+};
 
 export const authProviderOptions: AuthProviderOption[] = [
   {
@@ -64,13 +85,42 @@ export const authStrategyNotes = [
 
 export const PUBLIC_ID_STORAGE_KEY = "gatherup_public_id";
 export const PUBLIC_ID_CHANGE_COUNT_STORAGE_KEY = "gatherup_id_change_count";
+export const PROTOTYPE_ACCOUNTS_STORAGE_KEY = "gatherup_prototype_accounts";
+export const PROFILE_ONBOARDING_STORAGE_KEY = "gatherup_profile_onboarded";
 
 export const maxPublicIdChanges = 2;
 
 export const publicIdPattern = /^GU-[A-Z0-9-]{3,18}$/;
+export const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export function normalizePublicId(value: string) {
   return value.trim().toUpperCase();
+}
+
+export function normalizeEmail(value: string) {
+  return value.trim().toLowerCase();
+}
+
+export function isValidEmail(value: string) {
+  return emailPattern.test(normalizeEmail(value));
+}
+
+export function isValidPassword(value: string) {
+  return value.length >= 8;
+}
+
+export function createPublicIdFromEmail(email: string) {
+  const prefix = normalizeEmail(email)
+    .split("@")[0]
+    .replace(/[^a-z0-9-]/gi, "")
+    .slice(0, 10)
+    .toUpperCase();
+
+  return `GU-${prefix || "USER"}`;
+}
+
+export function getProfileOnboardingStorageKey(email: string) {
+  return `${PROFILE_ONBOARDING_STORAGE_KEY}:${normalizeEmail(email)}`;
 }
 
 export const SESSION_COOKIE = "gatherup_session";
@@ -89,7 +139,66 @@ export const demoAccounts: DemoAccount[] = [
 ];
 
 export function findDemoAccount(email: string) {
-  return demoAccounts.find((account) => account.email.toLowerCase() === email.trim().toLowerCase());
+  return demoAccounts.find((account) => normalizeEmail(account.email) === normalizeEmail(email));
+}
+
+export function parsePrototypeAccounts(storageValue: string | null) {
+  if (!storageValue) {
+    return [];
+  }
+
+  try {
+    const parsedValue = JSON.parse(storageValue);
+    return Array.isArray(parsedValue) ? (parsedValue as PrototypeAccount[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function stringifyPrototypeAccounts(accounts: PrototypeAccount[]) {
+  return JSON.stringify(accounts);
+}
+
+export function findPrototypeAccount(email: string, accounts: PrototypeAccount[]) {
+  return accounts.find((account) => normalizeEmail(account.email) === normalizeEmail(email));
+}
+
+export function createPrototypeAccount(input: PrototypeAccountInput, accounts: PrototypeAccount[]): PrototypeAccountResult {
+  const normalizedEmail = normalizeEmail(input.email);
+
+  if (!isValidEmail(normalizedEmail)) {
+    return {
+      ok: false,
+      message: "请输入有效邮箱。正式版会向这个邮箱发送验证码。"
+    };
+  }
+
+  if (!isValidPassword(input.password)) {
+    return {
+      ok: false,
+      message: "密码至少需要 8 位。正式版会支持验证码登录和忘记密码。"
+    };
+  }
+
+  if (findDemoAccount(normalizedEmail) || findPrototypeAccount(normalizedEmail, accounts)) {
+    return {
+      ok: false,
+      message: "这个邮箱已经注册，可以直接登录。"
+    };
+  }
+
+  return {
+    ok: true,
+    account: {
+      email: normalizedEmail,
+      password: input.password,
+      name: input.name.trim() || "GatherUp 用户",
+      gatherUpId: createPublicIdFromEmail(normalizedEmail),
+      description: "本地原型账号。正式版会保存到数据库，并绑定邮箱验证状态。",
+      createdAt: new Date().toISOString(),
+      emailVerified: true
+    }
+  };
 }
 
 function readCookieValue(source: string, name: string) {
@@ -123,8 +232,12 @@ export function getAuthSession(cookieSource: string): AuthSession | null {
   };
 }
 
-export function signInWithDemoPassword(email: string, password: string): PasswordSignInResult {
-  const matchedAccount = findDemoAccount(email);
+export function signInWithPassword(
+  email: string,
+  password: string,
+  prototypeAccounts: PrototypeAccount[] = []
+): PasswordSignInResult {
+  const matchedAccount = findPrototypeAccount(email, prototypeAccounts) || findDemoAccount(email);
 
   if (!matchedAccount || password !== matchedAccount.password) {
     return {
@@ -138,6 +251,8 @@ export function signInWithDemoPassword(email: string, password: string): Passwor
     account: matchedAccount
   };
 }
+
+export const signInWithDemoPassword = signInWithPassword;
 
 export function createSessionCookies(account: AuthUser) {
   const maxAge = 60 * 60 * 24 * 7;

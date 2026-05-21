@@ -6,7 +6,13 @@ import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { CalendarRange, LayoutDashboard, LogOut, Plus, UserRound } from "lucide-react";
 
-import { createExpiredSessionCookies, getAuthSession, type AuthSession } from "@/lib/auth";
+import {
+  createExpiredSessionCookies,
+  demoAccounts,
+  getAuthSession,
+  getProfileOnboardingStorageKey,
+  type AuthSession
+} from "@/lib/auth";
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
@@ -21,6 +27,15 @@ export function AppShell({ children }: { children: ReactNode }) {
 
     if (!currentSession && pathname !== "/login") {
       router.replace(`/login?next=${encodeURIComponent(pathname)}`);
+    }
+
+    if (currentSession && pathname !== "/onboarding") {
+      const isSeedDemoAccount = currentSession.email === demoAccounts[0].email;
+      const hasCompletedProfile = window.localStorage.getItem(getProfileOnboardingStorageKey(currentSession.email)) === "done";
+
+      if (!isSeedDemoAccount && !hasCompletedProfile) {
+        router.replace("/onboarding");
+      }
     }
   }, [pathname, router]);
 
