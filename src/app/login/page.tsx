@@ -4,7 +4,14 @@ import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Globe2, LockKeyhole, Mail, ShieldCheck } from "lucide-react";
 
-import { buildSessionCookies, demoAccounts, findDemoAccount, readDemoSession } from "@/lib/auth";
+import {
+  authProviderOptions,
+  authStrategyNotes,
+  createSessionCookies,
+  demoAccounts,
+  getAuthSession,
+  signInWithDemoPassword
+} from "@/lib/auth";
 
 export default function LoginPage() {
   return (
@@ -39,20 +46,20 @@ function LoginForm() {
   const [message, setMessage] = useState("");
 
   useEffect(() => {
-    if (readDemoSession(document.cookie)) {
+    if (getAuthSession(document.cookie)) {
       router.replace(nextPath.startsWith("/") ? nextPath : "/");
     }
   }, [nextPath, router]);
 
   function login() {
-    const matchedAccount = findDemoAccount(email);
+    const result = signInWithDemoPassword(email, password);
 
-    if (!matchedAccount || password !== matchedAccount.password) {
-      setMessage("账号或密码不正确。你可以先使用下方演示账号。");
+    if (!result.ok) {
+      setMessage(result.message);
       return;
     }
 
-    buildSessionCookies(matchedAccount).forEach((cookie) => {
+    createSessionCookies(result.account).forEach((cookie) => {
       document.cookie = cookie;
     });
     router.replace(nextPath.startsWith("/") ? nextPath : "/");
@@ -104,21 +111,17 @@ function LoginForm() {
         </div>
 
         <div className="provider-grid">
-          <div className="provider-card active">
-            <Mail size={17} />
-            <strong>邮箱</strong>
-            <span>全球账号底座</span>
-          </div>
-          <div className="provider-card">
-            <Globe2 size={17} />
-            <strong>Google / Apple</strong>
-            <span>全球快捷登录</span>
-          </div>
-          <div className="provider-card">
-            <ShieldCheck size={17} />
-            <strong>微信 / 手机号</strong>
-            <span>地区化增强</span>
-          </div>
+          {authProviderOptions.map((option) => {
+            const ProviderIcon = option.provider === "email" ? Mail : option.provider === "wechat" ? ShieldCheck : Globe2;
+
+            return (
+              <div className={`provider-card ${option.availability === "ready" ? "active" : ""}`} key={option.label}>
+                <ProviderIcon size={17} />
+                <strong>{option.label}</strong>
+                <span>{option.description}</span>
+              </div>
+            );
+          })}
         </div>
       </section>
 
@@ -126,9 +129,9 @@ function LoginForm() {
         <ShieldCheck size={28} />
         <h2>为什么用统一账号？</h2>
         <div className="notice-list">
-          <div>邮箱账号可以跨国家、跨设备、跨平台找回。</div>
-          <div>Google、Apple、微信等只是登录方式，都会绑定到同一个 GatherUp 用户。</div>
-          <div>活动、订单、付款截图和管理权限都绑定到稳定的用户 ID。</div>
+          {authStrategyNotes.map((note) => (
+            <div key={note}>{note}</div>
+          ))}
         </div>
       </aside>
     </main>

@@ -6,16 +6,16 @@ import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { CalendarRange, LayoutDashboard, LogOut, Plus, UserRound } from "lucide-react";
 
-import { buildExpiredSessionCookies, readDemoSession, type DemoSession } from "@/lib/auth";
+import { createExpiredSessionCookies, getAuthSession, type AuthSession } from "@/lib/auth";
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
-  const [session, setSession] = useState<DemoSession | null>(null);
+  const [session, setSession] = useState<AuthSession | null>(null);
 
   useEffect(() => {
-    const currentSession = readDemoSession(document.cookie);
+    const currentSession = getAuthSession(document.cookie);
     setSession(currentSession);
     setIsCheckingAuth(false);
 
@@ -45,7 +45,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   }
 
   function logout() {
-    buildExpiredSessionCookies().forEach((cookie) => {
+    createExpiredSessionCookies().forEach((cookie) => {
       document.cookie = cookie;
     });
     setSession(null);

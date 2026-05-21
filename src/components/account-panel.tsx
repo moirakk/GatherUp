@@ -3,12 +3,18 @@
 import { useEffect, useMemo, useState } from "react";
 import { AtSign, BadgeCheck, ShieldCheck } from "lucide-react";
 
-import { ID_COOKIE, readDemoSession } from "@/lib/auth";
-
-const maxPublicIdChanges = 2;
+import {
+  ID_COOKIE,
+  PUBLIC_ID_CHANGE_COUNT_STORAGE_KEY,
+  PUBLIC_ID_STORAGE_KEY,
+  getAuthSession,
+  maxPublicIdChanges,
+  normalizePublicId,
+  publicIdPattern
+} from "@/lib/auth";
 
 function getStoredChangeCount() {
-  const storedValue = window.localStorage.getItem("gatherup_id_change_count");
+  const storedValue = window.localStorage.getItem(PUBLIC_ID_CHANGE_COUNT_STORAGE_KEY);
   const parsedValue = Number(storedValue ?? 0);
   return Number.isFinite(parsedValue) ? parsedValue : 0;
 }
@@ -22,13 +28,13 @@ export function AccountPanel() {
   const [message, setMessage] = useState("");
 
   useEffect(() => {
-    const session = readDemoSession(document.cookie);
+    const session = getAuthSession(document.cookie);
 
     if (!session) {
       return;
     }
 
-    const storedPublicId = window.localStorage.getItem("gatherup_public_id") || session.gatherUpId;
+    const storedPublicId = window.localStorage.getItem(PUBLIC_ID_STORAGE_KEY) || session.gatherUpId;
     const storedChangeCount = getStoredChangeCount();
 
     setEmail(session.email);
@@ -43,14 +49,14 @@ export function AccountPanel() {
   }, [changeCount]);
 
   function updatePublicId() {
-    const normalizedId = draftPublicId.trim().toUpperCase();
+    const normalizedId = normalizePublicId(draftPublicId);
 
     if (normalizedId === publicId) {
       setMessage("当前 GatherUp ID 没有变化。");
       return;
     }
 
-    if (!/^GU-[A-Z0-9-]{3,18}$/.test(normalizedId)) {
+    if (!publicIdPattern.test(normalizedId)) {
       setMessage("GatherUp ID 需要以 GU- 开头，只能包含大写字母、数字和短横线。");
       return;
     }
@@ -63,8 +69,8 @@ export function AccountPanel() {
     const nextChangeCount = changeCount + 1;
     const cookieOptions = "path=/; max-age=604800; SameSite=Lax";
 
-    window.localStorage.setItem("gatherup_public_id", normalizedId);
-    window.localStorage.setItem("gatherup_id_change_count", String(nextChangeCount));
+    window.localStorage.setItem(PUBLIC_ID_STORAGE_KEY, normalizedId);
+    window.localStorage.setItem(PUBLIC_ID_CHANGE_COUNT_STORAGE_KEY, String(nextChangeCount));
     document.cookie = `${ID_COOKIE}=${encodeURIComponent(normalizedId)}; ${cookieOptions}`;
 
     setPublicId(normalizedId);
