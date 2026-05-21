@@ -3,16 +3,31 @@
 
 insert into public.users (
   id,
+  auth_user_id,
   public_id,
   public_id_change_count,
   name,
   email,
   preferred_locale
 ) values
-  ('00000000-0000-0000-0000-000000000001', 'GU-MIKI', 0, '比奇堡miki', 'miki@example.com', 'zh-CN'),
-  ('00000000-0000-0000-0000-000000000002', 'GU-TSUKI', 0, '月见草', 'tsuki@example.com', 'zh-CN'),
-  ('00000000-0000-0000-0000-000000000003', 'GU-LIME', 0, '青柠', 'lime@example.com', 'zh-CN')
+  ('00000000-0000-0000-0000-000000000001', '90000000-0000-0000-0000-000000000001', 'GU-MIKI', 0, '比奇堡miki', 'miki@example.com', 'zh-CN'),
+  ('00000000-0000-0000-0000-000000000002', '90000000-0000-0000-0000-000000000002', 'GU-TSUKI', 0, '月见草', 'tsuki@example.com', 'zh-CN'),
+  ('00000000-0000-0000-0000-000000000003', '90000000-0000-0000-0000-000000000003', 'GU-LIME', 0, '青柠', 'lime@example.com', 'zh-CN')
 on conflict (id) do nothing;
+
+insert into public.user_auth_identities (
+  user_id,
+  provider,
+  provider_user_id,
+  email,
+  display_name,
+  is_primary,
+  verified_at
+) values
+  ('00000000-0000-0000-0000-000000000001', 'email', 'miki@example.com', 'miki@example.com', '比奇堡miki', true, now()),
+  ('00000000-0000-0000-0000-000000000002', 'email', 'tsuki@example.com', 'tsuki@example.com', '月见草', true, now()),
+  ('00000000-0000-0000-0000-000000000003', 'email', 'lime@example.com', 'lime@example.com', '青柠', true, now())
+on conflict (provider, provider_user_id) do nothing;
 
 insert into public.events (
   id,

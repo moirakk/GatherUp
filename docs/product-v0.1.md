@@ -103,7 +103,7 @@ GatherUp 的活动类型采用“活动场景 + 流程模板”的设计。
 ## 4.1 v0.1 已确认产品决策
 
 - 参与者 v0.1 也需要账号。
-- 登录方式以微信、邮箱、手机号为主。
+- 登录方式以邮箱为全球账号底座，Google / Apple 作为全球快捷登录，微信 / 手机号作为地区化增强。
 - v0.1 界面语言先做简体中文。
 - 多语言问题先放一放，但底层结构尽量不要阻碍未来扩展。
 - v0.1 付款方式为“上传付款截图 + 组织者手动确认”。
@@ -469,7 +469,7 @@ v0.1 座位图可以先通过“排数 + 每排座位数”自动生成，不需
 
 - 用户公开 ID。
 - ID 剩余修改次数。
-- 绑定的登录方式：微信、邮箱、手机号。
+- 绑定的登录方式：邮箱、Google、Apple、手机号、微信。
 - 历史参与活动。
 - 当前待处理事项：待付款、待审核、待选座。
 
@@ -613,6 +613,23 @@ v0.1 座位图可以先通过“排数 + 每排座位数”自动生成，不需
 - `wechat_openid`
 - `preferred_locale`
 - `created_at`
+
+### `user_auth_identities`
+
+- `id`
+- `user_id`
+- `provider`
+- `provider_user_id`
+- `email`
+- `phone`
+- `display_name`
+- `avatar_url`
+- `is_primary`
+- `verified_at`
+- `last_sign_in_at`
+- `metadata`
+- `created_at`
+- `updated_at`
 
 ### `events`
 

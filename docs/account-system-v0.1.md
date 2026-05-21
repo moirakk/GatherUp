@@ -152,19 +152,33 @@ GatherUp 应该先做全球可用的 Web 账号体系，再把微信作为中国
 
 ## 9. 用户数据模型
 
-核心字段：
+`users` 核心字段：
 
 - `id`：系统内部永久 ID，不允许用户修改。
 - `public_id`：GatherUp ID，用于展示和同行人填写。
 - `public_id_change_count`：GatherUp ID 修改次数。
 - `display_name`：昵称。
 - `avatar_url`：头像。
-- `email`：邮箱。
-- `google_sub`：Google 用户标识。
-- `apple_sub`：Apple 用户标识。
-- `phone`：手机号。
-- `wechat_openid`：微信身份标识。
-- `wechat_unionid`：微信开放平台统一标识，未来打通小程序和 Web 时需要。
+- `email`：展示和联系用邮箱缓存，真实登录身份以 `user_auth_identities` 为准。
+- `phone`：展示和联系用手机号缓存，真实登录身份以 `user_auth_identities` 为准。
+- `wechat_openid`：微信身份缓存字段，未来可迁移到 `user_auth_identities.metadata`。
+- `created_at`
+- `updated_at`
+
+`user_auth_identities` 核心字段：
+
+- `id`
+- `user_id`
+- `provider`：`email`、`google`、`apple`、`phone`、`wechat`、`line`、`kakao`。
+- `provider_user_id`：第三方平台返回的稳定用户标识，邮箱登录时可使用规范化后的邮箱。
+- `email`
+- `phone`
+- `display_name`
+- `avatar_url`
+- `is_primary`
+- `verified_at`
+- `last_sign_in_at`
+- `metadata`
 - `created_at`
 - `updated_at`
 

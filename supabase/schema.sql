@@ -63,6 +63,16 @@ create type order_number_format as enum (
   'custom_prefix_sequence'
 );
 
+create type auth_identity_provider as enum (
+  'email',
+  'google',
+  'apple',
+  'phone',
+  'wechat',
+  'line',
+  'kakao'
+);
+
 create table public.users (
   id uuid primary key default gen_random_uuid(),
   auth_user_id uuid unique,
@@ -76,7 +86,27 @@ create table public.users (
   preferred_locale text not null default 'zh-CN',
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  constraint users_public_id_format check (public_id ~ '^[A-Za-z0-9_-]{3,24}$')
+  constraint users_public_id_format check (public_id ~ '^GU-[A-Z0-9-]{3,18}$')
+);
+
+create table public.user_auth_identities (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references public.users(id) on delete cascade,
+  provider auth_identity_provider not null,
+  provider_user_id text not null,
+  email text,
+  phone text,
+  display_name text,
+  avatar_url text,
+  is_primary boolean not null default false,
+  verified_at timestamptz,
+  last_sign_in_at timestamptz,
+  metadata jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (provider, provider_user_id),
+  unique (user_id, provider),
+  constraint user_auth_identities_provider_user_id_not_empty check (length(trim(provider_user_id)) > 0)
 );
 
 create table public.events (
@@ -224,6 +254,7 @@ create table public.audit_logs (
 );
 
 create index events_organizer_id_idx on public.events(organizer_id);
+create index user_auth_identities_user_id_idx on public.user_auth_identities(user_id);
 create index events_visibility_status_idx on public.events(visibility, status);
 create index events_category_template_idx on public.events(category, template);
 create index events_city_starts_at_idx on public.events(city, starts_at);
@@ -245,6 +276,10 @@ $$ language plpgsql;
 
 create trigger users_set_updated_at
   before update on public.users
+  for each row execute function public.set_updated_at();
+
+create trigger user_auth_identities_set_updated_at
+  before update on public.user_auth_identities
   for each row execute function public.set_updated_at();
 
 create trigger events_set_updated_at
@@ -342,6 +377,7 @@ create trigger seat_assignments_sync_seat_status
   for each row execute function public.sync_seat_status_on_assignment();
 
 alter table public.users enable row level security;
+alter table public.user_auth_identities enable row level security;
 alter table public.events enable row level security;
 alter table public.event_order_counters enable row level security;
 alter table public.registrations enable row level security;
@@ -364,6 +400,21 @@ create policy "users can update their own profile"
   on public.users for update
   using (auth.uid() = auth_user_id)
   with check (auth.uid() = auth_user_id);
+
+create policy "users can read their own auth identities"
+  on public.user_auth_identities for select
+  using (user_id in (
+    select id from public.users where auth_user_id = auth.uid()
+  ));
+
+create policy "users can manage their own auth identities"
+  on public.user_auth_identities for all
+  using (user_id in (
+    select id from public.users where auth_user_id = auth.uid()
+  ))
+  with check (user_id in (
+    select id from public.users where auth_user_id = auth.uid()
+  ));
 
 create policy "public events are readable"
   on public.events for select

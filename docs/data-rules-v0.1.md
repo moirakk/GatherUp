@@ -52,6 +52,25 @@ v0.1 的核心闭环是：
 - `created_at`
 - `updated_at`
 
+### `user_auth_identities`
+
+字段：
+
+- `id`
+- `user_id`
+- `provider`
+- `provider_user_id`
+- `email`
+- `phone`
+- `display_name`
+- `avatar_url`
+- `is_primary`
+- `verified_at`
+- `last_sign_in_at`
+- `metadata`
+- `created_at`
+- `updated_at`
+
 ### 规则
 
 - 每个用户必须有唯一的 `public_id`。
@@ -59,8 +78,11 @@ v0.1 的核心闭环是：
 - `public_id` 最多允许修改两次。
 - `public_id_change_count` 记录已修改次数。
 - 修改次数达到 2 后，不允许继续修改。
-- 登录方式以微信、邮箱、手机号为主。
-- v0.1 可以先实现其中一种或两种登录方式，但数据模型要能容纳三种。
+- `users.id` 是 GatherUp 的永久用户 ID。
+- 邮箱、Google、Apple、手机号、微信等登录方式统一记录在 `user_auth_identities`。
+- 邮箱是全球账号底座，微信是中国区增强入口。
+- 同一个登录身份不能绑定多个用户。
+- 一个用户可以绑定多个登录身份。
 
 ### 待确认
 
