@@ -48,7 +48,8 @@ a {
 
 button,
 input,
-select {
+select,
+small {
   font: inherit;
 }
 
@@ -630,6 +631,7 @@ h3 {
 }
 
 .setup-checklist,
+.organizer-list,
 .result-list,
 .tag-row {
   display: grid;
@@ -743,6 +745,14 @@ h3 {
   color: var(--muted);
   font-size: 12px;
   font-weight: 700;
+}
+
+.table-row small {
+  display: block;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.4;
 }
 
 .segmented {

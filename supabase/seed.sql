@@ -31,6 +31,7 @@ on conflict (provider, provider_user_id) do nothing;
 
 insert into public.events (
   id,
+  public_code,
   organizer_id,
   name,
   category,
@@ -55,6 +56,7 @@ insert into public.events (
   status
 ) values (
   '10000000-0000-0000-0000-000000000001',
+  'GU-RYU-20260622',
   '00000000-0000-0000-0000-000000000001',
   '《坂本龙一：杰作》线下观影',
   'community',
@@ -78,6 +80,32 @@ insert into public.events (
   'RYU',
   'registration'
 ) on conflict (id) do nothing;
+
+insert into public.event_organizers (
+  event_id,
+  user_id,
+  role,
+  invited_by
+) values
+  (
+    '10000000-0000-0000-0000-000000000001',
+    '00000000-0000-0000-0000-000000000001',
+    'owner',
+    null
+  ),
+  (
+    '10000000-0000-0000-0000-000000000001',
+    '00000000-0000-0000-0000-000000000002',
+    'co_host',
+    '00000000-0000-0000-0000-000000000001'
+  ),
+  (
+    '10000000-0000-0000-0000-000000000001',
+    '00000000-0000-0000-0000-000000000003',
+    'finance',
+    '00000000-0000-0000-0000-000000000001'
+  )
+on conflict (event_id, user_id) do nothing;
 
 insert into public.event_order_counters (event_id, current_number)
 values ('10000000-0000-0000-0000-000000000001', 4)

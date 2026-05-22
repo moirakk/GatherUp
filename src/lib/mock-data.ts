@@ -6,6 +6,7 @@ export type VenueSupportStatus = "确认可办" | "可能可办" | "暂不支持
 
 export type GatherEvent = {
   id: string;
+  publicCode: string;
   name: string;
   category: EventCategory;
   template: EventTemplate;
@@ -25,6 +26,16 @@ export type GatherEvent = {
   maxPeoplePerOrder: number;
   orderPrefix: string;
   description: string;
+};
+
+export type EventOrganizerRole = "主办" | "联合主办" | "财务" | "现场协作" | "只读";
+
+export type EventOrganizer = {
+  eventId: string;
+  userId: string;
+  publicId: string;
+  name: string;
+  role: EventOrganizerRole;
 };
 
 export type Registration = {
@@ -88,6 +99,7 @@ export type VenueIntel = {
 export const events: GatherEvent[] = [
   {
     id: "ryuichi-masterpiece",
+    publicCode: "GU-RYU-20260622",
     name: "《坂本龙一：杰作》线下观影",
     category: "同好活动",
     template: "选座活动",
@@ -111,6 +123,7 @@ export const events: GatherEvent[] = [
   },
   {
     id: "spring-rerun",
+    publicCode: "GU-SPR-20260629",
     name: "春日同好重映场",
     category: "同好活动",
     template: "选座活动",
@@ -133,6 +146,7 @@ export const events: GatherEvent[] = [
   },
   {
     id: "birthday-cafe-trial",
+    publicCode: "GU-CAF-NJ0705",
     name: "生日咖试运营小聚",
     category: "同好活动",
     template: "分时预约",
@@ -155,6 +169,7 @@ export const events: GatherEvent[] = [
   },
   {
     id: "campus-club-fair",
+    publicCode: "GU-CLUB-20260712",
     name: "春季社团招新开放日",
     category: "校园活动",
     template: "签到活动",
@@ -177,6 +192,7 @@ export const events: GatherEvent[] = [
   },
   {
     id: "product-forum",
+    publicCode: "GU-FORUM-BJ0718",
     name: "城市青年消费趋势闭门论坛",
     category: "会议会务",
     template: "签到活动",
@@ -199,6 +215,7 @@ export const events: GatherEvent[] = [
   },
   {
     id: "friends-hotpot",
+    publicCode: "GU-HOT-CD0720",
     name: "周末火锅局",
     category: "好友聚会",
     template: "记录型聚会",
@@ -218,6 +235,65 @@ export const events: GatherEvent[] = [
     maxPeoplePerOrder: 2,
     orderPrefix: "HOT",
     description: "朋友之间的小聚记录，适合记录参与人、费用、时间和地点。"
+  }
+];
+
+export const eventOrganizers: EventOrganizer[] = [
+  {
+    eventId: "ryuichi-masterpiece",
+    userId: "user-miki",
+    publicId: "GU-MIKI",
+    name: "比奇堡miki",
+    role: "主办"
+  },
+  {
+    eventId: "ryuichi-masterpiece",
+    userId: "user-tsuki",
+    publicId: "GU-TSUKI",
+    name: "月见草",
+    role: "联合主办"
+  },
+  {
+    eventId: "ryuichi-masterpiece",
+    userId: "user-lime",
+    publicId: "GU-LIME",
+    name: "青柠",
+    role: "财务"
+  },
+  {
+    eventId: "spring-rerun",
+    userId: "user-miki",
+    publicId: "GU-MIKI",
+    name: "比奇堡miki",
+    role: "主办"
+  },
+  {
+    eventId: "birthday-cafe-trial",
+    userId: "user-tsuki",
+    publicId: "GU-TSUKI",
+    name: "月见草",
+    role: "主办"
+  },
+  {
+    eventId: "campus-club-fair",
+    userId: "user-lime",
+    publicId: "GU-LIME",
+    name: "青柠",
+    role: "主办"
+  },
+  {
+    eventId: "product-forum",
+    userId: "user-miki",
+    publicId: "GU-MIKI",
+    name: "比奇堡miki",
+    role: "主办"
+  },
+  {
+    eventId: "friends-hotpot",
+    userId: "user-miki",
+    publicId: "GU-MIKI",
+    name: "比奇堡miki",
+    role: "主办"
   }
 ];
 
@@ -474,6 +550,10 @@ export const registrations: Registration[] = [
 
 export function getEvent(eventId: string) {
   return events.find((event) => event.id === eventId) ?? events[0];
+}
+
+export function getEventOrganizers(eventId: string) {
+  return eventOrganizers.filter((organizer) => organizer.eventId === eventId);
 }
 
 export function getEventRegistrations(eventId: string) {

@@ -1,9 +1,9 @@
 import Link from "next/link";
-import { ClipboardList, CreditCard, MapPin, TicketCheck, UsersRound } from "lucide-react";
+import { AtSign, ClipboardList, CreditCard, MapPin, TicketCheck, UsersRound } from "lucide-react";
 
 import { MetricCard } from "@/components/metric-card";
 import { StatusBadge } from "@/components/status-badge";
-import { getEvent, getEventSetup } from "@/lib/mock-data";
+import { getEvent, getEventOrganizers, getEventSetup } from "@/lib/mock-data";
 
 type EventPageProps = {
   params: Promise<{ eventId: string }>;
@@ -13,6 +13,7 @@ export default async function EventPage({ params }: EventPageProps) {
   const { eventId } = await params;
   const event = getEvent(eventId);
   const setup = getEventSetup(eventId);
+  const organizers = getEventOrganizers(eventId);
   const remaining = event.capacity - event.registered;
 
   return (
@@ -26,6 +27,7 @@ export default async function EventPage({ params }: EventPageProps) {
         <p className="subtle">{event.description}</p>
 
         <div className="fact-list">
+          <span><AtSign size={16} />{event.publicCode}</span>
           <span><MapPin size={16} />{event.city} · {event.venue}</span>
           <span><UsersRound size={16} />剩余 {remaining} 位</span>
           <span><CreditCard size={16} />¥{event.price} / 人</span>
@@ -60,6 +62,8 @@ export default async function EventPage({ params }: EventPageProps) {
           <div><dt>报名截止</dt><dd>{event.deadline}</dd></div>
           <div><dt>活动场景</dt><dd>{event.category}</dd></div>
           <div><dt>流程模板</dt><dd>{event.template}</dd></div>
+          <div><dt>活动 ID</dt><dd>{event.publicCode}</dd></div>
+          <div><dt>组织者</dt><dd>{organizers.map((organizer) => `${organizer.name}（${organizer.role}）`).join("、")}</dd></div>
           <div><dt>多人报名</dt><dd>{event.allowMulti ? `支持，最多 ${event.maxPeoplePerOrder} 人` : "不支持"}</dd></div>
           <div><dt>订单编号</dt><dd>{event.orderPrefix}-0001</dd></div>
           <div><dt>当前阶段</dt><dd>{setup.setupStatus}</dd></div>

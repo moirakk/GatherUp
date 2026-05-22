@@ -2,7 +2,7 @@ import Link from "next/link";
 import { CalendarCheck, MapPinned, Plus, QrCode } from "lucide-react";
 
 import { MetricCard } from "@/components/metric-card";
-import { eventSetups, events } from "@/lib/mock-data";
+import { eventSetups, events, getEventOrganizers } from "@/lib/mock-data";
 
 export default function OrganizerPage() {
   const activeSetups = eventSetups.filter((setup) => setup.setupStatus !== "报名已开放");
@@ -40,6 +40,7 @@ export default function OrganizerPage() {
                 <div>
                   <span className="tag">{setup.setupStatus}</span>
                   <h2>{event.name}</h2>
+                  <p className="event-meta compact">{event.publicCode}</p>
                 </div>
                 <QrCode size={20} />
               </div>
@@ -67,10 +68,14 @@ export default function OrganizerPage() {
         </div>
         {events.slice(0, 4).map((event) => {
           const setup = eventSetups.find((item) => item.eventId === event.id);
+          const organizers = getEventOrganizers(event.id);
 
           return (
             <div className="table-row" key={event.id}>
-              <span>{event.name}</span>
+              <span>
+                <strong>{event.name}</strong>
+                <small>{event.publicCode} · {organizers.map((organizer) => organizer.publicId).join(" / ")}</small>
+              </span>
               <span>{setup?.setupStatus ?? event.status}</span>
               <span>{event.registered}/{event.capacity}</span>
               <span>{setup?.paymentQrStatus ?? "未配置"}</span>

@@ -1,9 +1,9 @@
-import { CalendarCheck, Download, LinkIcon, MapPinned, QrCode } from "lucide-react";
+import { AtSign, CalendarCheck, Download, LinkIcon, MapPinned, QrCode, UsersRound } from "lucide-react";
 
 import { MetricCard } from "@/components/metric-card";
 import { SeatMap } from "@/components/seat-map";
 import { StatusBadge } from "@/components/status-badge";
-import { getEvent, getEventRegistrations, getEventSetup } from "@/lib/mock-data";
+import { getEvent, getEventOrganizers, getEventRegistrations, getEventSetup } from "@/lib/mock-data";
 
 type OrganizerEventPageProps = {
   params: Promise<{ eventId: string }>;
@@ -14,6 +14,7 @@ export default async function OrganizerEventPage({ params }: OrganizerEventPageP
   const event = getEvent(eventId);
   const registrations = getEventRegistrations(eventId);
   const setup = getEventSetup(eventId);
+  const organizers = getEventOrganizers(eventId);
   const totalSurveyVotes = setup.surveyOptions.reduce((sum, option) => sum + option.votes, 0);
   const totalVenueVotes = setup.venueOptions.reduce((sum, option) => sum + option.votes, 0);
 
@@ -23,7 +24,7 @@ export default async function OrganizerEventPage({ params }: OrganizerEventPageP
         <div>
           <p className="eyebrow">活动管理台</p>
           <h1>{event.name}</h1>
-          <p className="subtle">{event.status} · {event.city} · {event.startsAt}</p>
+          <p className="subtle">{event.publicCode} · {event.status} · {event.city} · {event.startsAt}</p>
         </div>
         <div className="button-row">
           <button className="button secondary" type="button"><LinkIcon size={16} />复制链接</button>
@@ -54,6 +55,28 @@ export default async function OrganizerEventPage({ params }: OrganizerEventPageP
           <div className="button-row">
             <button className="button primary" type="button"><QrCode size={16} />更新收款码</button>
             <button className="button secondary" type="button"><LinkIcon size={16} />开放报名链接</button>
+          </div>
+        </article>
+
+        <article className="content-card">
+          <div className="section-heading">
+            <div>
+              <h2>活动身份</h2>
+              <p className="subtle">活动 ID 用于搜索、分享和现场核对；组织者 ID 用于权限绑定。</p>
+            </div>
+            <AtSign size={20} />
+          </div>
+          <dl className="summary-list">
+            <div><dt>活动 ID</dt><dd>{event.publicCode}</dd></div>
+            <div><dt>公开链接</dt><dd>/events/{event.id}</dd></div>
+          </dl>
+          <div className="organizer-list">
+            {organizers.map((organizer) => (
+              <div className="result-row" key={`${organizer.eventId}-${organizer.publicId}`}>
+                <span><UsersRound size={15} />{organizer.name} · {organizer.publicId}</span>
+                <strong>{organizer.role}</strong>
+              </div>
+            ))}
           </div>
         </article>
 

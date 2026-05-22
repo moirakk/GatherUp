@@ -16,12 +16,23 @@ export default function NewEventPage() {
           <h2>基础信息</h2>
           <div className="form-grid">
             <label>活动名称<input defaultValue="春季社团招新开放日" /></label>
+            <label>活动公开 ID<input defaultValue="GU-CLUB-20260712" /></label>
             <label>活动场景<select defaultValue="campus"><option value="community">同好活动</option><option value="campus">校园活动</option><option value="conference">会议会务</option><option value="private">好友聚会</option><option value="workshop">工作坊</option></select></label>
             <label>流程模板<select defaultValue="checkin"><option value="basic">基础报名</option><option value="payment">报名收款</option><option value="seating">选座活动</option><option value="checkin">签到活动</option><option value="record">记录型聚会</option></select></label>
             <label>细分标签<input defaultValue="校园招新" /></label>
             <label>城市<input defaultValue="广州" /></label>
             <label>场地<input defaultValue="大学生活动中心" /></label>
             <label>日期和时间<input defaultValue="2026-07-12 10:00" /></label>
+          </div>
+        </article>
+
+        <article className="content-card">
+          <h2>组织者协作</h2>
+          <p className="subtle">活动会绑定创建者，也可以邀请多个组织者共同管理，适合联合主办、财务和现场协作。</p>
+          <div className="form-grid">
+            <label>主办 GatherUp ID<input defaultValue="GU-MIKI" /></label>
+            <label>协作组织者<input defaultValue="GU-TSUKI, GU-LIME" /></label>
+            <label>默认权限<select defaultValue="cohost"><option value="cohost">联合主办</option><option value="finance">财务</option><option value="checkin">现场协作</option><option value="viewer">只读</option></select></label>
           </div>
         </article>
 

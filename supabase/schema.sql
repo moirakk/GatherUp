@@ -63,6 +63,14 @@ create type order_number_format as enum (
   'custom_prefix_sequence'
 );
 
+create type event_organizer_role as enum (
+  'owner',
+  'co_host',
+  'finance',
+  'checkin',
+  'viewer'
+);
+
 create type auth_identity_provider as enum (
   'email',
   'google',
@@ -111,6 +119,7 @@ create table public.user_auth_identities (
 
 create table public.events (
   id uuid primary key default gen_random_uuid(),
+  public_code text not null unique,
   organizer_id uuid not null references public.users(id) on delete restrict,
   name text not null,
   category event_category not null default 'community',
@@ -139,7 +148,19 @@ create table public.events (
   constraint events_multi_person_rule check (
     (allow_multi_person_registration = false and max_people_per_registration = 1)
     or (allow_multi_person_registration = true and max_people_per_registration >= 2)
-  )
+  ),
+  constraint events_public_code_format check (public_code ~ '^GU-[A-Z0-9-]{3,28}$')
+);
+
+create table public.event_organizers (
+  id uuid primary key default gen_random_uuid(),
+  event_id uuid not null references public.events(id) on delete cascade,
+  user_id uuid not null references public.users(id) on delete cascade,
+  role event_organizer_role not null default 'co_host',
+  invited_by uuid references public.users(id) on delete set null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (event_id, user_id)
 );
 
 create table public.event_order_counters (
@@ -254,6 +275,9 @@ create table public.audit_logs (
 );
 
 create index events_organizer_id_idx on public.events(organizer_id);
+create index events_public_code_idx on public.events(public_code);
+create index event_organizers_event_id_idx on public.event_organizers(event_id);
+create index event_organizers_user_id_idx on public.event_organizers(user_id);
 create index user_auth_identities_user_id_idx on public.user_auth_identities(user_id);
 create index events_visibility_status_idx on public.events(visibility, status);
 create index events_category_template_idx on public.events(category, template);
@@ -284,6 +308,10 @@ create trigger user_auth_identities_set_updated_at
 
 create trigger events_set_updated_at
   before update on public.events
+  for each row execute function public.set_updated_at();
+
+create trigger event_organizers_set_updated_at
+  before update on public.event_organizers
   for each row execute function public.set_updated_at();
 
 create trigger event_order_counters_set_updated_at
@@ -376,9 +404,69 @@ create trigger seat_assignments_sync_seat_status
   after insert on public.seat_assignments
   for each row execute function public.sync_seat_status_on_assignment();
 
+create or replace function public.current_app_user_id()
+returns uuid as $$
+  select id
+  from public.users
+  where auth_user_id = auth.uid()
+  limit 1;
+$$ language sql stable security definer set search_path = public;
+
+create or replace function public.can_manage_event(target_event_id uuid)
+returns boolean as $$
+  select exists (
+    select 1
+    from public.events e
+    where e.id = target_event_id
+      and e.organizer_id = public.current_app_user_id()
+  )
+  or exists (
+    select 1
+    from public.event_organizers eo
+    where eo.event_id = target_event_id
+      and eo.user_id = public.current_app_user_id()
+      and eo.role in ('owner', 'co_host', 'finance', 'checkin')
+  );
+$$ language sql stable security definer set search_path = public;
+
+create or replace function public.can_edit_event(target_event_id uuid)
+returns boolean as $$
+  select exists (
+    select 1
+    from public.events e
+    where e.id = target_event_id
+      and e.organizer_id = public.current_app_user_id()
+  )
+  or exists (
+    select 1
+    from public.event_organizers eo
+    where eo.event_id = target_event_id
+      and eo.user_id = public.current_app_user_id()
+      and eo.role in ('owner', 'co_host')
+  );
+$$ language sql stable security definer set search_path = public;
+
+create or replace function public.can_manage_event_finance(target_event_id uuid)
+returns boolean as $$
+  select exists (
+    select 1
+    from public.events e
+    where e.id = target_event_id
+      and e.organizer_id = public.current_app_user_id()
+  )
+  or exists (
+    select 1
+    from public.event_organizers eo
+    where eo.event_id = target_event_id
+      and eo.user_id = public.current_app_user_id()
+      and eo.role in ('owner', 'co_host', 'finance')
+  );
+$$ language sql stable security definer set search_path = public;
+
 alter table public.users enable row level security;
 alter table public.user_auth_identities enable row level security;
 alter table public.events enable row level security;
+alter table public.event_organizers enable row level security;
 alter table public.event_order_counters enable row level security;
 alter table public.registrations enable row level security;
 alter table public.registration_attendees enable row level security;
@@ -418,9 +506,7 @@ create policy "users can manage their own auth identities"
 
 create policy "public events are readable"
   on public.events for select
-  using (visibility = 'public' or organizer_id in (
-    select id from public.users where auth_user_id = auth.uid()
-  ));
+  using (visibility = 'public' or public.can_manage_event(id));
 
 create policy "organizers can insert events"
   on public.events for insert
@@ -430,21 +516,23 @@ create policy "organizers can insert events"
 
 create policy "organizers can update own events"
   on public.events for update
-  using (organizer_id in (
-    select id from public.users where auth_user_id = auth.uid()
-  ))
-  with check (organizer_id in (
-    select id from public.users where auth_user_id = auth.uid()
-  ));
+  using (public.can_edit_event(id))
+  with check (public.can_edit_event(id));
+
+create policy "event organizers are visible to event members"
+  on public.event_organizers for select
+  using (user_id = public.current_app_user_id() or public.can_manage_event(event_id));
+
+create policy "owners can manage event organizers"
+  on public.event_organizers for all
+  using (public.can_edit_event(event_id))
+  with check (public.can_edit_event(event_id));
 
 create policy "participants and organizers can read registrations"
   on public.registrations for select
   using (
     user_id in (select id from public.users where auth_user_id = auth.uid())
-    or event_id in (
-      select id from public.events
-      where organizer_id in (select id from public.users where auth_user_id = auth.uid())
-    )
+    or public.can_manage_event(event_id)
   );
 
 create policy "participants can create registrations"
@@ -455,19 +543,15 @@ create policy "participants can create registrations"
 
 create policy "organizers can update event registrations"
   on public.registrations for update
-  using (event_id in (
-    select id from public.events
-    where organizer_id in (select id from public.users where auth_user_id = auth.uid())
-  ));
+  using (public.can_manage_event(event_id));
 
 create policy "attendees visible to registration owner and organizer"
   on public.registration_attendees for select
   using (registration_id in (
     select r.id
     from public.registrations r
-    join public.events e on e.id = r.event_id
     join public.users u on u.auth_user_id = auth.uid()
-    where r.user_id = u.id or e.organizer_id = u.id
+    where r.user_id = u.id or public.can_manage_event(r.event_id)
   ));
 
 create policy "participants can create attendees for own registrations"
@@ -484,9 +568,8 @@ create policy "payments visible to owner and organizer"
   using (registration_id in (
     select r.id
     from public.registrations r
-    join public.events e on e.id = r.event_id
     join public.users u on u.auth_user_id = auth.uid()
-    where r.user_id = u.id or e.organizer_id = u.id
+    where r.user_id = u.id or public.can_manage_event(r.event_id)
   ));
 
 create policy "organizers can update payments"
@@ -494,9 +577,7 @@ create policy "organizers can update payments"
   using (registration_id in (
     select r.id
     from public.registrations r
-    join public.events e on e.id = r.event_id
-    join public.users u on u.auth_user_id = auth.uid()
-    where e.organizer_id = u.id
+    where public.can_manage_event_finance(r.event_id)
   ));
 
 create policy "users can create payment proofs for own orders"
@@ -515,9 +596,8 @@ create policy "payment proofs visible to owner and organizer"
     select p.id
     from public.payments p
     join public.registrations r on r.id = p.registration_id
-    join public.events e on e.id = r.event_id
     join public.users u on u.auth_user_id = auth.uid()
-    where r.user_id = u.id or e.organizer_id = u.id
+    where r.user_id = u.id or public.can_manage_event(r.event_id)
   ));
 
 create policy "seats visible for readable events"
@@ -525,24 +605,20 @@ create policy "seats visible for readable events"
   using (event_id in (
     select id from public.events
     where visibility = 'public'
-    or organizer_id in (select id from public.users where auth_user_id = auth.uid())
+    or public.can_manage_event(id)
   ));
 
 create policy "organizers can manage seats"
   on public.seats for all
-  using (event_id in (
-    select id from public.events
-    where organizer_id in (select id from public.users where auth_user_id = auth.uid())
-  ));
+  using (public.can_manage_event(event_id));
 
 create policy "seat assignments visible to owner and organizer"
   on public.seat_assignments for select
   using (registration_id in (
     select r.id
     from public.registrations r
-    join public.events e on e.id = r.event_id
     join public.users u on u.auth_user_id = auth.uid()
-    where r.user_id = u.id or e.organizer_id = u.id
+    where r.user_id = u.id or public.can_manage_event(r.event_id)
   ));
 
 create policy "participants can create seat assignments for paid registrations"
@@ -557,21 +633,12 @@ create policy "participants can create seat assignments for paid registrations"
 
 create policy "organizers can manage seat assignments"
   on public.seat_assignments for all
-  using (event_id in (
-    select id from public.events
-    where organizer_id in (select id from public.users where auth_user_id = auth.uid())
-  ));
+  using (public.can_manage_event(event_id));
 
 create policy "published announcements visible"
   on public.announcements for select
-  using (status = 'published' or event_id in (
-    select id from public.events
-    where organizer_id in (select id from public.users where auth_user_id = auth.uid())
-  ));
+  using (status = 'published' or public.can_manage_event(event_id));
 
 create policy "organizers can manage announcements"
   on public.announcements for all
-  using (event_id in (
-    select id from public.events
-    where organizer_id in (select id from public.users where auth_user_id = auth.uid())
-  ));
+  using (public.can_edit_event(event_id));

@@ -19,7 +19,7 @@ export default function HomePage() {
       const matchesCategory = categoryFilter === "全部" || event.category === categoryFilter;
       const matchesQuery =
         normalizedQuery.length === 0 ||
-        [event.name, event.city, event.venue, event.category, event.customTypeLabel, event.template]
+        [event.name, event.publicCode, event.city, event.venue, event.category, event.customTypeLabel, event.template]
           .join(" ")
           .toLowerCase()
           .includes(normalizedQuery);
@@ -42,7 +42,7 @@ export default function HomePage() {
         <label className="search-field">
           <span>⌕</span>
           <input
-            placeholder="搜索活动、城市或场地"
+            placeholder="搜索活动、活动ID、城市或场地"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
           />

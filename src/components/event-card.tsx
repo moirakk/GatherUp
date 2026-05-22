@@ -21,6 +21,9 @@ export function EventCard({ event }: EventCardProps) {
       <div>
         <h3>{event.name}</h3>
         <p className="event-meta compact">
+          {event.publicCode}
+        </p>
+        <p className="event-meta compact">
           {event.category} · {event.template}
         </p>
         <p className="event-meta">
