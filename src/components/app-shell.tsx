@@ -4,7 +4,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { CalendarRange, LayoutDashboard, LogOut, Plus, UserRound } from "lucide-react";
+import { CalendarRange, LayoutDashboard, LogOut, MapPinned, Plus, UserRound } from "lucide-react";
 
 import {
   createExpiredSessionCookies,
@@ -80,6 +80,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
         <nav className="desktop-nav" aria-label="主导航">
           <Link href="/">活动广场</Link>
+          <Link href="/venues">场地库</Link>
           <Link href="/me">我的活动</Link>
           <Link href="/organizer">工作台</Link>
         </nav>
@@ -106,6 +107,10 @@ export function AppShell({ children }: { children: ReactNode }) {
         <Link href="/">
           <CalendarRange size={18} />
           广场
+        </Link>
+        <Link href="/venues">
+          <MapPinned size={18} />
+          场地
         </Link>
         <Link href="/me">
           <UserRound size={18} />

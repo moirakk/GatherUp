@@ -1,6 +1,8 @@
 export type EventStatus = "草稿配置" | "数调中" | "待开放报名" | "报名中" | "即将截止" | "付款确认中" | "已成团" | "已结束";
 export type EventCategory = "同好活动" | "校园活动" | "会议会务" | "好友聚会" | "工作坊" | "快闪/市集";
 export type EventTemplate = "基础报名" | "报名收款" | "选座活动" | "签到活动" | "分时预约" | "记录型聚会";
+export type VenueType = "影院" | "咖啡馆" | "会议室" | "校园场地" | "Livehouse" | "展厅/市集";
+export type VenueSupportStatus = "确认可办" | "可能可办" | "暂不支持" | "未知待确认";
 
 export type GatherEvent = {
   id: string;
@@ -55,6 +57,32 @@ export type EventSetup = {
   surveyOptions: PollOption[];
   venueOptions: PollOption[];
   nextAction: string;
+};
+
+export type VenueIntel = {
+  id: string;
+  name: string;
+  city: string;
+  district: string;
+  type: VenueType;
+  supportStatus: VenueSupportStatus;
+  suitableFor: string[];
+  address: string;
+  capacity: string;
+  priceNote: string;
+  contactNote: string;
+  rating: number;
+  reviewCount: number;
+  lastVerified: string;
+  highlights: string[];
+  caveats: string[];
+  organizerNotes: string;
+  experienceScores: {
+    communication: number;
+    environment: number;
+    setupFlexibility: number;
+    valueForMoney: number;
+  };
 };
 
 export const events: GatherEvent[] = [
@@ -243,6 +271,159 @@ export const eventSetups: EventSetup[] = [
   }
 ];
 
+export const venues: VenueIntel[] = [
+  {
+    id: "sh-palace-iapm",
+    name: "百丽宫影城 环贸店",
+    city: "上海",
+    district: "徐汇区",
+    type: "影院",
+    supportStatus: "确认可办",
+    suitableFor: ["线下观影", "映后交流", "品牌小型放映"],
+    address: "上海市徐汇区淮海中路999号环贸iapm",
+    capacity: "约 50-90 人，视影厅而定",
+    priceNote: "包场价格随影片、日期和影厅变化，工作日白天更容易谈。",
+    contactNote: "建议提前 2-3 周联系影城市场或团体票负责人。",
+    rating: 4.7,
+    reviewCount: 18,
+    lastVerified: "2026-05-12",
+    highlights: ["交通方便", "影厅体验稳定", "适合中小规模同好观影", "周边餐饮选择多"],
+    caveats: ["热门档期价格波动明显", "物料布置需要提前确认", "可选影厅受排片影响"],
+    organizerNotes: "过往组织者反馈沟通效率较高，适合需要选座和付款审核的观影活动。",
+    experienceScores: {
+      communication: 4.6,
+      environment: 4.8,
+      setupFlexibility: 4.1,
+      valueForMoney: 4.3
+    }
+  },
+  {
+    id: "sh-grand-cinema",
+    name: "大光明电影院",
+    city: "上海",
+    district: "黄浦区",
+    type: "影院",
+    supportStatus: "可能可办",
+    suitableFor: ["线下观影", "经典片重映", "影迷交流"],
+    address: "上海市黄浦区南京西路216号",
+    capacity: "中大型影厅较多，需按场次沟通",
+    priceNote: "历史建筑和热门场次限制较多，需要单独确认报价。",
+    contactNote: "适合先电话确认档期，再邮件补充活动需求。",
+    rating: 4.5,
+    reviewCount: 9,
+    lastVerified: "2026-04-28",
+    highlights: ["城市地标感强", "观影氛围好", "适合经典片主题活动"],
+    caveats: ["审批和排期可能较慢", "现场布置空间有限", "大型活动需更早沟通"],
+    organizerNotes: "适合有明确片源和日期弹性的组织者，建议准备多个备选时间。",
+    experienceScores: {
+      communication: 3.9,
+      environment: 4.9,
+      setupFlexibility: 3.6,
+      valueForMoney: 4.0
+    }
+  },
+  {
+    id: "hz-zheying-times",
+    name: "浙影时代影城",
+    city: "杭州",
+    district: "拱墅区",
+    type: "影院",
+    supportStatus: "确认可办",
+    suitableFor: ["线下观影", "小型重映场", "社群包场"],
+    address: "杭州市拱墅区湖墅南路",
+    capacity: "约 30-70 人",
+    priceNote: "小厅灵活度较高，适合预算有限的同好活动。",
+    contactNote: "建议明确人数、影片、是否需要选座和付款截图管理。",
+    rating: 4.4,
+    reviewCount: 11,
+    lastVerified: "2026-05-03",
+    highlights: ["小厅友好", "价格相对可控", "沟通反馈快"],
+    caveats: ["影厅设备差异需提前看场", "周末黄金时段不一定可约"],
+    organizerNotes: "如果人数不确定，可以先用 GatherUp 做数调，再带着预估人数沟通。",
+    experienceScores: {
+      communication: 4.5,
+      environment: 4.2,
+      setupFlexibility: 4.4,
+      valueForMoney: 4.6
+    }
+  },
+  {
+    id: "nj-kirishima-coffee",
+    name: "雾岛咖啡",
+    city: "南京",
+    district: "玄武区",
+    type: "咖啡馆",
+    supportStatus: "确认可办",
+    suitableFor: ["生咖", "生日应援", "小型同好聚会"],
+    address: "南京市玄武区长江路",
+    capacity: "约 40-80 人，分时段更稳",
+    priceNote: "通常按低消或套餐沟通，物料布置可能另算清洁费。",
+    contactNote: "需要提前确认布置范围、音乐播放、拍照动线和撤场时间。",
+    rating: 4.6,
+    reviewCount: 24,
+    lastVerified: "2026-05-09",
+    highlights: ["出片效果好", "店员配合度高", "适合分时预约", "桌面布置空间足"],
+    caveats: ["高峰时段不适合长时间占位", "大型立牌需提前确认", "同日多批次需要控流"],
+    organizerNotes: "适合生咖试运营。建议用分时段预约，避免现场拥堵和排队体验下降。",
+    experienceScores: {
+      communication: 4.7,
+      environment: 4.6,
+      setupFlexibility: 4.5,
+      valueForMoney: 4.2
+    }
+  },
+  {
+    id: "bj-wangjing-conference",
+    name: "望京会议中心",
+    city: "北京",
+    district: "朝阳区",
+    type: "会议室",
+    supportStatus: "确认可办",
+    suitableFor: ["闭门会议", "工作坊", "品牌分享会"],
+    address: "北京市朝阳区望京街道",
+    capacity: "约 60-160 人",
+    priceNote: "按半天或全天计费，投影、茶歇和签到台需分项确认。",
+    contactNote: "适合用正式邮件沟通议程、人数和设备清单。",
+    rating: 4.3,
+    reviewCount: 7,
+    lastVerified: "2026-04-19",
+    highlights: ["商务感强", "设备完整", "适合签到活动"],
+    caveats: ["价格透明但附加项多", "入场布置时间需要写进合同"],
+    organizerNotes: "适合会议会务类活动，财务中心可记录场租、茶歇和设备费。",
+    experienceScores: {
+      communication: 4.2,
+      environment: 4.4,
+      setupFlexibility: 3.9,
+      valueForMoney: 3.8
+    }
+  },
+  {
+    id: "cd-yulin-private-room",
+    name: "玉林路小型包间",
+    city: "成都",
+    district: "武侯区",
+    type: "咖啡馆",
+    supportStatus: "未知待确认",
+    suitableFor: ["好友聚会", "读书会", "小型桌游"],
+    address: "成都市武侯区玉林路附近",
+    capacity: "约 8-16 人",
+    priceNote: "可能按低消或小时费，需要组织者补充验证。",
+    contactNote: "目前缺少有效联系方式，等待活动组织者提交经验。",
+    rating: 3.8,
+    reviewCount: 2,
+    lastVerified: "2026-03-30",
+    highlights: ["适合小规模聚会", "周边餐饮多"],
+    caveats: ["是否能承接公开活动未知", "隔音和低消待确认"],
+    organizerNotes: "作为城市候选点保留，下一次活动后应补充真实沟通记录。",
+    experienceScores: {
+      communication: 3.2,
+      environment: 4.0,
+      setupFlexibility: 3.5,
+      valueForMoney: 4.1
+    }
+  }
+];
+
 export const registrations: Registration[] = [
   {
     orderNumber: "RYU-0001",
@@ -305,4 +486,8 @@ export function getEventSetup(eventId: string) {
 
 export function getRegistration(orderNumber: string) {
   return registrations.find((registration) => registration.orderNumber === orderNumber) ?? registrations[0];
+}
+
+export function getVenue(venueId: string) {
+  return venues.find((venue) => venue.id === venueId) ?? venues[0];
 }
