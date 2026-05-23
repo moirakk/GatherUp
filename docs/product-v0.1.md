@@ -2,6 +2,7 @@
 
 相关文档：
 
+- [当前项目总览](./current-state-v0.1.md)
 - [页面信息架构](./information-architecture-v0.1.md)
 - [活动类型体系](./activity-taxonomy-v0.1.md)
 - [视觉方向](./visual-direction-v0.1.md)

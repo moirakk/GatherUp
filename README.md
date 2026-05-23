@@ -11,8 +11,11 @@ GatherUp 是一个面向线下活动的综合组织平台。
 - 已搭建 Next.js / App Router / TypeScript Web App。
 - 已实现统一账号登录原型：同一个账号既可以参与活动，也可以创建活动。
 - 已实现活动广场、活动详情、我的活动、订单详情、工作台、创建活动、活动管理台。
+- 已实现活动 ID 和多组织者绑定原型。
+- 已实现组织者财务中心原型：费用模式、收入、支出、结余和凭证状态。
+- 已实现场地情报库原型：城市、场地类型、可办状态和组织者经验。
 - 已实现数调、地点投票、报名、付款截图占位、付款后选座等核心流程的前端原型。
-- 暂未接入真实数据库、真实注册、验证码、图片上传、正式支付和正式权限系统。
+- 暂未接入真实数据库、真实验证码、图片上传、正式支付和正式权限系统。
 
 ## 本地运行
 
@@ -20,14 +23,16 @@ GatherUp 是一个面向线下活动的综合组织平台。
 
 ```bash
 npm install
-npm run dev
+npm run dev:webpack -- --hostname 127.0.0.1 --port 3000
 ```
 
 然后打开：
 
 ```text
-http://localhost:3000
+http://127.0.0.1:3000
 ```
+
+说明：当前项目在本地预览时建议优先使用 `dev:webpack`，比默认 Turbopack dev 模式更稳定。
 
 ## 演示账号
 
@@ -43,6 +48,7 @@ http://localhost:3000
 ## 当前内容
 
 - [Web App 工程骨架](./src)
+- [当前项目总览](./docs/current-state-v0.1.md)
 - [产品框架](./docs/product-v0.1.md)
 - [账号系统设计](./docs/account-system-v0.1.md)
 - [活动类型体系](./docs/activity-taxonomy-v0.1.md)
@@ -52,6 +58,7 @@ http://localhost:3000
 - [数据库 Schema 草案](./docs/database-schema-v0.1.md)
 - [原型页面说明](./docs/prototype-screens-v0.1.md)
 - [技术架构](./docs/technical-architecture-v0.1.md)
+- [场地情报库](./docs/venue-intelligence-v0.1.md)
 - [MVP 开发任务清单](./docs/mvp-backlog-v0.1.md)
 - [静态原型](./prototype)
 - [Supabase SQL 草案](./supabase)
@@ -66,6 +73,11 @@ http://localhost:3000
 - 活动创建者拥有自己活动的管理权限。
 - 第一版付款方式为“付款截图 + 组织者确认”，暂不接官方支付。
 - 必须先付款并由组织者确认，之后才能选座。
+- 活动支持免费、收费、AA 记账三种费用模式。
+- 收入、支出、预计结余需要在组织者财务中心里清楚展示。
+- 每个活动需要公开活动 ID，方便搜索、分享和现场核对。
+- 同一个活动可以绑定多个组织者。
+- 场地库是平台级模块，用于沉淀各城市可办活动的影院、咖啡馆和其他空间。
 - 是否允许多人报名由活动创建者决定。
 - 多人报名时需要记录同行人的 GatherUp ID。
 - GatherUp ID 最多允许修改两次。
@@ -95,9 +107,12 @@ http://127.0.0.1:4173
 - 组织工作台
 - 创建活动
 - 活动管理台
+- 活动财务中心
+- 场地情报库
 
 ## 下一步
 
+- 把创建活动改成真正的分步向导。
 - 设计并接入正式账号系统。
 - 接入 Supabase Auth / PostgreSQL / Storage。
 - 把 mock 数据替换为真实数据读写。
