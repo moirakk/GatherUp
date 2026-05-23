@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CalendarCheck, MapPinned, Plus, QrCode } from "lucide-react";
+import { CalendarCheck, CircleDollarSign, MapPinned, Plus, QrCode } from "lucide-react";
 
 import { MetricCard } from "@/components/metric-card";
 import { eventSetups, events, getEventOrganizers } from "@/lib/mock-data";
@@ -56,7 +56,10 @@ export default function OrganizerPage() {
                 </span>
               </div>
               <p className="subtle">{setup.nextAction}</p>
-              <Link className="button secondary" href={`/organizer/events/${event.id}`}>进入管理台</Link>
+              <div className="button-row">
+                <Link className="button secondary" href={`/organizer/events/${event.id}`}>进入管理台</Link>
+                <Link className="button secondary" href={`/organizer/events/${event.id}/finance`}><CircleDollarSign size={16} />财务</Link>
+              </div>
             </article>
           );
         })}

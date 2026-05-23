@@ -3,6 +3,9 @@ export type EventCategory = "同好活动" | "校园活动" | "会议会务" | "
 export type EventTemplate = "基础报名" | "报名收款" | "选座活动" | "签到活动" | "分时预约" | "记录型聚会";
 export type VenueType = "影院" | "咖啡馆" | "会议室" | "校园场地" | "Livehouse" | "展厅/市集";
 export type VenueSupportStatus = "确认可办" | "可能可办" | "暂不支持" | "未知待确认";
+export type EventFeeMode = "免费" | "收费" | "AA记账";
+export type ExpenseCategory = "场地费" | "物料采购" | "餐饮茶歇" | "设备租赁" | "交通快递" | "宣传设计" | "其他";
+export type ExpenseStatus = "预算中" | "已支付" | "待报销";
 
 export type GatherEvent = {
   id: string;
@@ -68,6 +71,37 @@ export type EventSetup = {
   surveyOptions: PollOption[];
   venueOptions: PollOption[];
   nextAction: string;
+};
+
+export type EventFinanceSetting = {
+  eventId: string;
+  feeMode: EventFeeMode;
+  currency: "CNY";
+  revenueSource: "报名订单" | "AA分摊" | "无收入";
+  settlementRule: string;
+};
+
+export type EventExpense = {
+  id: string;
+  eventId: string;
+  category: ExpenseCategory;
+  title: string;
+  amount: number;
+  status: ExpenseStatus;
+  paidBy: string;
+  proof: string;
+  note: string;
+  createdAt: string;
+};
+
+export type EventFinanceSummary = {
+  confirmedIncome: number;
+  pendingIncome: number;
+  refundedIncome: number;
+  paidExpenses: number;
+  budgetedExpenses: number;
+  netBalance: number;
+  perPaidPersonCost: number;
 };
 
 export type VenueIntel = {
@@ -347,6 +381,119 @@ export const eventSetups: EventSetup[] = [
   }
 ];
 
+export const eventFinanceSettings: EventFinanceSetting[] = [
+  {
+    eventId: "ryuichi-masterpiece",
+    feeMode: "收费",
+    currency: "CNY",
+    revenueSource: "报名订单",
+    settlementRule: "按订单实收统计收入，活动结束后根据实际支出确认结余。"
+  },
+  {
+    eventId: "spring-rerun",
+    feeMode: "收费",
+    currency: "CNY",
+    revenueSource: "报名订单",
+    settlementRule: "未成团时原路退款，成团后按实际场地费核算。"
+  },
+  {
+    eventId: "birthday-cafe-trial",
+    feeMode: "收费",
+    currency: "CNY",
+    revenueSource: "报名订单",
+    settlementRule: "按分时预约订单统计收入，物料和场地低消分别记账。"
+  },
+  {
+    eventId: "campus-club-fair",
+    feeMode: "免费",
+    currency: "CNY",
+    revenueSource: "无收入",
+    settlementRule: "免费活动只记录支出，便于社团或学校报销。"
+  },
+  {
+    eventId: "friends-hotpot",
+    feeMode: "AA记账",
+    currency: "CNY",
+    revenueSource: "AA分摊",
+    settlementRule: "先记录总支出，活动后按实际参与人数平摊。"
+  }
+];
+
+export const eventExpenses: EventExpense[] = [
+  {
+    id: "expense-ryu-venue",
+    eventId: "ryuichi-masterpiece",
+    category: "场地费",
+    title: "百丽宫影城包场定金",
+    amount: 2400,
+    status: "已支付",
+    paidBy: "GU-MIKI",
+    proof: "cinema-deposit-ryu.jpg",
+    note: "工作日下午场定金，尾款按最终人数确认。",
+    createdAt: "2026-05-20"
+  },
+  {
+    id: "expense-ryu-material",
+    eventId: "ryuichi-masterpiece",
+    category: "物料采购",
+    title: "纪念票根和手幅打样",
+    amount: 368,
+    status: "已支付",
+    paidBy: "GU-TSUKI",
+    proof: "print-proof-ryu.jpg",
+    note: "含设计打样和首批印刷。",
+    createdAt: "2026-05-21"
+  },
+  {
+    id: "expense-ryu-delivery",
+    eventId: "ryuichi-masterpiece",
+    category: "交通快递",
+    title: "物料快递和现场交通",
+    amount: 126,
+    status: "预算中",
+    paidBy: "GU-LIME",
+    proof: "pending",
+    note: "活动前一周确认最终金额。",
+    createdAt: "2026-05-22"
+  },
+  {
+    id: "expense-cafe-minimum",
+    eventId: "birthday-cafe-trial",
+    category: "场地费",
+    title: "雾岛咖啡低消预付",
+    amount: 1200,
+    status: "已支付",
+    paidBy: "GU-TSUKI",
+    proof: "cafe-minimum.jpg",
+    note: "分时段预约，含基础饮品套餐。",
+    createdAt: "2026-05-18"
+  },
+  {
+    id: "expense-club-poster",
+    eventId: "campus-club-fair",
+    category: "宣传设计",
+    title: "招新海报印刷",
+    amount: 460,
+    status: "待报销",
+    paidBy: "GU-LIME",
+    proof: "club-poster-receipt.jpg",
+    note: "免费活动，后续走社团经费报销。",
+    createdAt: "2026-05-19"
+  },
+  {
+    id: "expense-hotpot-meal",
+    eventId: "friends-hotpot",
+    category: "餐饮茶歇",
+    title: "火锅餐费预估",
+    amount: 960,
+    status: "预算中",
+    paidBy: "GU-MIKI",
+    proof: "pending",
+    note: "按 8 人估算，活动后改成实际金额。",
+    createdAt: "2026-05-22"
+  }
+];
+
 export const venues: VenueIntel[] = [
   {
     id: "sh-palace-iapm",
@@ -562,6 +709,45 @@ export function getEventRegistrations(eventId: string) {
 
 export function getEventSetup(eventId: string) {
   return eventSetups.find((setup) => setup.eventId === eventId) ?? eventSetups[0];
+}
+
+export function getEventFinanceSetting(eventId: string) {
+  return eventFinanceSettings.find((setting) => setting.eventId === eventId) ?? eventFinanceSettings[0];
+}
+
+export function getEventExpenses(eventId: string) {
+  return eventExpenses.filter((expense) => expense.eventId === eventId);
+}
+
+export function getEventFinanceSummary(eventId: string): EventFinanceSummary {
+  const eventRegistrations = getEventRegistrations(eventId);
+  const expenses = getEventExpenses(eventId);
+  const confirmedIncome = eventRegistrations
+    .filter((registration) => registration.paymentStatus === "付款已确认")
+    .reduce((sum, registration) => sum + registration.amount, 0);
+  const pendingIncome = eventRegistrations
+    .filter((registration) => registration.paymentStatus === "待审核")
+    .reduce((sum, registration) => sum + registration.amount, 0);
+  const refundedIncome = eventRegistrations
+    .filter((registration) => registration.paymentStatus === "已退款")
+    .reduce((sum, registration) => sum + registration.amount, 0);
+  const paidExpenses = expenses
+    .filter((expense) => expense.status === "已支付" || expense.status === "待报销")
+    .reduce((sum, expense) => sum + expense.amount, 0);
+  const budgetedExpenses = expenses.reduce((sum, expense) => sum + expense.amount, 0);
+  const paidPeople = eventRegistrations
+    .filter((registration) => registration.paymentStatus === "付款已确认")
+    .reduce((sum, registration) => sum + registration.quantity, 0);
+
+  return {
+    confirmedIncome,
+    pendingIncome,
+    refundedIncome,
+    paidExpenses,
+    budgetedExpenses,
+    netBalance: confirmedIncome - budgetedExpenses,
+    perPaidPersonCost: paidPeople > 0 ? Math.round((budgetedExpenses / paidPeople) * 10) / 10 : 0
+  };
 }
 
 export function getRegistration(orderNumber: string) {

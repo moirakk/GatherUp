@@ -71,6 +71,18 @@ create type event_organizer_role as enum (
   'viewer'
 );
 
+create type event_fee_mode as enum ('free', 'paid', 'split');
+create type event_expense_category as enum (
+  'venue',
+  'materials',
+  'food',
+  'equipment',
+  'transport',
+  'marketing',
+  'other'
+);
+create type event_expense_status as enum ('budgeted', 'paid', 'reimbursable');
+
 create type auth_identity_provider as enum (
   'email',
   'google',
@@ -161,6 +173,30 @@ create table public.event_organizers (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   unique (event_id, user_id)
+);
+
+create table public.event_finance_settings (
+  event_id uuid primary key references public.events(id) on delete cascade,
+  fee_mode event_fee_mode not null default 'free',
+  currency text not null default 'CNY',
+  revenue_source text not null default 'none',
+  settlement_rule text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table public.event_expenses (
+  id uuid primary key default gen_random_uuid(),
+  event_id uuid not null references public.events(id) on delete cascade,
+  category event_expense_category not null default 'other',
+  title text not null,
+  amount_cents integer not null check (amount_cents >= 0),
+  status event_expense_status not null default 'budgeted',
+  paid_by uuid references public.users(id) on delete set null,
+  proof_url text,
+  note text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
 );
 
 create table public.event_order_counters (
@@ -278,6 +314,8 @@ create index events_organizer_id_idx on public.events(organizer_id);
 create index events_public_code_idx on public.events(public_code);
 create index event_organizers_event_id_idx on public.event_organizers(event_id);
 create index event_organizers_user_id_idx on public.event_organizers(user_id);
+create index event_expenses_event_id_idx on public.event_expenses(event_id);
+create index event_expenses_status_idx on public.event_expenses(status);
 create index user_auth_identities_user_id_idx on public.user_auth_identities(user_id);
 create index events_visibility_status_idx on public.events(visibility, status);
 create index events_category_template_idx on public.events(category, template);
@@ -312,6 +350,14 @@ create trigger events_set_updated_at
 
 create trigger event_organizers_set_updated_at
   before update on public.event_organizers
+  for each row execute function public.set_updated_at();
+
+create trigger event_finance_settings_set_updated_at
+  before update on public.event_finance_settings
+  for each row execute function public.set_updated_at();
+
+create trigger event_expenses_set_updated_at
+  before update on public.event_expenses
   for each row execute function public.set_updated_at();
 
 create trigger event_order_counters_set_updated_at
@@ -467,6 +513,8 @@ alter table public.users enable row level security;
 alter table public.user_auth_identities enable row level security;
 alter table public.events enable row level security;
 alter table public.event_organizers enable row level security;
+alter table public.event_finance_settings enable row level security;
+alter table public.event_expenses enable row level security;
 alter table public.event_order_counters enable row level security;
 alter table public.registrations enable row level security;
 alter table public.registration_attendees enable row level security;
@@ -527,6 +575,24 @@ create policy "owners can manage event organizers"
   on public.event_organizers for all
   using (public.can_edit_event(event_id))
   with check (public.can_edit_event(event_id));
+
+create policy "finance settings visible to event managers"
+  on public.event_finance_settings for select
+  using (public.can_manage_event_finance(event_id));
+
+create policy "finance settings manageable by finance roles"
+  on public.event_finance_settings for all
+  using (public.can_manage_event_finance(event_id))
+  with check (public.can_manage_event_finance(event_id));
+
+create policy "expenses visible to finance roles"
+  on public.event_expenses for select
+  using (public.can_manage_event_finance(event_id));
+
+create policy "expenses manageable by finance roles"
+  on public.event_expenses for all
+  using (public.can_manage_event_finance(event_id))
+  with check (public.can_manage_event_finance(event_id));
 
 create policy "participants and organizers can read registrations"
   on public.registrations for select

@@ -111,6 +111,55 @@ insert into public.event_order_counters (event_id, current_number)
 values ('10000000-0000-0000-0000-000000000001', 4)
 on conflict (event_id) do nothing;
 
+insert into public.event_finance_settings (
+  event_id,
+  fee_mode,
+  currency,
+  revenue_source,
+  settlement_rule
+) values (
+  '10000000-0000-0000-0000-000000000001',
+  'paid',
+  'CNY',
+  'registrations',
+  '按订单实收统计收入，活动结束后根据实际支出确认结余。'
+) on conflict (event_id) do nothing;
+
+insert into public.event_expenses (
+  id,
+  event_id,
+  category,
+  title,
+  amount_cents,
+  status,
+  paid_by,
+  proof_url,
+  note
+) values
+  (
+    '30000000-0000-0000-0000-000000000001',
+    '10000000-0000-0000-0000-000000000001',
+    'venue',
+    '百丽宫影城包场定金',
+    240000,
+    'paid',
+    '00000000-0000-0000-0000-000000000001',
+    'expense-proofs/demo/cinema-deposit-ryu.jpg',
+    '工作日下午场定金，尾款按最终人数确认。'
+  ),
+  (
+    '30000000-0000-0000-0000-000000000002',
+    '10000000-0000-0000-0000-000000000001',
+    'materials',
+    '纪念票根和手幅打样',
+    36800,
+    'paid',
+    '00000000-0000-0000-0000-000000000002',
+    'expense-proofs/demo/print-proof-ryu.jpg',
+    '含设计打样和首批印刷。'
+  )
+on conflict (id) do nothing;
+
 insert into public.registrations (
   id,
   event_id,

@@ -1,4 +1,5 @@
-import { AtSign, CalendarCheck, Download, LinkIcon, MapPinned, QrCode, UsersRound } from "lucide-react";
+import Link from "next/link";
+import { AtSign, CalendarCheck, CircleDollarSign, Download, LinkIcon, MapPinned, QrCode, UsersRound } from "lucide-react";
 
 import { MetricCard } from "@/components/metric-card";
 import { SeatMap } from "@/components/seat-map";
@@ -28,6 +29,7 @@ export default async function OrganizerEventPage({ params }: OrganizerEventPageP
         </div>
         <div className="button-row">
           <button className="button secondary" type="button"><LinkIcon size={16} />复制链接</button>
+          <Link className="button secondary" href={`/organizer/events/${event.id}/finance`}><CircleDollarSign size={16} />财务</Link>
           <button className="button secondary" type="button"><Download size={16} />导出</button>
         </div>
       </section>

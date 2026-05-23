@@ -40,6 +40,7 @@ export default function NewEventPage() {
           <h2>报名和订单规则</h2>
           <div className="form-grid">
             <label>活动人数上限<input defaultValue="300" /></label>
+            <label>费用模式<select defaultValue="free"><option value="free">免费活动</option><option value="paid">收费活动</option><option value="split">AA 记账活动</option></select></label>
             <label>单人费用<input defaultValue="0" /></label>
             <label>多人报名<select defaultValue="deny"><option value="allow">允许</option><option value="deny">不允许</option></select></label>
             <label>订单编号<select defaultValue="event"><option value="event">{"{eventCode}-0001"}</option><option>GU-0001</option></select></label>

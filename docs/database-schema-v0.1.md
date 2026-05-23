@@ -17,6 +17,8 @@ Schema 草案覆盖：
 - 用户登录身份 `user_auth_identities`
 - 活动 `events`
 - 活动组织者 `event_organizers`
+- 活动财务设置 `event_finance_settings`
+- 活动支出 `event_expenses`
 - 活动订单计数器 `event_order_counters`
 - 报名/订单 `registrations`
 - 同行人 `registration_attendees`
@@ -36,6 +38,8 @@ Schema 草案覆盖：
 - 活动支持公开/仅链接可见。
 - 活动支持唯一公开活动 ID。
 - 活动支持多个组织者绑定。
+- 活动支持收费、免费和 AA 记账模式。
+- 活动支出支持分类、金额、状态、经办人和凭证。
 - 活动支持场景和流程模板。
 - 活动支持自定义细分标签。
 - 活动支持是否允许多人报名。
