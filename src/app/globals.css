@@ -427,6 +427,13 @@ h3 {
   align-items: start;
 }
 
+.wizard-layout {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr) minmax(280px, 0.34fr);
+  gap: 16px;
+  align-items: start;
+}
+
 .event-card,
 .venue-card,
 .content-card,
@@ -777,6 +784,14 @@ h3 {
   gap: 14px;
 }
 
+.form-grid.two-column {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.wide-field {
+  grid-column: 1 / -1;
+}
+
 .form-grid label {
   display: grid;
   gap: 7px;
@@ -824,6 +839,63 @@ h3 {
 .auth-action-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+}
+
+.wizard-steps {
+  display: grid;
+  gap: 8px;
+  position: sticky;
+  top: 96px;
+}
+
+.wizard-step-button {
+  display: flex;
+  min-height: 44px;
+  align-items: center;
+  gap: 9px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 253, 249, 0.82);
+  color: var(--muted);
+  cursor: pointer;
+  font-weight: 700;
+  text-align: left;
+}
+
+.wizard-step-button.active {
+  border-color: rgba(143, 163, 145, 0.9);
+  background: var(--sage);
+  color: #fffdf9;
+}
+
+.wizard-step-button.done {
+  border-color: rgba(143, 163, 145, 0.52);
+  background: #e7eee6;
+  color: #58705b;
+}
+
+.wizard-panel {
+  display: grid;
+  gap: 18px;
+  min-height: 520px;
+}
+
+.wizard-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 6px;
+}
+
+.wizard-summary {
+  position: sticky;
+  top: 96px;
+}
+
+.review-grid {
+  display: grid;
   gap: 10px;
 }
 
@@ -1337,6 +1409,19 @@ h3 {
     grid-template-columns: 1fr;
   }
 
+  .wizard-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .wizard-steps,
+  .wizard-summary {
+    position: static;
+  }
+
+  .wizard-steps {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .page-header,
   .order-card {
     align-items: flex-start;
@@ -1372,6 +1457,8 @@ h3 {
   .inline-field,
   .state-timeline,
   .venue-note-grid,
+  .form-grid.two-column,
+  .wizard-steps,
   .summary-list div {
     grid-template-columns: 1fr;
   }
