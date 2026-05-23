@@ -8,6 +8,7 @@
 - [视觉方向](./visual-direction-v0.1.md)
 - [数据模型与业务规则](./data-rules-v0.1.md)
 - [数据库 Schema 草案](./database-schema-v0.1.md)
+- [Supabase 接入准备](./supabase-setup-v0.1.md)
 - [原型页面说明](./prototype-screens-v0.1.md)
 - [技术架构](./technical-architecture-v0.1.md)
 - [MVP 开发任务清单](./mvp-backlog-v0.1.md)
