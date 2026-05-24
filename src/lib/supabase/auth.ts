@@ -37,7 +37,7 @@ function mapSupabaseError(message?: string) {
   }
 
   if (message.includes("Invalid login credentials")) {
-    return "邮箱或密码不正确。";
+    return "邮箱或密码不正确，或这个邮箱还没有完成确认。请确认使用的是收到确认邮件的同一个邮箱。";
   }
 
   if (message.includes("Email not confirmed")) {
@@ -46,6 +46,14 @@ function mapSupabaseError(message?: string) {
 
   if (message.includes("User already registered")) {
     return "这个邮箱已经注册，可以直接登录。";
+  }
+
+  if (message.includes("rate limit")) {
+    return "邮箱发送太频繁，Supabase 暂时限制了邮件发送。请稍等一会儿再试，或先使用已经确认过的账号登录。";
+  }
+
+  if (message.includes("Load failed") || message.includes("Failed to fetch")) {
+    return "连接 Supabase 失败。请检查网络，或稍后刷新页面重试。";
   }
 
   return message;
@@ -164,17 +172,19 @@ export async function signUpWithSupabasePassword(input: {
     }
   });
 
-  if (error || !data.user?.email) {
+  if (error || !data.user) {
     return {
       ok: false,
       message: mapSupabaseError(error?.message)
     };
   }
 
+  const userEmail = data.user.email ?? normalizedEmail;
+
   if (!data.session) {
     return {
       ok: true,
-      account: accountFromSupabaseUser(data.user.email, data.user.user_metadata),
+      account: accountFromSupabaseUser(userEmail, data.user.user_metadata),
       needsEmailConfirmation: true,
       message: "账号已创建，请先打开邮箱里的确认链接完成验证。"
     };
@@ -182,7 +192,7 @@ export async function signUpWithSupabasePassword(input: {
 
   const profileResult = await syncProfileFromAuthUser({
     authUserId: data.user.id,
-    email: data.user.email,
+    email: userEmail,
     metadata: data.user.user_metadata
   });
 

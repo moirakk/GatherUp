@@ -712,3 +712,16 @@ create policy "published announcements visible"
 create policy "organizers can manage announcements"
   on public.announcements for all
   using (public.can_edit_event(event_id));
+
+-- Data API grants.
+-- RLS still decides which rows each user can access; these grants only allow
+-- authenticated users to reach the tables through Supabase's generated API.
+grant usage on schema public to anon, authenticated;
+grant select, insert, update, delete on all tables in schema public to authenticated;
+grant execute on all functions in schema public to authenticated;
+
+alter default privileges in schema public
+  grant select, insert, update, delete on tables to authenticated;
+
+alter default privileges in schema public
+  grant execute on functions to authenticated;
