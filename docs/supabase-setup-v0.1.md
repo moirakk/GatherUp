@@ -6,12 +6,15 @@
 
 - `src/lib/supabase/client.ts`
 - `src/lib/supabase/auth.ts`
+- `src/lib/supabase/profile.ts`
 
 登录页已经具备 Supabase Auth 适配层：
 
 - 未配置环境变量时，继续使用本地原型账号，保证原型可演示。
 - 配置环境变量后，登录、注册、邮箱验证码、找回密码会优先使用 Supabase Auth。
 - 注册后如果 Supabase 项目开启邮箱确认，页面会提示先去邮箱确认，不会直接进入应用。
+- 登录成功后会创建或读取 `users` 资料，并把 `auth.users.id` 同步到 `users.auth_user_id`。
+- 同步后的 `users.public_id` 会作为正式 GatherUp ID，用于活动、订单和组织者权限绑定。
 
 当前还没有把活动、订单、财务、场地等业务数据切换到真实 Supabase 数据。现阶段是“账号服务准备接入，业务数据仍使用 mock”。
 
@@ -61,14 +64,15 @@ v0.1 真实账号第一阶段已经开始：
 - 邮箱密码登录。
 - 邮箱验证码登录。
 - 忘记密码。
+- 登录后创建或读取 `users` 资料。
+- 将 Supabase Auth 的 `auth.users.id` 同步到业务表的 `users.auth_user_id`。
 - 保持统一账号模型，不区分参与者账号和组织者账号。
 
 下一步需要补齐：
 
-- 登录后创建或读取 `users` 资料。
-- 将 Supabase Auth 的 `auth.users.id` 同步到业务表的 `users.auth_user_id`。
 - 用服务端 Session / middleware 替换当前的前端 cookie 原型。
 - 给用户资料、订单、组织者权限接入 RLS 校验。
+- 让资料补全页写入 Supabase `users` 表，而不是只更新前端 cookie。
 
 后续再接：
 
@@ -95,13 +99,14 @@ v0.1 真实账号第一阶段已经开始：
 
 推荐顺序：
 
-1. 接 Supabase Auth。
-2. 登录后同步 `users` 表。
-3. 创建活动分步向导写入 `events`、`event_organizers`、`event_finance_settings`。
-4. 报名写入 `registrations` 和 `registration_attendees`。
-5. 付款截图上传到 Storage，并写入 `payments` 和 `payment_proofs`。
-6. 组织者审核付款。
-7. 付款确认后开放选座。
+1. 配置 Supabase 项目并验证 Auth 邮件流程。
+2. 用服务端 Session / middleware 替换当前前端 cookie 过渡方案。
+3. 让资料补全页写入 `users` 表。
+4. 创建活动分步向导写入 `events`、`event_organizers`、`event_finance_settings`。
+5. 报名写入 `registrations` 和 `registration_attendees`。
+6. 付款截图上传到 Storage，并写入 `payments` 和 `payment_proofs`。
+7. 组织者审核付款。
+8. 付款确认后开放选座。
 
 ## 8. 安全注意事项
 

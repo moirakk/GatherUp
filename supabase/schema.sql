@@ -532,6 +532,10 @@ create policy "users can read their own profile"
   on public.users for select
   using (auth.uid() = auth_user_id);
 
+create policy "users can create their own profile"
+  on public.users for insert
+  with check (auth.uid() = auth_user_id);
+
 create policy "users can update their own profile"
   on public.users for update
   using (auth.uid() = auth_user_id)

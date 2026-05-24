@@ -30,12 +30,21 @@ GatherUp 不区分“参与者账号”和“组织者账号”。
 - 本地注册账号。
 - 原型验证码登录入口。
 - 忘记密码入口。
+- Supabase Auth 适配层。
+- Supabase 用户资料同步准备。
 - 首次资料补全页。
 - 按账号邮箱记录资料补全状态。
 - 登录状态暂时保存在浏览器 cookie 中。
 - 本地注册账号暂时保存在浏览器 localStorage 中。
 
-这只是原型能力，用于验证页面和流程，不是正式账号系统。
+未配置 Supabase 环境变量时，这些能力仍是原型能力，用于验证页面和流程，不是正式账号系统。
+
+配置 Supabase 后：
+
+- 邮箱密码登录、验证码登录和找回密码会走 Supabase Auth。
+- 登录成功后会创建或读取 `users` 表中的 GatherUp 业务用户。
+- `users.auth_user_id` 会绑定 Supabase Auth 的 `auth.users.id`。
+- `users.public_id` 会成为活动、订单、同行人填写和组织者权限识别的 GatherUp ID。
 
 正式上线前必须替换为后端账号服务，不能依赖 localStorage 保存账号或密码。
 

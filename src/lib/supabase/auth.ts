@@ -1,5 +1,6 @@
 import { createPublicIdFromEmail, isValidEmail, isValidPassword, normalizeEmail, type AuthUser } from "@/lib/auth";
 import { getSupabaseBrowserClient, isSupabaseConfigured } from "@/lib/supabase/client";
+import { createStablePublicId, ensureSupabaseProfile } from "@/lib/supabase/profile";
 
 export type SupabaseAuthResult =
   | {
@@ -65,6 +66,31 @@ function accountFromSupabaseUser(email: string, metadata: Record<string, unknown
   };
 }
 
+async function syncProfileFromAuthUser(input: {
+  authUserId: string;
+  email: string;
+  metadata: Record<string, unknown> | null | undefined;
+}): Promise<SupabaseAuthResult> {
+  const metadataName = input.metadata?.name || input.metadata?.full_name || input.metadata?.display_name;
+  const avatarUrl = input.metadata?.avatar_url || input.metadata?.picture;
+  const profileResult = await ensureSupabaseProfile({
+    authUserId: input.authUserId,
+    email: input.email,
+    name: typeof metadataName === "string" ? metadataName : "GatherUp 用户",
+    avatarUrl: typeof avatarUrl === "string" ? avatarUrl : null,
+    provider: "email"
+  });
+
+  if (!profileResult.ok) {
+    return profileResult;
+  }
+
+  return {
+    ok: true,
+    account: profileResult.account
+  };
+}
+
 export async function signInWithSupabasePassword(email: string, password: string): Promise<SupabaseAuthResult> {
   if (!isSupabaseConfigured()) {
     return unavailableResult();
@@ -92,10 +118,11 @@ export async function signInWithSupabasePassword(email: string, password: string
     };
   }
 
-  return {
-    ok: true,
-    account: accountFromSupabaseUser(data.user.email, data.user.user_metadata)
-  };
+  return syncProfileFromAuthUser({
+    authUserId: data.user.id,
+    email: data.user.email,
+    metadata: data.user.user_metadata
+  });
 }
 
 export async function signUpWithSupabasePassword(input: {
@@ -124,7 +151,7 @@ export async function signUpWithSupabasePassword(input: {
   }
 
   const name = input.name.trim() || "GatherUp 用户";
-  const gatherUpId = createPublicIdFromEmail(normalizedEmail);
+  const metadataGatherUpId = createStablePublicId(normalizedEmail, crypto.randomUUID());
   const supabase = getSupabaseBrowserClient();
   const { data, error } = await supabase.auth.signUp({
     email: normalizedEmail,
@@ -132,7 +159,7 @@ export async function signUpWithSupabasePassword(input: {
     options: {
       data: {
         name,
-        gatherUpId
+        gatherUpId: metadataGatherUpId
       }
     }
   });
@@ -144,11 +171,28 @@ export async function signUpWithSupabasePassword(input: {
     };
   }
 
+  if (!data.session) {
+    return {
+      ok: true,
+      account: accountFromSupabaseUser(data.user.email, data.user.user_metadata),
+      needsEmailConfirmation: true,
+      message: "账号已创建，请先打开邮箱里的确认链接完成验证。"
+    };
+  }
+
+  const profileResult = await syncProfileFromAuthUser({
+    authUserId: data.user.id,
+    email: data.user.email,
+    metadata: data.user.user_metadata
+  });
+
+  if (!profileResult.ok) {
+    return profileResult;
+  }
+
   return {
-    ok: true,
-    account: accountFromSupabaseUser(data.user.email, data.user.user_metadata),
-    needsEmailConfirmation: !data.session,
-    message: data.session ? "账号已创建。" : "账号已创建，请先打开邮箱里的确认链接完成验证。"
+    ...profileResult,
+    message: "账号已创建。"
   };
 }
 
@@ -218,10 +262,11 @@ export async function verifySupabaseEmailCode(email: string, token: string): Pro
     };
   }
 
-  return {
-    ok: true,
-    account: accountFromSupabaseUser(data.user.email, data.user.user_metadata)
-  };
+  return syncProfileFromAuthUser({
+    authUserId: data.user.id,
+    email: data.user.email,
+    metadata: data.user.user_metadata
+  });
 }
 
 export async function sendSupabasePasswordReset(email: string): Promise<SupabaseActionResult> {
