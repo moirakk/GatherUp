@@ -7,7 +7,7 @@ export type AuthUser = {
 };
 
 export type AuthSession = AuthUser & {
-  sessionType: "demo";
+  sessionType: "demo" | "supabase";
 };
 
 export type DemoAccount = {
@@ -215,7 +215,8 @@ function readCookieValue(source: string, name: string) {
 }
 
 export function getAuthSession(cookieSource: string): AuthSession | null {
-  const hasSession = Boolean(readCookieValue(cookieSource, SESSION_COOKIE));
+  const sessionCookie = readCookieValue(cookieSource, SESSION_COOKIE);
+  const hasSession = Boolean(sessionCookie);
 
   if (!hasSession) {
     return null;
@@ -228,7 +229,7 @@ export function getAuthSession(cookieSource: string): AuthSession | null {
     email,
     name: readCookieValue(cookieSource, NAME_COOKIE) || account?.name || "GatherUp 用户",
     gatherUpId: readCookieValue(cookieSource, ID_COOKIE) || account?.gatherUpId || "GU-USER",
-    sessionType: "demo"
+    sessionType: sessionCookie === "supabase-session" ? "supabase" : "demo"
   };
 }
 
@@ -254,12 +255,12 @@ export function signInWithPassword(
 
 export const signInWithDemoPassword = signInWithPassword;
 
-export function createSessionCookies(account: AuthUser) {
+export function createSessionCookies(account: AuthUser, sessionType: AuthSession["sessionType"] = "demo") {
   const maxAge = 60 * 60 * 24 * 7;
   const cookieOptions = `path=/; max-age=${maxAge}; SameSite=Lax`;
 
   return [
-    `${SESSION_COOKIE}=demo-session; ${cookieOptions}`,
+    `${SESSION_COOKIE}=${sessionType}-session; ${cookieOptions}`,
     `${USER_COOKIE}=${encodeURIComponent(account.email)}; ${cookieOptions}`,
     `${NAME_COOKIE}=${encodeURIComponent(account.name)}; ${cookieOptions}`,
     `${ID_COOKIE}=${encodeURIComponent(account.gatherUpId)}; ${cookieOptions}`

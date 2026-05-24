@@ -18,6 +18,14 @@ import {
   signInWithPassword,
   stringifyPrototypeAccounts
 } from "@/lib/auth";
+import { isSupabaseConfigured } from "@/lib/supabase/client";
+import {
+  sendSupabaseEmailCode,
+  sendSupabasePasswordReset,
+  signInWithSupabasePassword,
+  signUpWithSupabasePassword,
+  verifySupabaseEmailCode
+} from "@/lib/supabase/auth";
 
 type AuthMode = "login" | "register" | "code" | "reset";
 
@@ -78,6 +86,8 @@ function LoginForm() {
   const [password, setPassword] = useState(demoAccounts[0].password);
   const [verificationCode, setVerificationCode] = useState("");
   const [message, setMessage] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const supabaseEnabled = isSupabaseConfigured();
 
   useEffect(() => {
     if (getAuthSession(document.cookie)) {
@@ -87,14 +97,30 @@ function LoginForm() {
 
   const currentCopy = authModeCopy[mode];
 
-  function completeLogin(account: { email: string; name: string; gatherUpId: string }, destination = nextPath) {
-    createSessionCookies(account).forEach((cookie) => {
+  function completeLogin(
+    account: { email: string; name: string; gatherUpId: string },
+    destination = nextPath,
+    sessionType: "demo" | "supabase" = "demo"
+  ) {
+    createSessionCookies(account, sessionType).forEach((cookie) => {
       document.cookie = cookie;
     });
     router.replace(destination.startsWith("/") ? destination : "/");
   }
 
-  function login() {
+  async function login() {
+    if (supabaseEnabled) {
+      const result = await signInWithSupabasePassword(email, password);
+
+      if (!result.ok) {
+        setMessage(result.message);
+        return;
+      }
+
+      completeLogin(result.account, nextPath, "supabase");
+      return;
+    }
+
     const prototypeAccounts = parsePrototypeAccounts(window.localStorage.getItem(PROTOTYPE_ACCOUNTS_STORAGE_KEY));
     const result = signInWithPassword(email, password, prototypeAccounts);
 
@@ -109,7 +135,24 @@ function LoginForm() {
     completeLogin(result.account);
   }
 
-  function register() {
+  async function register() {
+    if (supabaseEnabled) {
+      const result = await signUpWithSupabasePassword({ email, password, name });
+
+      if (!result.ok) {
+        setMessage(result.message);
+        return;
+      }
+
+      if (result.needsEmailConfirmation) {
+        setMessage(result.message ?? "账号已创建，请先完成邮箱验证。");
+        return;
+      }
+
+      completeLogin(result.account, "/onboarding", "supabase");
+      return;
+    }
+
     const prototypeAccounts = parsePrototypeAccounts(window.localStorage.getItem(PROTOTYPE_ACCOUNTS_STORAGE_KEY));
     const result = createPrototypeAccount({ email, password, name }, prototypeAccounts);
 
@@ -125,9 +168,15 @@ function LoginForm() {
     completeLogin(result.account, "/onboarding");
   }
 
-  function sendCode() {
+  async function sendCode() {
     if (!email.trim()) {
       setMessage("请输入邮箱，正式版会向这里发送验证码。");
+      return;
+    }
+
+    if (supabaseEnabled) {
+      const result = await sendSupabaseEmailCode(email);
+      setMessage(result.message);
       return;
     }
 
@@ -135,7 +184,19 @@ function LoginForm() {
     setMessage("原型验证码已生成：123456。正式版会通过邮箱服务发送。");
   }
 
-  function loginWithCode() {
+  async function loginWithCode() {
+    if (supabaseEnabled) {
+      const result = await verifySupabaseEmailCode(email, verificationCode);
+
+      if (!result.ok) {
+        setMessage(result.message);
+        return;
+      }
+
+      completeLogin(result.account, nextPath, "supabase");
+      return;
+    }
+
     if (verificationCode !== "123456") {
       setMessage("请输入原型验证码 123456。正式版会校验邮件里的验证码。");
       return;
@@ -155,34 +216,45 @@ function LoginForm() {
     completeLogin(matchedAccount);
   }
 
-  function resetPassword() {
+  async function resetPassword() {
     if (!email.trim()) {
       setMessage("请输入需要找回的邮箱。");
+      return;
+    }
+
+    if (supabaseEnabled) {
+      const result = await sendSupabasePasswordReset(email);
+      setMessage(result.message);
       return;
     }
 
     setMessage("已模拟发送找回邮件。正式版会通过验证链接或验证码重设密码。");
   }
 
-  function submitPrimaryAction() {
+  async function submitPrimaryAction() {
     setMessage("");
+    setIsSubmitting(true);
 
-    if (mode === "register") {
-      register();
-      return;
+    try {
+      if (mode === "register") {
+        await register();
+        return;
+      }
+
+      if (mode === "code") {
+        await loginWithCode();
+        return;
+      }
+
+      if (mode === "reset") {
+        await resetPassword();
+        return;
+      }
+
+      await login();
+    } finally {
+      setIsSubmitting(false);
     }
-
-    if (mode === "code") {
-      loginWithCode();
-      return;
-    }
-
-    if (mode === "reset") {
-      resetPassword();
-      return;
-    }
-
-    login();
   }
 
   return (
@@ -192,7 +264,7 @@ function LoginForm() {
           <span className="brand-mark">G</span>
           <div>
             <strong>GatherUp</strong>
-            <span>先登录，再进入活动组织流程。</span>
+            <span>{supabaseEnabled ? "已连接真实账号服务。" : "当前使用本地原型账号。"}</span>
           </div>
         </div>
 
@@ -246,16 +318,16 @@ function LoginForm() {
 
         <div className="auth-action-grid">
           {mode === "code" && (
-            <button className="button secondary full" type="button" onClick={sendCode}>
+            <button className="button secondary full" type="button" onClick={sendCode} disabled={isSubmitting}>
               <Mail size={17} />
               发送验证码
             </button>
           )}
-          <button className="button primary full" type="button" onClick={submitPrimaryAction}>
+          <button className="button primary full" type="button" onClick={submitPrimaryAction} disabled={isSubmitting}>
             {mode === "register" && <UserPlus size={17} />}
             {mode === "reset" && <KeyRound size={17} />}
             {(mode === "login" || mode === "code") && <LockKeyhole size={17} />}
-            {mode === "register" ? "创建账号" : mode === "reset" ? "发送找回邮件" : "登录"}
+            {isSubmitting ? "处理中" : mode === "register" ? "创建账号" : mode === "reset" ? "发送找回邮件" : "登录"}
           </button>
         </div>
 
@@ -269,8 +341,12 @@ function LoginForm() {
           </div>
           <div className="choice-card">
             <BadgeCheck size={18} />
-            <strong>正式版账号保存方式</strong>
-            <span>账号资料会进入数据库，验证码记录会有过期时间，所有活动数据绑定永久 user_id。</span>
+            <strong>{supabaseEnabled ? "真实账号服务" : "正式版账号保存方式"}</strong>
+            <span>
+              {supabaseEnabled
+                ? "当前登录页会使用 Supabase Auth。下一步会把用户资料同步到 users 表。"
+                : "账号资料会进入数据库，验证码记录会有过期时间，所有活动数据绑定永久 user_id。"}
+            </span>
           </div>
         </div>
 

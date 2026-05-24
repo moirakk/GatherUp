@@ -1,0 +1,261 @@
+import { createPublicIdFromEmail, isValidEmail, isValidPassword, normalizeEmail, type AuthUser } from "@/lib/auth";
+import { getSupabaseBrowserClient, isSupabaseConfigured } from "@/lib/supabase/client";
+
+export type SupabaseAuthResult =
+  | {
+      ok: true;
+      account: AuthUser;
+      needsEmailConfirmation?: boolean;
+      message?: string;
+    }
+  | {
+      ok: false;
+      message: string;
+    };
+
+export type SupabaseActionResult =
+  | {
+      ok: true;
+      message: string;
+    }
+  | {
+      ok: false;
+      message: string;
+    };
+
+function unavailableResult(): SupabaseAuthResult {
+  return {
+    ok: false,
+    message: "还没有配置 Supabase 环境变量，当前会继续使用本地原型账号。"
+  };
+}
+
+function mapSupabaseError(message?: string) {
+  if (!message) {
+    return "账号服务暂时不可用，请稍后再试。";
+  }
+
+  if (message.includes("Invalid login credentials")) {
+    return "邮箱或密码不正确。";
+  }
+
+  if (message.includes("Email not confirmed")) {
+    return "这个邮箱还没有完成验证，请先打开邮件里的确认链接。";
+  }
+
+  if (message.includes("User already registered")) {
+    return "这个邮箱已经注册，可以直接登录。";
+  }
+
+  return message;
+}
+
+function accountFromSupabaseUser(email: string, metadata: Record<string, unknown> | null | undefined): AuthUser {
+  const normalizedEmail = normalizeEmail(email);
+  const metadataName = metadata?.name || metadata?.full_name || metadata?.display_name;
+  const metadataGatherUpId = metadata?.gatherUpId || metadata?.gather_up_id;
+
+  return {
+    email: normalizedEmail,
+    name: typeof metadataName === "string" && metadataName.trim() ? metadataName.trim() : "GatherUp 用户",
+    gatherUpId:
+      typeof metadataGatherUpId === "string" && metadataGatherUpId.trim()
+        ? metadataGatherUpId.trim()
+        : createPublicIdFromEmail(normalizedEmail)
+  };
+}
+
+export async function signInWithSupabasePassword(email: string, password: string): Promise<SupabaseAuthResult> {
+  if (!isSupabaseConfigured()) {
+    return unavailableResult();
+  }
+
+  const normalizedEmail = normalizeEmail(email);
+
+  if (!isValidEmail(normalizedEmail)) {
+    return {
+      ok: false,
+      message: "请输入有效邮箱。"
+    };
+  }
+
+  const supabase = getSupabaseBrowserClient();
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email: normalizedEmail,
+    password
+  });
+
+  if (error || !data.user?.email) {
+    return {
+      ok: false,
+      message: mapSupabaseError(error?.message)
+    };
+  }
+
+  return {
+    ok: true,
+    account: accountFromSupabaseUser(data.user.email, data.user.user_metadata)
+  };
+}
+
+export async function signUpWithSupabasePassword(input: {
+  email: string;
+  password: string;
+  name: string;
+}): Promise<SupabaseAuthResult> {
+  if (!isSupabaseConfigured()) {
+    return unavailableResult();
+  }
+
+  const normalizedEmail = normalizeEmail(input.email);
+
+  if (!isValidEmail(normalizedEmail)) {
+    return {
+      ok: false,
+      message: "请输入有效邮箱。"
+    };
+  }
+
+  if (!isValidPassword(input.password)) {
+    return {
+      ok: false,
+      message: "密码至少需要 8 位。"
+    };
+  }
+
+  const name = input.name.trim() || "GatherUp 用户";
+  const gatherUpId = createPublicIdFromEmail(normalizedEmail);
+  const supabase = getSupabaseBrowserClient();
+  const { data, error } = await supabase.auth.signUp({
+    email: normalizedEmail,
+    password: input.password,
+    options: {
+      data: {
+        name,
+        gatherUpId
+      }
+    }
+  });
+
+  if (error || !data.user?.email) {
+    return {
+      ok: false,
+      message: mapSupabaseError(error?.message)
+    };
+  }
+
+  return {
+    ok: true,
+    account: accountFromSupabaseUser(data.user.email, data.user.user_metadata),
+    needsEmailConfirmation: !data.session,
+    message: data.session ? "账号已创建。" : "账号已创建，请先打开邮箱里的确认链接完成验证。"
+  };
+}
+
+export async function sendSupabaseEmailCode(email: string): Promise<SupabaseActionResult> {
+  if (!isSupabaseConfigured()) {
+    return {
+      ok: false,
+      message: "还没有配置 Supabase 环境变量，当前会继续使用本地原型验证码。"
+    };
+  }
+
+  const normalizedEmail = normalizeEmail(email);
+
+  if (!isValidEmail(normalizedEmail)) {
+    return {
+      ok: false,
+      message: "请输入有效邮箱。"
+    };
+  }
+
+  const supabase = getSupabaseBrowserClient();
+  const { error } = await supabase.auth.signInWithOtp({
+    email: normalizedEmail,
+    options: {
+      shouldCreateUser: true
+    }
+  });
+
+  if (error) {
+    return {
+      ok: false,
+      message: mapSupabaseError(error.message)
+    };
+  }
+
+  return {
+    ok: true,
+    message: "验证码或登录链接已发送，请查看邮箱。"
+  };
+}
+
+export async function verifySupabaseEmailCode(email: string, token: string): Promise<SupabaseAuthResult> {
+  if (!isSupabaseConfigured()) {
+    return unavailableResult();
+  }
+
+  const normalizedEmail = normalizeEmail(email);
+
+  if (!isValidEmail(normalizedEmail)) {
+    return {
+      ok: false,
+      message: "请输入有效邮箱。"
+    };
+  }
+
+  const supabase = getSupabaseBrowserClient();
+  const { data, error } = await supabase.auth.verifyOtp({
+    email: normalizedEmail,
+    token,
+    type: "email"
+  });
+
+  if (error || !data.user?.email) {
+    return {
+      ok: false,
+      message: mapSupabaseError(error?.message)
+    };
+  }
+
+  return {
+    ok: true,
+    account: accountFromSupabaseUser(data.user.email, data.user.user_metadata)
+  };
+}
+
+export async function sendSupabasePasswordReset(email: string): Promise<SupabaseActionResult> {
+  if (!isSupabaseConfigured()) {
+    return {
+      ok: false,
+      message: "还没有配置 Supabase 环境变量，当前会继续使用本地原型找回流程。"
+    };
+  }
+
+  const normalizedEmail = normalizeEmail(email);
+
+  if (!isValidEmail(normalizedEmail)) {
+    return {
+      ok: false,
+      message: "请输入有效邮箱。"
+    };
+  }
+
+  const supabase = getSupabaseBrowserClient();
+  const redirectTo = typeof window === "undefined" ? undefined : `${window.location.origin}/login`;
+  const { error } = await supabase.auth.resetPasswordForEmail(normalizedEmail, {
+    redirectTo
+  });
+
+  if (error) {
+    return {
+      ok: false,
+      message: mapSupabaseError(error.message)
+    };
+  }
+
+  return {
+    ok: true,
+    message: "找回邮件已发送，请查看邮箱。"
+  };
+}
