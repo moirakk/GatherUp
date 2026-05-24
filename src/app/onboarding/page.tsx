@@ -10,8 +10,10 @@ import {
   getProfileOnboardingStorageKey,
   getAuthSession,
   normalizePublicId,
-  publicIdPattern
+  publicIdPattern,
+  type AuthSession
 } from "@/lib/auth";
+import { updateCurrentSupabaseProfile } from "@/lib/supabase/profile";
 
 const cookieOptions = "path=/; max-age=604800; SameSite=Lax";
 
@@ -21,6 +23,8 @@ export default function OnboardingPage() {
   const [name, setName] = useState("GatherUp 用户");
   const [publicId, setPublicId] = useState("GU-USER");
   const [message, setMessage] = useState("");
+  const [sessionType, setSessionType] = useState<AuthSession["sessionType"]>("demo");
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     const session = getAuthSession(document.cookie);
@@ -32,9 +36,10 @@ export default function OnboardingPage() {
     setEmail(session.email);
     setName(session.name);
     setPublicId(session.gatherUpId);
+    setSessionType(session.sessionType);
   }, []);
 
-  function completeProfile() {
+  async function completeProfile() {
     const normalizedId = normalizePublicId(publicId);
 
     if (!name.trim()) {
@@ -44,6 +49,27 @@ export default function OnboardingPage() {
 
     if (!publicIdPattern.test(normalizedId)) {
       setMessage("GatherUp ID 需要以 GU- 开头，只能包含大写字母、数字和短横线。");
+      return;
+    }
+
+    setIsSaving(true);
+
+    if (sessionType === "supabase") {
+      const result = await updateCurrentSupabaseProfile({
+        name,
+        publicId: normalizedId
+      });
+
+      if (!result.ok) {
+        setMessage(result.message);
+        setIsSaving(false);
+        return;
+      }
+
+      document.cookie = `${NAME_COOKIE}=${encodeURIComponent(result.account.name)}; ${cookieOptions}`;
+      document.cookie = `${ID_COOKIE}=${encodeURIComponent(result.account.gatherUpId)}; ${cookieOptions}`;
+      window.localStorage.setItem(getProfileOnboardingStorageKey(result.account.email), "done");
+      router.replace("/");
       return;
     }
 
@@ -86,9 +112,9 @@ export default function OnboardingPage() {
 
           {message && <p className="validation-note">{message}</p>}
 
-          <button className="button primary" type="button" onClick={completeProfile}>
+          <button className="button primary" type="button" onClick={completeProfile} disabled={isSaving}>
             <BadgeCheck size={17} />
-            完成设置
+            {isSaving ? "保存中" : "完成设置"}
           </button>
         </article>
 
@@ -108,11 +134,11 @@ export default function OnboardingPage() {
             </div>
             <div>
               <dt>验证状态</dt>
-              <dd>原型已模拟验证</dd>
+              <dd>{sessionType === "supabase" ? "Supabase 已验证" : "原型已模拟验证"}</dd>
             </div>
             <div>
               <dt>保存位置</dt>
-              <dd>当前为浏览器本地，正式版进入数据库</dd>
+              <dd>{sessionType === "supabase" ? "Supabase users 表" : "当前为浏览器本地，正式版进入数据库"}</dd>
             </div>
           </dl>
 

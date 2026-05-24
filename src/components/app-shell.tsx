@@ -13,6 +13,7 @@ import {
   getProfileOnboardingStorageKey,
   type AuthSession
 } from "@/lib/auth";
+import { getSupabaseBrowserClient, isSupabaseConfigured } from "@/lib/supabase/client";
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
@@ -59,7 +60,11 @@ export function AppShell({ children }: { children: ReactNode }) {
     );
   }
 
-  function logout() {
+  async function logout() {
+    if (session?.sessionType === "supabase" && isSupabaseConfigured()) {
+      await getSupabaseBrowserClient().auth.signOut();
+    }
+
     createExpiredSessionCookies().forEach((cookie) => {
       document.cookie = cookie;
     });

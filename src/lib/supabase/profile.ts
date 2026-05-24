@@ -31,6 +31,22 @@ export type EnsureSupabaseProfileResult =
       message: string;
     };
 
+export type SupabaseProfileResult =
+  | {
+      ok: true;
+      account: AuthUser;
+      profile: SupabaseProfileRow;
+    }
+  | {
+      ok: false;
+      message: string;
+    };
+
+type UpdateProfileInput = {
+  name?: string;
+  publicId?: string;
+};
+
 function profileToAccount(profile: SupabaseProfileRow): AuthUser {
   return {
     email: profile.email ?? "",
@@ -146,6 +162,102 @@ export async function ensureSupabaseProfile(input: EnsureProfileInput): Promise<
   if (!identityResult.ok) {
     return identityResult;
   }
+
+  return {
+    ok: true,
+    account: profileToAccount(profile),
+    profile
+  };
+}
+
+export async function getCurrentSupabaseProfile(): Promise<SupabaseProfileResult> {
+  if (!isSupabaseConfigured()) {
+    return {
+      ok: false,
+      message: "还没有配置 Supabase 环境变量，无法读取真实用户资料。"
+    };
+  }
+
+  const supabase = getSupabaseBrowserClient();
+  const userResult = await supabase.auth.getUser();
+
+  if (userResult.error || !userResult.data.user) {
+    return {
+      ok: false,
+      message: "当前 Supabase 登录状态已失效，请重新登录。"
+    };
+  }
+
+  return getProfileByAuthUserId(userResult.data.user.id);
+}
+
+export async function updateCurrentSupabaseProfile(input: UpdateProfileInput): Promise<SupabaseProfileResult> {
+  if (!isSupabaseConfigured()) {
+    return {
+      ok: false,
+      message: "还没有配置 Supabase 环境变量，无法保存真实用户资料。"
+    };
+  }
+
+  const supabase = getSupabaseBrowserClient();
+  const userResult = await supabase.auth.getUser();
+
+  if (userResult.error || !userResult.data.user) {
+    return {
+      ok: false,
+      message: "当前 Supabase 登录状态已失效，请重新登录。"
+    };
+  }
+
+  const updates: { name?: string; public_id?: string } = {};
+
+  if (input.name !== undefined) {
+    updates.name = input.name.trim() || "GatherUp 用户";
+  }
+
+  if (input.publicId !== undefined) {
+    updates.public_id = input.publicId;
+  }
+
+  const updateResult = await supabase
+    .from("users")
+    .update(updates)
+    .eq("auth_user_id", userResult.data.user.id)
+    .select("id, auth_user_id, public_id, public_id_change_count, name, avatar_url, email, preferred_locale")
+    .single();
+
+  if (updateResult.error || !updateResult.data) {
+    return {
+      ok: false,
+      message: mapProfileError(updateResult.error?.message)
+    };
+  }
+
+  const profile = updateResult.data as SupabaseProfileRow;
+
+  return {
+    ok: true,
+    account: profileToAccount(profile),
+    profile
+  };
+}
+
+async function getProfileByAuthUserId(authUserId: string): Promise<SupabaseProfileResult> {
+  const supabase = getSupabaseBrowserClient();
+  const profileResult = await supabase
+    .from("users")
+    .select("id, auth_user_id, public_id, public_id_change_count, name, avatar_url, email, preferred_locale")
+    .eq("auth_user_id", authUserId)
+    .single();
+
+  if (profileResult.error || !profileResult.data) {
+    return {
+      ok: false,
+      message: mapProfileError(profileResult.error?.message)
+    };
+  }
+
+  const profile = profileResult.data as SupabaseProfileRow;
 
   return {
     ok: true,

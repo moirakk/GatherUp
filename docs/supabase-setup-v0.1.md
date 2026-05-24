@@ -15,6 +15,7 @@
 - 注册后如果 Supabase 项目开启邮箱确认，页面会提示先去邮箱确认，不会直接进入应用。
 - 登录成功后会创建或读取 `users` 资料，并把 `auth.users.id` 同步到 `users.auth_user_id`。
 - 同步后的 `users.public_id` 会作为正式 GatherUp ID，用于活动、订单和组织者权限绑定。
+- 资料补全页和账号中心已经可以在 Supabase 模式下更新 `users.name` 和 `users.public_id`。
 
 当前还没有把活动、订单、财务、场地等业务数据切换到真实 Supabase 数据。现阶段是“账号服务准备接入，业务数据仍使用 mock”。
 
@@ -72,7 +73,7 @@ v0.1 真实账号第一阶段已经开始：
 
 - 用服务端 Session / middleware 替换当前的前端 cookie 原型。
 - 给用户资料、订单、组织者权限接入 RLS 校验。
-- 让资料补全页写入 Supabase `users` 表，而不是只更新前端 cookie。
+- 把活动创建、报名和付款流程逐步从 mock 数据切换到 Supabase。
 
 后续再接：
 
@@ -101,12 +102,11 @@ v0.1 真实账号第一阶段已经开始：
 
 1. 配置 Supabase 项目并验证 Auth 邮件流程。
 2. 用服务端 Session / middleware 替换当前前端 cookie 过渡方案。
-3. 让资料补全页写入 `users` 表。
-4. 创建活动分步向导写入 `events`、`event_organizers`、`event_finance_settings`。
-5. 报名写入 `registrations` 和 `registration_attendees`。
-6. 付款截图上传到 Storage，并写入 `payments` 和 `payment_proofs`。
-7. 组织者审核付款。
-8. 付款确认后开放选座。
+3. 创建活动分步向导写入 `events`、`event_organizers`、`event_finance_settings`。
+4. 报名写入 `registrations` 和 `registration_attendees`。
+5. 付款截图上传到 Storage，并写入 `payments` 和 `payment_proofs`。
+6. 组织者审核付款。
+7. 付款确认后开放选座。
 
 ## 8. 安全注意事项
 
