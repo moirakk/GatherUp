@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CalendarCheck, CircleDollarSign, MapPinned, Plus, QrCode } from "lucide-react";
+import { CalendarCheck, CircleDollarSign, MapPinned, Plus, QrCode, ServerCog } from "lucide-react";
 
 import { MetricCard } from "@/components/metric-card";
 import { eventSetups, events, getEventOrganizers } from "@/lib/mock-data";
@@ -16,10 +16,16 @@ export default function OrganizerPage() {
           <h1>需要处理的活动事项</h1>
           <p className="subtle">先完成活动配置、数调、地点投票和收款二维码，再开放正式报名。</p>
         </div>
-        <Link className="button primary" href="/organizer/events/new">
-          <Plus size={17} />
-          创建活动
-        </Link>
+        <div className="button-row">
+          <Link className="button secondary" href="/dev/status">
+            <ServerCog size={17} />
+            后端状态
+          </Link>
+          <Link className="button primary" href="/organizer/events/new">
+            <Plus size={17} />
+            创建活动
+          </Link>
+        </div>
       </section>
 
       <section className="metrics-grid">

@@ -89,6 +89,18 @@ small {
   padding: 24px;
 }
 
+.dev-status-card.ready svg {
+  color: var(--sage-deep);
+}
+
+.dev-status-card.warning svg {
+  color: var(--red);
+}
+
+.dev-status-card.pending svg {
+  color: var(--amber);
+}
+
 .login-aside svg {
   color: var(--sage-deep);
 }

@@ -44,6 +44,14 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=
 - `SUPABASE_SERVICE_ROLE_KEY` 只能放服务端，不能加 `NEXT_PUBLIC_`。
 - 当前项目不提交 `.env.local`。
 
+配置完成后，可以登录应用并打开：
+
+```text
+/dev/status
+```
+
+这个页面会显示本地原型、Supabase 环境变量、Supabase Auth 和 `users` 资料同步是否就绪。
+
 ## 4. 数据库草案
 
 当前 SQL 草案在：

@@ -113,6 +113,10 @@ GatherUp v0.1 的技术目标是先做出一个可用、可迭代、适合移动
 - `/organizer/events/[eventId]/announcements`：通知管理。
 - `/organizer/events/[eventId]/exports`：导出。
 
+### 开发检查页面
+
+- `/dev/status`：后端接入状态检查页，用于确认本地原型、Supabase 环境变量、Supabase Auth 和 `users` 资料同步状态。
+
 ## 5. 前端模块建议
 
 ### 页面模块
