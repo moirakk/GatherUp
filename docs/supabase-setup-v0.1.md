@@ -52,6 +52,10 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=
 
 这个页面会显示本地原型、Supabase 环境变量、Supabase Auth 和 `users` 资料同步是否就绪。
 
+如果需要一步一步操作，可以使用：
+
+- `docs/supabase-live-setup-checklist-v0.1.md`
+
 ## 4. 数据库草案
 
 当前 SQL 草案在：

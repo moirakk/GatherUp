@@ -57,6 +57,7 @@ http://127.0.0.1:3000
 - [数据模型与业务规则](./docs/data-rules-v0.1.md)
 - [数据库 Schema 草案](./docs/database-schema-v0.1.md)
 - [Supabase 接入准备](./docs/supabase-setup-v0.1.md)
+- [Supabase 真实接入清单](./docs/supabase-live-setup-checklist-v0.1.md)
 - [原型页面说明](./docs/prototype-screens-v0.1.md)
 - [技术架构](./docs/technical-architecture-v0.1.md)
 - [场地情报库](./docs/venue-intelligence-v0.1.md)
