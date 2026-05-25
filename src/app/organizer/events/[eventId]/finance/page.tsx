@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { CircleDollarSign, ClipboardList, FileImage, ReceiptText } from "lucide-react";
 
+import { ExpenseLedger } from "@/components/expense-ledger";
 import { FinanceActions } from "@/components/finance-actions";
 import { MetricCard } from "@/components/metric-card";
 import { StatusBadge } from "@/components/status-badge";
@@ -104,23 +105,7 @@ export default async function FinancePage({ params }: FinancePageProps) {
             </div>
             <ReceiptText size={20} />
           </div>
-          <div className="data-table compact">
-            <div className="table-row header">
-              <span>支出</span><span>分类</span><span>金额</span><span>经办</span><span>状态</span>
-            </div>
-            {expenses.map((expense) => (
-              <div className="table-row" key={expense.id}>
-                <span>
-                  <strong>{expense.title}</strong>
-                  <small>{expense.note}</small>
-                </span>
-                <span>{expense.category}</span>
-                <span>{formatMoney(expense.amount)}</span>
-                <span>{expense.paidBy}</span>
-                <StatusBadge>{expense.status}</StatusBadge>
-              </div>
-            ))}
-          </div>
+          <ExpenseLedger expenses={expenses} />
         </article>
 
         <article className="content-card">

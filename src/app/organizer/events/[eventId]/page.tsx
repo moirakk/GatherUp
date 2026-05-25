@@ -1,6 +1,7 @@
 import Link from "next/link";
-import { AtSign, CalendarCheck, CircleDollarSign, MapPinned, QrCode, UsersRound } from "lucide-react";
+import { AtSign, CalendarCheck, CircleDollarSign, MapPinned, QrCode } from "lucide-react";
 
+import { EventIdentityPanel } from "@/components/event-identity-panel";
 import { MetricCard } from "@/components/metric-card";
 import { OrganizerEventActions } from "@/components/organizer-event-actions";
 import { PaymentReviewTable } from "@/components/payment-review-table";
@@ -82,18 +83,7 @@ export default async function OrganizerEventPage({ params }: OrganizerEventPageP
             </div>
             <AtSign size={20} />
           </div>
-          <dl className="summary-list">
-            <div><dt>活动 ID</dt><dd>{event.publicCode}</dd></div>
-            <div><dt>公开链接</dt><dd>/events/{event.id}</dd></div>
-          </dl>
-          <div className="organizer-list">
-            {organizers.map((organizer) => (
-              <div className="result-row" key={`${organizer.eventId}-${organizer.publicId}`}>
-                <span><UsersRound size={15} />{organizer.name} · {organizer.publicId}</span>
-                <strong>{organizer.role}</strong>
-              </div>
-            ))}
-          </div>
+          <EventIdentityPanel eventId={event.id} organizers={organizers} publicCode={event.publicCode} />
         </article>
 
         <article className="content-card" id="survey-results">

@@ -813,6 +813,44 @@ h3 {
   gap: 12px;
 }
 
+.identity-stack,
+.ledger-stack {
+  display: grid;
+  gap: 12px;
+}
+
+.summary-list dd {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tiny-icon-button {
+  display: inline-grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.expense-form {
+  display: grid;
+  gap: 14px;
+  padding: 14px;
+  border: 1px solid rgba(143, 163, 145, 0.34);
+  border-radius: 8px;
+  background: #f3f6f0;
+}
+
+.compact-icon {
+  width: 32px;
+  height: 32px;
+}
+
 .decision-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto auto;
