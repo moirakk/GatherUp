@@ -3,8 +3,8 @@ import { AtSign, CalendarCheck, CircleDollarSign, MapPinned, QrCode, UsersRound 
 
 import { MetricCard } from "@/components/metric-card";
 import { OrganizerEventActions } from "@/components/organizer-event-actions";
+import { PaymentReviewTable } from "@/components/payment-review-table";
 import { SeatMap } from "@/components/seat-map";
-import { StatusBadge } from "@/components/status-badge";
 import { getEvent, getEventOrganizers, getEventRegistrations, getEventSetup } from "@/lib/mock-data";
 
 type OrganizerEventPageProps = {
@@ -73,7 +73,7 @@ export default async function OrganizerEventPage({ params }: OrganizerEventPageP
           />
         </article>
 
-        <article className="content-card" id="survey-results">
+        <article className="content-card" id="identity">
           <div className="section-heading">
             <div>
               <h2>活动身份</h2>
@@ -95,7 +95,7 @@ export default async function OrganizerEventPage({ params }: OrganizerEventPageP
           </div>
         </article>
 
-        <article className="content-card" id="venue-votes">
+        <article className="content-card" id="survey-results">
           <div className="section-heading">
             <h2>数调结果</h2>
             <CalendarCheck size={20} />
@@ -110,7 +110,7 @@ export default async function OrganizerEventPage({ params }: OrganizerEventPageP
           </div>
         </article>
 
-        <article className="content-card" id="orders">
+        <article className="content-card" id="venue-votes">
           <div className="section-heading">
             <h2>地点投票</h2>
             <MapPinned size={20} />
@@ -125,28 +125,15 @@ export default async function OrganizerEventPage({ params }: OrganizerEventPageP
           </div>
         </article>
 
-        <article className="content-card" id="seats">
+        <article className="content-card" id="orders">
           <div className="section-heading">
             <h2>报名与付款</h2>
             <div className="segmented"><span>报名</span><span>付款</span><span>座位</span></div>
           </div>
-          <div className="data-table compact">
-            <div className="table-row header">
-              <span>订单</span><span>昵称</span><span>人数</span><span>付款</span><span>座位</span>
-            </div>
-            {registrations.map((registration) => (
-              <div className="table-row" key={registration.orderNumber}>
-                <span>{registration.orderNumber}</span>
-                <span>{registration.nickname}</span>
-                <span>{registration.quantity}</span>
-                <StatusBadge>{registration.paymentStatus}</StatusBadge>
-                <span>{registration.seatStatus}</span>
-              </div>
-            ))}
-          </div>
+          <PaymentReviewTable registrations={registrations} />
         </article>
 
-        <article className="content-card">
+        <article className="content-card" id="seats">
           <h2>座位管理</h2>
           <SeatMap />
         </article>
