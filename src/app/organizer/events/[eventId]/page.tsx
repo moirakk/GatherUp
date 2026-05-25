@@ -1,20 +1,22 @@
 import Link from "next/link";
-import { ArrowLeft, AtSign, CalendarCheck, CircleDollarSign, MapPinned, QrCode } from "lucide-react";
+import { ArrowLeft, AtSign, BellRing, CalendarCheck, CircleDollarSign, MapPinned, Megaphone, QrCode } from "lucide-react";
 
+import { AnnouncementCenter } from "@/components/announcement-center";
 import { EventIdentityPanel } from "@/components/event-identity-panel";
 import { MetricCard } from "@/components/metric-card";
 import { OrganizerEventActions } from "@/components/organizer-event-actions";
 import { PaymentReviewTable } from "@/components/payment-review-table";
 import { PollDecisionPanel } from "@/components/poll-decision-panel";
+import { PromotionCenter } from "@/components/promotion-center";
 import { SeatMap } from "@/components/seat-map";
-import { getEvent, getEventOrganizers, getEventRegistrations, getEventSetup } from "@/lib/mock-data";
+import { getEvent, getEventAnnouncements, getEventOrganizers, getEventRegistrations, getEventSetup } from "@/lib/mock-data";
 
 type OrganizerEventPageProps = {
   params: Promise<{ eventId: string }>;
   searchParams: Promise<{ panel?: string }>;
 };
 
-const panelIds = ["survey", "venue", "orders"] as const;
+const panelIds = ["publish", "notify", "survey", "venue", "orders"] as const;
 type PanelId = (typeof panelIds)[number];
 
 function getPanelId(panel?: string): PanelId | null {
@@ -25,6 +27,7 @@ export default async function OrganizerEventPage({ params, searchParams }: Organ
   const { eventId } = await params;
   const { panel } = await searchParams;
   const event = getEvent(eventId);
+  const announcements = getEventAnnouncements(eventId);
   const registrations = getEventRegistrations(eventId);
   const setup = getEventSetup(eventId);
   const organizers = getEventOrganizers(eventId);
@@ -34,6 +37,8 @@ export default async function OrganizerEventPage({ params, searchParams }: Organ
   const basePath = `/organizer/events/${event.id}`;
 
   const moduleLinks = [
+    { id: "publish", label: "宣传发布", href: `${basePath}?panel=publish`, value: "入口" },
+    { id: "notify", label: "通知", href: `${basePath}?panel=notify`, value: announcements.filter((item) => item.status === "已发布").length },
     { id: "survey", label: "数调反馈", href: `${basePath}?panel=survey`, value: totalSurveyVotes },
     { id: "venue", label: "地点投票", href: `${basePath}?panel=venue`, value: totalVenueVotes },
     {
@@ -77,10 +82,38 @@ export default async function OrganizerEventPage({ params, searchParams }: Organ
               <ArrowLeft size={16} />
               返回管理总览
             </Link>
+            <Link className="button secondary" href={`${basePath}?panel=publish`}>宣传</Link>
+            <Link className="button secondary" href={`${basePath}?panel=notify`}>通知</Link>
             <Link className="button secondary" href={`${basePath}?panel=survey`}>数调</Link>
             <Link className="button secondary" href={`${basePath}?panel=venue`}>地点</Link>
             <Link className="button secondary" href={`${basePath}?panel=orders`}>付款</Link>
           </div>
+
+          {activePanel === "publish" && (
+            <article className="content-card focused-card wide-focused-card">
+              <div className="section-heading">
+                <div>
+                  <h2>发布与宣传中心</h2>
+                  <p className="subtle">集中生成主办方最常用的对外入口、二维码和宣传文案。</p>
+                </div>
+                <Megaphone size={20} />
+              </div>
+              <PromotionCenter event={event} surveyVotes={totalSurveyVotes} venueVotes={totalVenueVotes} />
+            </article>
+          )}
+
+          {activePanel === "notify" && (
+            <article className="content-card focused-card wide-focused-card">
+              <div className="section-heading">
+                <div>
+                  <h2>通知中心</h2>
+                  <p className="subtle">发布报名、付款、选座和活动当日提醒，并复制到外部群聊。</p>
+                </div>
+                <BellRing size={20} />
+              </div>
+              <AnnouncementCenter announcements={announcements} event={event} />
+            </article>
+          )}
 
           {activePanel === "survey" && (
             <article className="content-card focused-card">
@@ -145,6 +178,14 @@ export default async function OrganizerEventPage({ params, searchParams }: Organ
             registrations={registrations}
             variant="setup"
           />
+          <Link className="button secondary" href={`${basePath}?panel=publish`}>
+            <Megaphone size={16} />
+            宣传发布
+          </Link>
+          <Link className="button secondary" href={`${basePath}?panel=notify`}>
+            <BellRing size={16} />
+            通知中心
+          </Link>
         </article>
 
         <article className="content-card" id="identity">

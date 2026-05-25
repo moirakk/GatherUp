@@ -6,6 +6,8 @@ export type VenueSupportStatus = "确认可办" | "可能可办" | "暂不支持
 export type EventFeeMode = "免费" | "收费" | "AA记账";
 export type ExpenseCategory = "场地费" | "物料采购" | "餐饮茶歇" | "设备租赁" | "交通快递" | "宣传设计" | "其他";
 export type ExpenseStatus = "预算中" | "已支付" | "待报销";
+export type AnnouncementType = "报名通知" | "付款提醒" | "选座通知" | "成团通知" | "活动当日通知";
+export type AnnouncementStatus = "草稿" | "已发布";
 
 export type GatherEvent = {
   id: string;
@@ -55,6 +57,17 @@ export type Registration = {
   confirmationEta: string;
   paymentProof?: string;
   refundPolicy: string;
+};
+
+export type EventAnnouncement = {
+  id: string;
+  eventId: string;
+  type: AnnouncementType;
+  title: string;
+  content: string;
+  status: AnnouncementStatus;
+  publishedAt: string;
+  audience: "全部参与者" | "待付款参与者" | "已确认参与者";
 };
 
 export type PollOption = {
@@ -695,6 +708,49 @@ export const registrations: Registration[] = [
   }
 ];
 
+export const eventAnnouncements: EventAnnouncement[] = [
+  {
+    id: "ann-ryu-survey",
+    eventId: "ryuichi-masterpiece",
+    type: "报名通知",
+    title: "数调和地点投票已开放",
+    content: "请先提交可参加时间和地点偏好。当前阶段不会生成订单，也不会占用名额。",
+    status: "已发布",
+    publishedAt: "2026-05-20 18:30",
+    audience: "全部参与者"
+  },
+  {
+    id: "ann-ryu-payment",
+    eventId: "ryuichi-masterpiece",
+    type: "付款提醒",
+    title: "付款截图请备注订单号",
+    content: "开放正式报名后，请按订单金额付款，并在截图备注中写上订单号和昵称，方便组织者快速核对。",
+    status: "草稿",
+    publishedAt: "待发布",
+    audience: "待付款参与者"
+  },
+  {
+    id: "ann-spr-open",
+    eventId: "spring-rerun",
+    type: "报名通知",
+    title: "报名即将开放",
+    content: "时间和地点已基本确认，组织者完成最后检查后会开放正式报名入口。",
+    status: "已发布",
+    publishedAt: "2026-05-21 12:00",
+    audience: "全部参与者"
+  },
+  {
+    id: "ann-club-day",
+    eventId: "campus-club-fair",
+    type: "活动当日通知",
+    title: "开放日签到说明",
+    content: "请在入口处出示 GatherUp ID 完成签到。建议提前 10 分钟到达，现场会按社团区域分流。",
+    status: "已发布",
+    publishedAt: "2026-05-22 09:00",
+    audience: "已确认参与者"
+  }
+];
+
 export function getEvent(eventId: string) {
   return events.find((event) => event.id === eventId) ?? events[0];
 }
@@ -705,6 +761,10 @@ export function getEventOrganizers(eventId: string) {
 
 export function getEventRegistrations(eventId: string) {
   return registrations.filter((registration) => registration.eventId === eventId);
+}
+
+export function getEventAnnouncements(eventId: string) {
+  return eventAnnouncements.filter((announcement) => announcement.eventId === eventId);
 }
 
 export function getEventSetup(eventId: string) {

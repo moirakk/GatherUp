@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { AlertCircle, Clock3, FileImage, TicketCheck, UsersRound } from "lucide-react";
 
+import { ParticipantOrderActions } from "@/components/participant-order-actions";
 import { StatusBadge } from "@/components/status-badge";
 import { events, getRegistration } from "@/lib/mock-data";
 
@@ -63,7 +64,7 @@ export default async function OrderPage({ params }: OrderPageProps) {
             <div><dt>金额</dt><dd>¥{registration.amount}</dd></div>
             <div><dt>创建时间</dt><dd>{registration.createdAt}</dd></div>
           </dl>
-          <Link className="button primary full" href={`/events/${event.id}`}>查看活动详情</Link>
+          <ParticipantOrderActions eventId={event.id} registration={registration} />
         </aside>
 
         <article className="content-card">
