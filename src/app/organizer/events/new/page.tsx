@@ -8,8 +8,12 @@ import {
   ChevronRight,
   CircleDollarSign,
   ClipboardList,
+  Link,
   MapPinned,
+  MessageCircle,
   QrCode,
+  ScanLine,
+  WandSparkles,
   UsersRound
 } from "lucide-react";
 
@@ -50,17 +54,23 @@ const initialForm = {
   deadline: "2026-07-10 22:00",
   allowMulti: "不允许",
   orderFormat: "{eventCode}-0001",
+  orderPrefix: "CLUB",
   paymentMethod: "无需收款",
   paymentNote: "免费活动无需付款，报名成功后等待组织者确认。",
   seatingMode: "不需要选座",
   rows: "0",
   seatsPerRow: "0",
+  seatMapSource: "手动填写",
   description: "校园社团联合开放日，支持报名、名单、签到和活动通知。"
 };
 
 export default function NewEventPage() {
   const [activeStep, setActiveStep] = useState<StepId>("basic");
   const [form, setForm] = useState(initialForm);
+  const [shareCopied, setShareCopied] = useState(false);
+  const [qrGenerated, setQrGenerated] = useState(false);
+  const [seatImageName, setSeatImageName] = useState("");
+  const [seatRecognitionStatus, setSeatRecognitionStatus] = useState("上传影厅座位截图后，可以先自动识别，再人工微调排数、座位数和不可选座位。");
   const activeIndex = steps.findIndex((step) => step.id === activeStep);
   const activeStepMeta = steps[activeIndex];
   const ActiveStepIcon = activeStepMeta.icon;
@@ -81,6 +91,27 @@ export default function NewEventPage() {
 
   function updateField(field: keyof typeof form, value: string) {
     setForm((current) => ({ ...current, [field]: value }));
+  }
+
+  const surveyLink = `https://gatherup.app/e/${form.publicCode}/survey`;
+  const groupAnnouncement = `【${form.name}】数调开始啦：请打开链接填写可参加时间和地点偏好，后续报名、付款和选座都在同一个活动页完成。${surveyLink}`;
+
+  async function copySurveyText() {
+    const text = groupAnnouncement;
+
+    try {
+      await navigator.clipboard.writeText(text);
+      setShareCopied(true);
+    } catch {
+      setShareCopied(false);
+    }
+  }
+
+  function recognizeSeatMap() {
+    updateField("rows", "6");
+    updateField("seatsPerRow", "12");
+    updateField("seatMapSource", "截图自动识别");
+    setSeatRecognitionStatus("已生成一个 6 排 x 12 座的识别草稿。下一版会继续识别过道、空座和不可售座位；现在可以先手动调整。");
   }
 
   function goToPreviousStep() {
@@ -158,16 +189,48 @@ export default function NewEventPage() {
           )}
 
           {activeStep === "venue" && (
-            <div className="form-grid two-column">
-              <label>地点来源<select value={form.venueSource} onChange={(event) => updateField("venueSource", event.target.value)}><option>从场地库选择</option><option>手动填写新地点</option></select></label>
-              <label>场地名称<input value={form.venueName} onChange={(event) => updateField("venueName", event.target.value)} /></label>
-              <label className="wide-field">地址<input value={form.address} onChange={(event) => updateField("address", event.target.value)} /></label>
-              <label>日期和时间<input value={form.startsAt} onChange={(event) => updateField("startsAt", event.target.value)} /></label>
-              <label>数调选项 1<input value={form.surveyOne} onChange={(event) => updateField("surveyOne", event.target.value)} /></label>
-              <label>数调选项 2<input value={form.surveyTwo} onChange={(event) => updateField("surveyTwo", event.target.value)} /></label>
-              <label>地点选项 1<input value={form.venueOptionOne} onChange={(event) => updateField("venueOptionOne", event.target.value)} /></label>
-              <label>地点选项 2<input value={form.venueOptionTwo} onChange={(event) => updateField("venueOptionTwo", event.target.value)} /></label>
-            </div>
+            <>
+              <div className="share-kit">
+                <div>
+                  <p className="eyebrow">数调发布方式</p>
+                  <h3>给组织者一个可直接发进群里的入口</h3>
+                  <p className="subtle">第一版同时保留链接、二维码和群公告文案。微信群、QQ群、邮件、社群公告都能用同一个入口。</p>
+                </div>
+                <div className="share-grid">
+                  <button className="share-card" type="button" onClick={copySurveyText}>
+                    <MessageCircle size={18} />
+                    <span>复制群公告</span>
+                    <small>{shareCopied ? "已复制" : "适合微信群/QQ群"}</small>
+                  </button>
+                  <button className="share-card" type="button" onClick={copySurveyText}>
+                    <Link size={18} />
+                    <span>复制数调链接</span>
+                    <small>{form.publicCode}/survey</small>
+                  </button>
+                  <button className="share-card" type="button" onClick={() => setQrGenerated(true)}>
+                    <QrCode size={18} />
+                    <span>{qrGenerated ? "二维码已生成" : "生成二维码"}</span>
+                    <small>{qrGenerated ? form.publicCode : "适合海报和线下扫码"}</small>
+                  </button>
+                </div>
+                {qrGenerated && (
+                  <div className="qr-preview" aria-label="数调二维码预览">
+                    <QrCode size={58} />
+                    <span>{form.publicCode}</span>
+                  </div>
+                )}
+              </div>
+              <div className="form-grid two-column">
+                <label>地点来源<select value={form.venueSource} onChange={(event) => updateField("venueSource", event.target.value)}><option>从场地库选择</option><option>手动填写新地点</option></select></label>
+                <label>场地名称<input value={form.venueName} onChange={(event) => updateField("venueName", event.target.value)} /></label>
+                <label className="wide-field">地址<input value={form.address} onChange={(event) => updateField("address", event.target.value)} /></label>
+                <label>日期和时间<input value={form.startsAt} onChange={(event) => updateField("startsAt", event.target.value)} /></label>
+                <label>数调选项 1<input value={form.surveyOne} onChange={(event) => updateField("surveyOne", event.target.value)} /></label>
+                <label>数调选项 2<input value={form.surveyTwo} onChange={(event) => updateField("surveyTwo", event.target.value)} /></label>
+                <label>地点选项 1<input value={form.venueOptionOne} onChange={(event) => updateField("venueOptionOne", event.target.value)} /></label>
+                <label>地点选项 2<input value={form.venueOptionTwo} onChange={(event) => updateField("venueOptionTwo", event.target.value)} /></label>
+              </div>
+            </>
           )}
 
           {activeStep === "finance" && (
@@ -188,6 +251,12 @@ export default function NewEventPage() {
               <label>每单最多人数<input defaultValue="1" /></label>
               <label>订单编号<select value={form.orderFormat} onChange={(event) => updateField("orderFormat", event.target.value)}><option>{"{eventCode}-0001"}</option><option>GU-0001</option><option>{"{eventCode}-{YYYYMMDD}-0001"}</option><option>自定义前缀 + 流水号</option></select></label>
               <label>候补名单<select defaultValue="accept"><option value="accept">接受候补</option><option value="deny">不接受候补</option></select></label>
+              {form.orderFormat === "自定义前缀 + 流水号" && (
+                <>
+                  <label>自定义前缀<input value={form.orderPrefix} onChange={(event) => updateField("orderPrefix", event.target.value.toUpperCase())} /></label>
+                  <label>编号预览<input readOnly value={`${form.orderPrefix || "GU"}-0001`} /></label>
+                </>
+              )}
             </div>
           )}
 
@@ -197,8 +266,36 @@ export default function NewEventPage() {
               <label>收款二维码<input type="file" accept="image/*" /></label>
               <label className="wide-field">付款说明<input value={form.paymentNote} onChange={(event) => updateField("paymentNote", event.target.value)} /></label>
               <label>座位模式<select value={form.seatingMode} onChange={(event) => updateField("seatingMode", event.target.value)}><option>不需要选座</option><option>付款确认后选座</option><option>组织者手动分配</option></select></label>
+              <label>座位图来源<select value={form.seatMapSource} onChange={(event) => updateField("seatMapSource", event.target.value)}><option>手动填写</option><option>截图自动识别</option><option>复用场地库座位图</option></select></label>
+              <div className="seat-import-card wide-field">
+                <div>
+                  <ScanLine size={20} />
+                  <strong>从影院/场馆座位截图识别</strong>
+                  <p>{seatRecognitionStatus}</p>
+                  {seatImageName && <small>已选择：{seatImageName}</small>}
+                </div>
+                <label className="file-button">
+                  选择截图
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(event) => {
+                      const file = event.target.files?.[0];
+                      if (file) {
+                        setSeatImageName(file.name);
+                        updateField("seatMapSource", "截图自动识别");
+                      }
+                    }}
+                  />
+                </label>
+                <button className="button secondary compact" type="button" onClick={recognizeSeatMap}>
+                  <WandSparkles size={16} />
+                  自动识别草稿
+                </button>
+              </div>
               <label>排数<input value={form.rows} onChange={(event) => updateField("rows", event.target.value)} /></label>
               <label>每排座位<input value={form.seatsPerRow} onChange={(event) => updateField("seatsPerRow", event.target.value)} /></label>
+              <label className="wide-field">手动调整说明<input defaultValue="例如：A1-A2 不开放；C5-C6 预留；中间过道在 6、7 号之间。" /></label>
             </div>
           )}
 

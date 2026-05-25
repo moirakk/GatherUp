@@ -1,7 +1,8 @@
 import Link from "next/link";
-import { AtSign, CalendarCheck, CircleDollarSign, Download, LinkIcon, MapPinned, QrCode, UsersRound } from "lucide-react";
+import { AtSign, CalendarCheck, CircleDollarSign, MapPinned, QrCode, UsersRound } from "lucide-react";
 
 import { MetricCard } from "@/components/metric-card";
+import { OrganizerEventActions } from "@/components/organizer-event-actions";
 import { SeatMap } from "@/components/seat-map";
 import { StatusBadge } from "@/components/status-badge";
 import { getEvent, getEventOrganizers, getEventRegistrations, getEventSetup } from "@/lib/mock-data";
@@ -28,20 +29,29 @@ export default async function OrganizerEventPage({ params }: OrganizerEventPageP
           <p className="subtle">{event.publicCode} · {event.status} · {event.city} · {event.startsAt}</p>
         </div>
         <div className="button-row">
-          <button className="button secondary" type="button"><LinkIcon size={16} />复制链接</button>
+          <OrganizerEventActions
+            eventId={event.id}
+            eventName={event.name}
+            publicCode={event.publicCode}
+            registrations={registrations}
+            variant="header"
+          />
           <Link className="button secondary" href={`/organizer/events/${event.id}/finance`}><CircleDollarSign size={16} />财务</Link>
-          <button className="button secondary" type="button"><Download size={16} />导出</button>
         </div>
       </section>
 
       <section className="metrics-grid">
-        <MetricCard label="数调反馈" value={totalSurveyVotes} />
-        <MetricCard label="地点投票" value={totalVenueVotes} />
-        <MetricCard label="待确认付款" value={registrations.filter((item) => item.paymentStatus === "待审核").length} />
+        <MetricCard label="数调反馈" value={totalSurveyVotes} href="#survey-results" />
+        <MetricCard label="地点投票" value={totalVenueVotes} href="#venue-votes" />
+        <MetricCard
+          label="待确认付款"
+          value={registrations.filter((item) => item.paymentStatus === "待审核").length}
+          href="#orders"
+        />
       </section>
 
       <section className="workspace-grid">
-        <article className="content-card">
+        <article className="content-card" id="setup">
           <div className="section-heading">
             <div>
               <h2>筹备配置</h2>
@@ -54,13 +64,16 @@ export default async function OrganizerEventPage({ params }: OrganizerEventPageP
             <div><dt>收款方式</dt><dd>{setup.paymentQrStatus} · {setup.paymentMethod}</dd></div>
             <div><dt>下一步</dt><dd>{setup.nextAction}</dd></div>
           </dl>
-          <div className="button-row">
-            <button className="button primary" type="button"><QrCode size={16} />更新收款码</button>
-            <button className="button secondary" type="button"><LinkIcon size={16} />开放报名链接</button>
-          </div>
+          <OrganizerEventActions
+            eventId={event.id}
+            eventName={event.name}
+            publicCode={event.publicCode}
+            registrations={registrations}
+            variant="setup"
+          />
         </article>
 
-        <article className="content-card">
+        <article className="content-card" id="survey-results">
           <div className="section-heading">
             <div>
               <h2>活动身份</h2>
@@ -82,7 +95,7 @@ export default async function OrganizerEventPage({ params }: OrganizerEventPageP
           </div>
         </article>
 
-        <article className="content-card">
+        <article className="content-card" id="venue-votes">
           <div className="section-heading">
             <h2>数调结果</h2>
             <CalendarCheck size={20} />
@@ -97,7 +110,7 @@ export default async function OrganizerEventPage({ params }: OrganizerEventPageP
           </div>
         </article>
 
-        <article className="content-card">
+        <article className="content-card" id="orders">
           <div className="section-heading">
             <h2>地点投票</h2>
             <MapPinned size={20} />
@@ -112,7 +125,7 @@ export default async function OrganizerEventPage({ params }: OrganizerEventPageP
           </div>
         </article>
 
-        <article className="content-card">
+        <article className="content-card" id="seats">
           <div className="section-heading">
             <h2>报名与付款</h2>
             <div className="segmented"><span>报名</span><span>付款</span><span>座位</span></div>

@@ -567,8 +567,33 @@ h3 {
   width: 100%;
 }
 
+.button-feedback,
+.inline-notice {
+  color: var(--sage-deep);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.inline-notice {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #e7eee6;
+}
+
 .action-card .button.full + .button.full {
   margin-top: 10px;
+}
+
+.clickable-card {
+  display: block;
+  color: inherit;
+  transition: 160ms ease;
+}
+
+.clickable-card:hover {
+  border-color: rgba(143, 163, 145, 0.74);
+  transform: translateY(-1px);
 }
 
 .metric-card strong {
@@ -904,6 +929,114 @@ h3 {
 .wizard-summary {
   position: sticky;
   top: 96px;
+}
+
+.share-kit,
+.seat-import-card {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid rgba(143, 163, 145, 0.34);
+  border-radius: 8px;
+  background: #f3f6f0;
+}
+
+.share-kit h3 {
+  margin: 4px 0 6px;
+  font-size: 18px;
+}
+
+.share-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.share-card {
+  display: grid;
+  min-height: 96px;
+  gap: 6px;
+  align-content: start;
+  padding: 13px;
+  border: 1px solid rgba(143, 163, 145, 0.38);
+  border-radius: 8px;
+  background: rgba(255, 253, 249, 0.72);
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+}
+
+.share-card svg,
+.seat-import-card svg {
+  color: var(--sage-deep);
+}
+
+.share-card span {
+  font-weight: 760;
+}
+
+.share-card small,
+.seat-import-card small {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.qr-preview {
+  display: inline-grid;
+  width: max-content;
+  min-width: 128px;
+  gap: 8px;
+  place-items: center;
+  padding: 14px;
+  border: 1px solid rgba(143, 163, 145, 0.38);
+  border-radius: 8px;
+  background: rgba(255, 253, 249, 0.72);
+  color: var(--sage-deep);
+  font-size: 12px;
+  font-weight: 760;
+}
+
+.seat-import-card {
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  background: #f5f1ea;
+}
+
+.seat-import-card strong {
+  display: block;
+  margin-top: 8px;
+  font-size: 15px;
+}
+
+.seat-import-card p {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.file-button {
+  display: grid;
+  min-height: 38px;
+  place-items: center;
+  padding: 0 13px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 760;
+}
+
+.file-button input {
+  display: none;
+}
+
+.button.compact {
+  min-height: 38px;
+  padding: 0 13px;
 }
 
 .review-grid {
@@ -1469,6 +1602,8 @@ h3 {
   .inline-field,
   .state-timeline,
   .venue-note-grid,
+  .share-grid,
+  .seat-import-card,
   .form-grid.two-column,
   .wizard-steps,
   .summary-list div {

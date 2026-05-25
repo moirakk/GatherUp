@@ -58,9 +58,16 @@ export default function HomePage() {
             {category === "全部" ? "全部活动" : category}
           </button>
         ))}
-        <button className="chip icon-chip" type="button">
+        <button
+          className="chip icon-chip"
+          type="button"
+          onClick={() => {
+            setCategoryFilter("全部");
+            setQuery("");
+          }}
+        >
           <SlidersHorizontal size={15} />
-          筛选
+          重置
         </button>
       </section>
 

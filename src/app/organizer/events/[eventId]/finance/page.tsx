@@ -1,6 +1,7 @@
 import Link from "next/link";
-import { CircleDollarSign, ClipboardList, FileImage, Plus, ReceiptText } from "lucide-react";
+import { CircleDollarSign, ClipboardList, FileImage, ReceiptText } from "lucide-react";
 
+import { FinanceActions } from "@/components/finance-actions";
 import { MetricCard } from "@/components/metric-card";
 import { StatusBadge } from "@/components/status-badge";
 import {
@@ -39,10 +40,7 @@ export default async function FinancePage({ params }: FinancePageProps) {
           <Link className="button secondary" href={`/organizer/events/${event.id}`}>
             返回管理台
           </Link>
-          <button className="button primary" type="button">
-            <Plus size={17} />
-            添加支出
-          </button>
+          <FinanceActions />
         </div>
       </section>
 

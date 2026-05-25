@@ -1,9 +1,30 @@
+"use client";
+
+import { useState } from "react";
+
 const selectedSeats = new Set(["C5", "C6"]);
 const assignedSeats = new Set(["B4", "B5", "C7", "D8", "E3"]);
 const blockedSeats = new Set(["A1", "A12", "F1", "F12"]);
 
 export function SeatMap() {
   const rows = ["A", "B", "C", "D", "E", "F"];
+  const [editableSeats, setEditableSeats] = useState(() => new Set(selectedSeats));
+
+  function toggleSeat(label: string) {
+    if (assignedSeats.has(label) || blockedSeats.has(label)) {
+      return;
+    }
+
+    setEditableSeats((current) => {
+      const next = new Set(current);
+      if (next.has(label)) {
+        next.delete(label);
+      } else {
+        next.add(label);
+      }
+      return next;
+    });
+  }
 
   return (
     <div className="seat-panel">
@@ -20,7 +41,8 @@ export function SeatMap() {
             <span className="seat-row-label">{row}</span>
             {Array.from({ length: 12 }, (_, index) => {
               const label = `${row}${index + 1}`;
-              const className = selectedSeats.has(label)
+              const isLocked = assignedSeats.has(label) || blockedSeats.has(label);
+              const className = editableSeats.has(label)
                 ? "selected"
                 : assignedSeats.has(label)
                   ? "assigned"
@@ -29,7 +51,14 @@ export function SeatMap() {
                     : "";
 
               return (
-                <button className={`seat ${className}`} key={label} type="button">
+                <button
+                  aria-pressed={editableSeats.has(label)}
+                  className={`seat ${className}`}
+                  disabled={isLocked}
+                  key={label}
+                  type="button"
+                  onClick={() => toggleSeat(label)}
+                >
                   {index + 1}
                 </button>
               );
