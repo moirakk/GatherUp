@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { AtSign, CalendarCheck, CircleDollarSign, MapPinned, QrCode } from "lucide-react";
+import { ArrowLeft, AtSign, CalendarCheck, CircleDollarSign, MapPinned, QrCode } from "lucide-react";
 
 import { EventIdentityPanel } from "@/components/event-identity-panel";
 import { MetricCard } from "@/components/metric-card";
@@ -11,16 +11,38 @@ import { getEvent, getEventOrganizers, getEventRegistrations, getEventSetup } fr
 
 type OrganizerEventPageProps = {
   params: Promise<{ eventId: string }>;
+  searchParams: Promise<{ panel?: string }>;
 };
 
-export default async function OrganizerEventPage({ params }: OrganizerEventPageProps) {
+const panelIds = ["survey", "venue", "orders"] as const;
+type PanelId = (typeof panelIds)[number];
+
+function getPanelId(panel?: string): PanelId | null {
+  return panelIds.includes(panel as PanelId) ? (panel as PanelId) : null;
+}
+
+export default async function OrganizerEventPage({ params, searchParams }: OrganizerEventPageProps) {
   const { eventId } = await params;
+  const { panel } = await searchParams;
   const event = getEvent(eventId);
   const registrations = getEventRegistrations(eventId);
   const setup = getEventSetup(eventId);
   const organizers = getEventOrganizers(eventId);
+  const activePanel = getPanelId(panel);
   const totalSurveyVotes = setup.surveyOptions.reduce((sum, option) => sum + option.votes, 0);
   const totalVenueVotes = setup.venueOptions.reduce((sum, option) => sum + option.votes, 0);
+  const basePath = `/organizer/events/${event.id}`;
+
+  const moduleLinks = [
+    { id: "survey", label: "数调反馈", href: `${basePath}?panel=survey`, value: totalSurveyVotes },
+    { id: "venue", label: "地点投票", href: `${basePath}?panel=venue`, value: totalVenueVotes },
+    {
+      id: "orders",
+      label: "待确认付款",
+      href: `${basePath}?panel=orders`,
+      value: registrations.filter((item) => item.paymentStatus === "待审核").length
+    }
+  ];
 
   return (
     <>
@@ -43,15 +65,65 @@ export default async function OrganizerEventPage({ params }: OrganizerEventPageP
       </section>
 
       <section className="metrics-grid">
-        <MetricCard label="数调反馈" value={totalSurveyVotes} href="#survey-results" />
-        <MetricCard label="地点投票" value={totalVenueVotes} href="#venue-votes" />
-        <MetricCard
-          label="待确认付款"
-          value={registrations.filter((item) => item.paymentStatus === "待审核").length}
-          href="#orders"
-        />
+        {moduleLinks.map((item) => (
+          <MetricCard href={item.href} key={item.id} label={item.label} value={item.value} />
+        ))}
       </section>
 
+      {activePanel && (
+        <section className="focused-module">
+          <div className="button-row">
+            <Link className="button secondary" href={basePath}>
+              <ArrowLeft size={16} />
+              返回管理总览
+            </Link>
+            <Link className="button secondary" href={`${basePath}?panel=survey`}>数调</Link>
+            <Link className="button secondary" href={`${basePath}?panel=venue`}>地点</Link>
+            <Link className="button secondary" href={`${basePath}?panel=orders`}>付款</Link>
+          </div>
+
+          {activePanel === "survey" && (
+            <article className="content-card focused-card">
+              <div className="section-heading">
+                <div>
+                  <h2>数调结果</h2>
+                  <p className="subtle">只处理最终时间选择。选定后再回到总览继续配置报名或付款。</p>
+                </div>
+                <CalendarCheck size={20} />
+              </div>
+              <PollDecisionPanel actionLabel="设为最终时间" emptyLabel="最终时间" options={setup.surveyOptions} />
+            </article>
+          )}
+
+          {activePanel === "venue" && (
+            <article className="content-card focused-card">
+              <div className="section-heading">
+                <div>
+                  <h2>地点投票</h2>
+                  <p className="subtle">只处理最终地点选择。可结合场地库信息确认是否能办。</p>
+                </div>
+                <MapPinned size={20} />
+              </div>
+              <PollDecisionPanel actionLabel="设为最终地点" emptyLabel="最终地点" options={setup.venueOptions} />
+            </article>
+          )}
+
+          {activePanel === "orders" && (
+            <article className="content-card focused-card">
+              <div className="section-heading">
+                <div>
+                  <h2>报名与付款</h2>
+                  <p className="subtle">集中审核付款截图。通过后参与者才能进入选座。</p>
+                </div>
+                <div className="segmented"><span>报名</span><span>付款</span><span>座位</span></div>
+              </div>
+              <PaymentReviewTable registrations={registrations} />
+            </article>
+          )}
+        </section>
+      )}
+
+      {!activePanel && (
       <section className="workspace-grid">
         <article className="content-card" id="setup">
           <div className="section-heading">
@@ -115,6 +187,7 @@ export default async function OrganizerEventPage({ params }: OrganizerEventPageP
           <SeatMap />
         </article>
       </section>
+      )}
     </>
   );
 }

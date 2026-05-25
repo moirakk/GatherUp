@@ -446,6 +446,15 @@ h3 {
   align-items: start;
 }
 
+.focused-module {
+  display: grid;
+  gap: 16px;
+}
+
+.focused-card {
+  max-width: 920px;
+}
+
 .event-card,
 .venue-card,
 .content-card,
