@@ -1,9 +1,12 @@
 import Link from "next/link";
 import { AtSign, ClipboardList, CreditCard, MapPin, TicketCheck, UsersRound } from "lucide-react";
 
+import { EventAnnouncements } from "@/components/event-announcements";
+import { EventMaterials } from "@/components/event-materials";
+import { EventReminderButton } from "@/components/event-reminder-button";
 import { MetricCard } from "@/components/metric-card";
 import { StatusBadge } from "@/components/status-badge";
-import { getEvent, getEventOrganizers, getEventSetup } from "@/lib/mock-data";
+import { getEvent, getEventAnnouncements, getEventOrganizers, getEventSetup } from "@/lib/mock-data";
 
 type EventPageProps = {
   params: Promise<{ eventId: string }>;
@@ -13,8 +16,15 @@ export default async function EventPage({ params }: EventPageProps) {
   const { eventId } = await params;
   const event = getEvent(eventId);
   const setup = getEventSetup(eventId);
+  const announcements = getEventAnnouncements(eventId);
   const organizers = getEventOrganizers(eventId);
   const remaining = event.capacity - event.registered;
+  const canRegister = setup.setupStatus === "报名已开放";
+  const primaryAction = canRegister ? "登录并报名" : "提交数调和地点偏好";
+  const primaryActionHref = `/events/${event.id}/register?step=${canRegister ? "profile" : "survey"}`;
+  const actionHint = canRegister
+    ? "当前活动已开放正式报名。提交报名后会生成订单号，付款确认后才可选座。"
+    : "当前仍在意向收集阶段。先提交数调和地点偏好，不会占名额，也不会付款。";
 
   return (
     <div className="detail-layout">
@@ -41,16 +51,17 @@ export default async function EventPage({ params }: EventPageProps) {
       </section>
 
       <aside className="action-card">
-        <h2>参与者入口</h2>
-        <div className="step-list">
-          <div><strong>1. 登录后参与</strong><span>同一 GatherUp ID 仅能提交一份数调和地点投票。</span></div>
-          <div><strong>2. 先数调和地点投票</strong><span>正式报名不会在筹备阶段提前开放。</span></div>
-          <div><strong>3. 等组织者开放报名</strong><span>收款二维码配置完成后，才可生成订单和上传付款截图。</span></div>
+        <h2>当前你能做什么</h2>
+        <div className="participant-next-step">
+          <span className="tag">{setup.setupStatus}</span>
+          <strong>{primaryAction}</strong>
+          <p>{actionHint}</p>
         </div>
-        <Link className="button primary full" href={`/events/${event.id}/register`}>
+        <Link className="button primary full" href={primaryActionHref}>
           <TicketCheck size={17} />
-          登录并参与
+          {primaryAction}
         </Link>
+        <EventReminderButton />
         <p className="subtle guard-copy">组织者入口不会在公开活动页暴露，请从组织工作台进入对应活动。</p>
       </aside>
 
@@ -71,6 +82,10 @@ export default async function EventPage({ params }: EventPageProps) {
           <div><dt>前置流程</dt><dd><ClipboardList size={14} /> 数调、地点投票、组织者收款配置</dd></div>
         </dl>
       </section>
+
+      <EventAnnouncements announcements={announcements} />
+
+      <EventMaterials event={event} />
     </div>
   );
 }

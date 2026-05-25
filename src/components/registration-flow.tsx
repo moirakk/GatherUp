@@ -16,13 +16,15 @@ import {
 } from "lucide-react";
 
 import type { EventSetup, GatherEvent } from "@/lib/mock-data";
+import { SeatMap } from "@/components/seat-map";
 
 type RegistrationFlowProps = {
   event: GatherEvent;
+  initialStep?: string;
   setup: EventSetup;
 };
 
-type FlowStep = "role" | "survey" | "location" | "locked" | "profile" | "payment" | "waiting";
+type FlowStep = "role" | "survey" | "location" | "locked" | "profile" | "payment" | "waiting" | "seat";
 
 const flowSteps: Array<{ key: FlowStep; label: string }> = [
   { key: "role", label: "登录身份" },
@@ -30,14 +32,26 @@ const flowSteps: Array<{ key: FlowStep; label: string }> = [
   { key: "location", label: "地点投票" },
   { key: "locked", label: "等待开放" },
   { key: "profile", label: "报名" },
-  { key: "payment", label: "付款确认" }
+  { key: "payment", label: "付款确认" },
+  { key: "seat", label: "选座/入场" }
 ];
 
 const scheduleOptions = ["6月21日 周日 14:00", "6月22日 周一 19:30", "6月23日 周二 19:30"];
 const baseLocationOptions = ["大光明电影院", "百美汇影城 静安店"];
 
-export function RegistrationFlow({ event, setup }: RegistrationFlowProps) {
-  const [step, setStep] = useState<FlowStep>("role");
+function getInitialStep(step: string | undefined, canEnterRegistration: boolean): FlowStep {
+  if (step === "survey" || step === "location" || step === "seat") {
+    return step;
+  }
+
+  if (step === "profile" || step === "payment") {
+    return canEnterRegistration ? step : "locked";
+  }
+
+  return "role";
+}
+
+export function RegistrationFlow({ event, initialStep, setup }: RegistrationFlowProps) {
   const [nickname, setNickname] = useState("比奇堡miki");
   const [contact, setContact] = useState("moirahoumiki@example.com");
   const [quantity, setQuantity] = useState(1);
@@ -50,15 +64,18 @@ export function RegistrationFlow({ event, setup }: RegistrationFlowProps) {
   const orderNumber = `${event.orderPrefix}-0029`;
   const amount = event.price * quantity;
   const isFreeEvent = amount === 0;
-  const registrationOpen = setup.setupStatus === "待开放报名" || setup.setupStatus === "报名已开放";
+  const registrationOpen = setup.setupStatus === "报名已开放";
   const paymentReady = isFreeEvent || setup.paymentQrStatus === "已配置";
   const canEnterRegistration = registrationOpen && paymentReady;
+  const [step, setStep] = useState<FlowStep>(() => getInitialStep(initialStep, canEnterRegistration));
   const participantStage = step === "locked"
     ? "已提交意向，等待报名开放"
     : step === "profile"
       ? "正式报名中，尚未付款"
       : step === "payment"
         ? "已生成订单，待上传付款截图"
+        : step === "seat"
+          ? "付款已确认，可以选座或查看入场信息"
         : step === "waiting"
           ? isFreeEvent ? "报名已提交，等待组织者确认" : "付款截图待审核"
           : "意向收集中，尚未占名额";
@@ -402,6 +419,32 @@ export function RegistrationFlow({ event, setup }: RegistrationFlowProps) {
                 <span>确认前不会开放选座；确认后订单详情页会显示下一步入口。</span>
               </div>
               <Link className="button secondary" href={`/me/orders/${orderNumber}`}>查看订单详情</Link>
+            </div>
+          )}
+
+          {step === "seat" && (
+            <div className="flow-section">
+              <div className="section-heading">
+                <div>
+                  <h2>选座与入场信息</h2>
+                  <p className="subtle">付款确认后才会开放此步骤。当前为原型座位图，用于验证参与者的下一步路径。</p>
+                </div>
+                <TicketCheck size={22} />
+              </div>
+
+              <div className="state-summary">
+                <strong>订单已确认，可以选择座位。</strong>
+                <span>正式版会校验订单人数、锁定座位，并在入场前生成核验凭证。</span>
+              </div>
+
+              <SeatMap />
+
+              <dl className="summary-list">
+                <div><dt>订单号</dt><dd>{orderNumber}</dd></div>
+                <div><dt>活动时间</dt><dd>{event.startsAt}</dd></div>
+                <div><dt>场地</dt><dd>{event.city} · {event.venue}</dd></div>
+                <div><dt>入场核验</dt><dd>凭订单号和 GatherUp ID 核验</dd></div>
+              </dl>
             </div>
           )}
         </article>
