@@ -808,6 +808,22 @@ h3 {
   gap: 12px;
 }
 
+.decision-panel {
+  display: grid;
+  gap: 12px;
+}
+
+.decision-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+}
+
+.decision-row span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .review-toolbar {
   display: flex;
   flex-wrap: wrap;

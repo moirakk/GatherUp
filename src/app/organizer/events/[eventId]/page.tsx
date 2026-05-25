@@ -4,6 +4,7 @@ import { AtSign, CalendarCheck, CircleDollarSign, MapPinned, QrCode, UsersRound 
 import { MetricCard } from "@/components/metric-card";
 import { OrganizerEventActions } from "@/components/organizer-event-actions";
 import { PaymentReviewTable } from "@/components/payment-review-table";
+import { PollDecisionPanel } from "@/components/poll-decision-panel";
 import { SeatMap } from "@/components/seat-map";
 import { getEvent, getEventOrganizers, getEventRegistrations, getEventSetup } from "@/lib/mock-data";
 
@@ -100,14 +101,7 @@ export default async function OrganizerEventPage({ params }: OrganizerEventPageP
             <h2>数调结果</h2>
             <CalendarCheck size={20} />
           </div>
-          <div className="result-list">
-            {setup.surveyOptions.map((option) => (
-              <div className={option.selected ? "result-row selected" : "result-row"} key={option.label}>
-                <span>{option.label}</span>
-                <strong>{option.votes} 票</strong>
-              </div>
-            ))}
-          </div>
+          <PollDecisionPanel actionLabel="设为最终时间" emptyLabel="最终时间" options={setup.surveyOptions} />
         </article>
 
         <article className="content-card" id="venue-votes">
@@ -115,14 +109,7 @@ export default async function OrganizerEventPage({ params }: OrganizerEventPageP
             <h2>地点投票</h2>
             <MapPinned size={20} />
           </div>
-          <div className="result-list">
-            {setup.venueOptions.map((option) => (
-              <div className={option.selected ? "result-row selected" : "result-row"} key={option.label}>
-                <span>{option.label}</span>
-                <strong>{option.votes} 票</strong>
-              </div>
-            ))}
-          </div>
+          <PollDecisionPanel actionLabel="设为最终地点" emptyLabel="最终地点" options={setup.venueOptions} />
         </article>
 
         <article className="content-card" id="orders">
