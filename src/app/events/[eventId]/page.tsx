@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { AtSign, ClipboardList, CreditCard, MapPin, TicketCheck, UsersRound } from "lucide-react";
 
 import { EventAnnouncements } from "@/components/event-announcements";
@@ -6,7 +7,7 @@ import { EventMaterials } from "@/components/event-materials";
 import { EventReminderButton } from "@/components/event-reminder-button";
 import { MetricCard } from "@/components/metric-card";
 import { StatusBadge } from "@/components/status-badge";
-import { getEvent, getEventAnnouncements, getEventOrganizers, getEventSetup } from "@/lib/mock-data";
+import { findEvent, getEventAnnouncements, getEventOrganizers, getEventSetup } from "@/lib/mock-data";
 
 type EventPageProps = {
   params: Promise<{ eventId: string }>;
@@ -14,7 +15,12 @@ type EventPageProps = {
 
 export default async function EventPage({ params }: EventPageProps) {
   const { eventId } = await params;
-  const event = getEvent(eventId);
+  const event = findEvent(eventId);
+
+  if (!event) {
+    notFound();
+  }
+
   const setup = getEventSetup(eventId);
   const announcements = getEventAnnouncements(eventId);
   const organizers = getEventOrganizers(eventId);

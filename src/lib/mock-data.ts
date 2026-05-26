@@ -391,6 +391,53 @@ export const eventSetups: EventSetup[] = [
       { label: "图书馆报告厅", votes: 72 }
     ],
     nextAction: "免费活动无需收款码，重点处理签到名单和现场动线。"
+  },
+  {
+    eventId: "birthday-cafe-trial",
+    setupStatus: "报名已开放",
+    paymentQrStatus: "已配置",
+    paymentMethod: "微信收款码",
+    surveyOptions: [
+      { label: "7月5日 周日 12:00", votes: 24, selected: true },
+      { label: "7月5日 周日 15:00", votes: 18 },
+      { label: "7月6日 周一 13:00", votes: 11 }
+    ],
+    venueOptions: [
+      { label: "雾岛咖啡", votes: 31, selected: true },
+      { label: "新街口快闪空间", votes: 14 },
+      { label: "玄武区共享会客厅", votes: 9 }
+    ],
+    nextAction: "报名已开放，重点确认分时预约人数和物料发放节奏。"
+  },
+  {
+    eventId: "product-forum",
+    setupStatus: "报名已开放",
+    paymentQrStatus: "已配置",
+    paymentMethod: "银行转账",
+    surveyOptions: [
+      { label: "7月18日 周六 13:30", votes: 42, selected: true },
+      { label: "7月18日 周六 16:00", votes: 25 }
+    ],
+    venueOptions: [
+      { label: "望京会议中心", votes: 48, selected: true },
+      { label: "三里屯共享会议厅", votes: 19 }
+    ],
+    nextAction: "报名与付款审核进行中，后续重点处理签到名单和现场分组。"
+  },
+  {
+    eventId: "friends-hotpot",
+    setupStatus: "报名已开放",
+    paymentQrStatus: "未配置",
+    paymentMethod: "微信收款码",
+    surveyOptions: [
+      { label: "7月20日 周一 18:30", votes: 6, selected: true },
+      { label: "7月21日 周二 19:00", votes: 3 }
+    ],
+    venueOptions: [
+      { label: "玉林路附近", votes: 5, selected: true },
+      { label: "芳草街附近", votes: 2 }
+    ],
+    nextAction: "好友聚会按 AA 记账处理，活动后补充实际支出并生成分摊结果。"
   }
 ];
 
@@ -422,6 +469,13 @@ export const eventFinanceSettings: EventFinanceSetting[] = [
     currency: "CNY",
     revenueSource: "无收入",
     settlementRule: "免费活动只记录支出，便于社团或学校报销。"
+  },
+  {
+    eventId: "product-forum",
+    feeMode: "收费",
+    currency: "CNY",
+    revenueSource: "报名订单",
+    settlementRule: "按企业或个人报名订单确认收入，活动结束后统一核算场地、茶歇和设备支出。"
   },
   {
     eventId: "friends-hotpot",
@@ -751,8 +805,12 @@ export const eventAnnouncements: EventAnnouncement[] = [
   }
 ];
 
+export function findEvent(eventId: string) {
+  return events.find((event) => event.id === eventId);
+}
+
 export function getEvent(eventId: string) {
-  return events.find((event) => event.id === eventId) ?? events[0];
+  return findEvent(eventId) ?? events[0];
 }
 
 export function getEventOrganizers(eventId: string) {
@@ -810,10 +868,18 @@ export function getEventFinanceSummary(eventId: string): EventFinanceSummary {
   };
 }
 
+export function findRegistration(orderNumber: string) {
+  return registrations.find((registration) => registration.orderNumber === orderNumber);
+}
+
 export function getRegistration(orderNumber: string) {
-  return registrations.find((registration) => registration.orderNumber === orderNumber) ?? registrations[0];
+  return findRegistration(orderNumber) ?? registrations[0];
+}
+
+export function findVenue(venueId: string) {
+  return venues.find((venue) => venue.id === venueId);
 }
 
 export function getVenue(venueId: string) {
-  return venues.find((venue) => venue.id === venueId) ?? venues[0];
+  return findVenue(venueId) ?? venues[0];
 }

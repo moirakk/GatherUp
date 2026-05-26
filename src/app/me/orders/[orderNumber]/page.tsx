@@ -1,9 +1,10 @@
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { AlertCircle, Clock3, FileImage, TicketCheck, UsersRound } from "lucide-react";
 
 import { ParticipantOrderActions } from "@/components/participant-order-actions";
 import { StatusBadge } from "@/components/status-badge";
-import { events, getRegistration } from "@/lib/mock-data";
+import { events, findRegistration } from "@/lib/mock-data";
 
 type OrderPageProps = {
   params: Promise<{ orderNumber: string }>;
@@ -11,8 +12,18 @@ type OrderPageProps = {
 
 export default async function OrderPage({ params }: OrderPageProps) {
   const { orderNumber } = await params;
-  const registration = getRegistration(orderNumber);
-  const event = events.find((item) => item.id === registration.eventId) ?? events[0];
+  const registration = findRegistration(orderNumber);
+
+  if (!registration) {
+    notFound();
+  }
+
+  const event = events.find((item) => item.id === registration.eventId);
+
+  if (!event) {
+    notFound();
+  }
+
   const isConfirmed = registration.paymentStatus === "付款已确认";
 
   return (

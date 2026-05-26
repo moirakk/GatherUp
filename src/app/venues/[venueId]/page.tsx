@@ -1,7 +1,8 @@
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { Building2, CalendarCheck, CircleDollarSign, MapPin, MessageSquareText, Star } from "lucide-react";
 
-import { getVenue } from "@/lib/mock-data";
+import { findVenue } from "@/lib/mock-data";
 
 type VenuePageProps = {
   params: Promise<{ venueId: string }>;
@@ -16,7 +17,11 @@ const scoreLabels = {
 
 export default async function VenuePage({ params }: VenuePageProps) {
   const { venueId } = await params;
-  const venue = getVenue(venueId);
+  const venue = findVenue(venueId);
+
+  if (!venue) {
+    notFound();
+  }
 
   return (
     <div className="detail-layout">

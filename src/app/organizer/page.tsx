@@ -2,13 +2,16 @@ import Link from "next/link";
 import { CalendarCheck, CircleDollarSign, MapPinned, Plus, QrCode, ServerCog } from "lucide-react";
 
 import { MetricCard } from "@/components/metric-card";
-import { eventSetups, events, getEventOrganizers } from "@/lib/mock-data";
+import { eventSetups, events, getEventOrganizers, registrations } from "@/lib/mock-data";
 
 export default function OrganizerPage() {
   const activeSetups = eventSetups.filter((setup) => setup.setupStatus !== "报名已开放");
   const paymentReadyCount = eventSetups.filter((setup) => setup.paymentQrStatus === "已配置").length;
+  const pendingPaymentRegistrations = registrations.filter((registration) => registration.paymentStatus === "待审核");
+  const pendingPaymentCount = pendingPaymentRegistrations.length;
   const firstSetupEventId = activeSetups[0]?.eventId ?? events[0].id;
   const firstPaymentEventId = eventSetups.find((setup) => setup.paymentQrStatus === "已配置")?.eventId ?? events[0].id;
+  const firstPendingPaymentEventId = pendingPaymentRegistrations[0]?.eventId ?? firstSetupEventId;
 
   return (
     <>
@@ -33,11 +36,11 @@ export default function OrganizerPage() {
       <section className="metrics-grid">
         <MetricCard label="筹备中活动" value={activeSetups.length} href="#setup-list" />
         <MetricCard label="已配置收款" value={`${paymentReadyCount}/${eventSetups.length}`} href={`/organizer/events/${firstPaymentEventId}/finance`} />
-        <MetricCard label="待审核付款" value={3} href={`/organizer/events/${firstSetupEventId}#orders`} />
+        <MetricCard label="待审核付款" value={pendingPaymentCount} href={`/organizer/events/${firstPendingPaymentEventId}?panel=orders`} />
       </section>
 
       <section className="setup-grid" id="setup-list">
-        {eventSetups.slice(0, 3).map((setup) => {
+        {activeSetups.map((setup) => {
           const event = events.find((item) => item.id === setup.eventId) ?? events[0];
           const selectedTime = setup.surveyOptions.find((option) => option.selected);
           const selectedVenue = setup.venueOptions.find((option) => option.selected);
@@ -77,7 +80,7 @@ export default function OrganizerPage() {
         <div className="table-row header">
           <span>活动</span><span>阶段</span><span>报名</span><span>收款</span><span>操作</span>
         </div>
-        {events.slice(0, 4).map((event) => {
+        {events.map((event) => {
           const setup = eventSetups.find((item) => item.eventId === event.id);
           const organizers = getEventOrganizers(event.id);
 

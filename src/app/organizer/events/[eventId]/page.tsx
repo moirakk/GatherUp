@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { ArrowLeft, AtSign, BellRing, CalendarCheck, CircleDollarSign, MapPinned, Megaphone, QrCode } from "lucide-react";
 
 import { AnnouncementCenter } from "@/components/announcement-center";
@@ -9,7 +10,7 @@ import { PaymentReviewTable } from "@/components/payment-review-table";
 import { PollDecisionPanel } from "@/components/poll-decision-panel";
 import { PromotionCenter } from "@/components/promotion-center";
 import { SeatMap } from "@/components/seat-map";
-import { getEvent, getEventAnnouncements, getEventOrganizers, getEventRegistrations, getEventSetup } from "@/lib/mock-data";
+import { findEvent, getEventAnnouncements, getEventOrganizers, getEventRegistrations, getEventSetup } from "@/lib/mock-data";
 
 type OrganizerEventPageProps = {
   params: Promise<{ eventId: string }>;
@@ -26,7 +27,12 @@ function getPanelId(panel?: string): PanelId | null {
 export default async function OrganizerEventPage({ params, searchParams }: OrganizerEventPageProps) {
   const { eventId } = await params;
   const { panel } = await searchParams;
-  const event = getEvent(eventId);
+  const event = findEvent(eventId);
+
+  if (!event) {
+    notFound();
+  }
+
   const announcements = getEventAnnouncements(eventId);
   const registrations = getEventRegistrations(eventId);
   const setup = getEventSetup(eventId);

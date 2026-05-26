@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { CircleDollarSign, ClipboardList, FileImage, ReceiptText } from "lucide-react";
 
 import { ExpenseLedger } from "@/components/expense-ledger";
@@ -6,7 +7,7 @@ import { FinanceActions } from "@/components/finance-actions";
 import { MetricCard } from "@/components/metric-card";
 import { StatusBadge } from "@/components/status-badge";
 import {
-  getEvent,
+  findEvent,
   getEventExpenses,
   getEventFinanceSetting,
   getEventFinanceSummary,
@@ -23,7 +24,12 @@ function formatMoney(amount: number) {
 
 export default async function FinancePage({ params }: FinancePageProps) {
   const { eventId } = await params;
-  const event = getEvent(eventId);
+  const event = findEvent(eventId);
+
+  if (!event) {
+    notFound();
+  }
+
   const setting = getEventFinanceSetting(eventId);
   const summary = getEventFinanceSummary(eventId);
   const expenses = getEventExpenses(eventId);

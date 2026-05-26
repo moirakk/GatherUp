@@ -1,5 +1,7 @@
+import { notFound } from "next/navigation";
+
 import { RegistrationFlow } from "@/components/registration-flow";
-import { getEvent, getEventSetup } from "@/lib/mock-data";
+import { findEvent, getEventSetup } from "@/lib/mock-data";
 
 type RegisterPageProps = {
   params: Promise<{ eventId: string }>;
@@ -9,7 +11,12 @@ type RegisterPageProps = {
 export default async function RegisterPage({ params, searchParams }: RegisterPageProps) {
   const { eventId } = await params;
   const { step } = await searchParams;
-  const event = getEvent(eventId);
+  const event = findEvent(eventId);
+
+  if (!event) {
+    notFound();
+  }
+
   const setup = getEventSetup(eventId);
 
   return <RegistrationFlow event={event} initialStep={step} setup={setup} />;
