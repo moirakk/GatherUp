@@ -19,6 +19,8 @@ import {
   UsersRound
 } from "lucide-react";
 
+import { saveLocalCreatedEvent } from "@/lib/local-created-events";
+
 const steps = [
   { id: "basic", label: "基础信息", icon: ClipboardList },
   { id: "organizers", label: "组织者", icon: UsersRound },
@@ -188,6 +190,32 @@ function buildPublishChecks(form: EventDraftForm): PublishCheck[] {
   ];
 }
 
+function buildLocalCreatedEvent(form: EventDraftForm) {
+  const draftPayload = buildDraftPayload(form);
+  const safeCode = draftPayload.event.publicCode.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+
+  return {
+    id: `local-${safeCode || Date.now()}`,
+    publicCode: draftPayload.event.publicCode,
+    name: draftPayload.event.name,
+    category: draftPayload.event.category,
+    template: draftPayload.event.template,
+    customTypeLabel: draftPayload.event.customTypeLabel,
+    city: draftPayload.event.city,
+    venue: draftPayload.event.venue,
+    startsAt: draftPayload.event.startsAt,
+    deadline: draftPayload.event.deadline,
+    feeMode: draftPayload.rules.feeMode,
+    price: draftPayload.rules.price,
+    capacity: draftPayload.rules.capacity,
+    paymentMethod: draftPayload.setup.paymentMethod,
+    seatingMode: draftPayload.setup.seatingMode,
+    organizerIds: draftPayload.organizers.map((organizer) => organizer.publicId),
+    setupStatus: "发布检查通过" as const,
+    updatedAt: new Date().toISOString()
+  };
+}
+
 export default function NewEventPage() {
   const [activeStep, setActiveStep] = useState<StepId>("basic");
   const [form, setForm] = useState(initialForm);
@@ -304,7 +332,8 @@ export default function NewEventPage() {
     }
 
     saveDraft();
-    setDraftNotice("发布检查已通过。当前仍是原型，已先保存为本地草稿，接数据库后即可写入真实活动。");
+    saveLocalCreatedEvent(buildLocalCreatedEvent(form));
+    setDraftNotice("发布检查已通过，并已生成本地活动记录。返回组织工作台即可看到它；接数据库后会写入真实活动表。");
   }
 
   function resetDraft() {

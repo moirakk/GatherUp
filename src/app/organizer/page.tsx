@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { CalendarCheck, CircleDollarSign, MapPinned, Plus, QrCode, ServerCog } from "lucide-react";
 
+import { LocalCreatedEventList } from "@/components/local-created-event-list";
 import { MetricCard } from "@/components/metric-card";
 import { eventSetups, events, getEventOrganizers, registrations } from "@/lib/mock-data";
 
@@ -38,6 +39,8 @@ export default function OrganizerPage() {
         <MetricCard label="已配置收款" value={`${paymentReadyCount}/${eventSetups.length}`} href={`/organizer/events/${firstPaymentEventId}/finance`} />
         <MetricCard label="待审核付款" value={pendingPaymentCount} href={`/organizer/events/${firstPendingPaymentEventId}?panel=orders`} />
       </section>
+
+      <LocalCreatedEventList />
 
       <section className="setup-grid" id="setup-list">
         {activeSetups.map((setup) => {
