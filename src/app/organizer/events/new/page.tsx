@@ -2,8 +2,10 @@
 
 import { useEffect, useMemo, useState } from "react";
 import {
+  AlertCircle,
   BadgeCheck,
   CalendarCheck,
+  CheckCircle2,
   ChevronLeft,
   ChevronRight,
   CircleDollarSign,
@@ -69,6 +71,13 @@ const initialForm = {
 
 type EventDraftForm = typeof initialForm;
 
+type PublishCheck = {
+  label: string;
+  detail: string;
+  ok: boolean;
+  step: StepId;
+};
+
 function buildDraftPayload(form: EventDraftForm) {
   const collaboratorIds = form.collaboratorIds
     .split(",")
@@ -119,6 +128,66 @@ function buildDraftPayload(form: EventDraftForm) {
   };
 }
 
+function isPositiveNumber(value: string) {
+  return Number(value) > 0;
+}
+
+function hasText(value: string) {
+  return value.trim().length > 0;
+}
+
+function buildPublishChecks(form: EventDraftForm): PublishCheck[] {
+  const isPaidEvent = form.feeMode !== "免费活动";
+  const needsSeatConfig = form.seatingMode !== "不需要选座";
+  const usesCustomOrderPrefix = form.orderFormat === "自定义前缀 + 流水号";
+
+  return [
+    {
+      label: "活动基础信息",
+      detail: "活动名称、公开 ID、城市和活动说明都需要填写。",
+      ok: hasText(form.name) && form.publicCode.trim().startsWith("GU-") && hasText(form.city) && hasText(form.description),
+      step: "basic"
+    },
+    {
+      label: "组织者身份",
+      detail: "主办 GatherUp ID 需要以 GU- 开头，便于后续权限绑定。",
+      ok: form.ownerId.trim().toUpperCase().startsWith("GU-"),
+      step: "organizers"
+    },
+    {
+      label: "时间和场地",
+      detail: "场地、地址、活动时间、至少一个数调选项和地点选项都需要准备好。",
+      ok:
+        hasText(form.venueName) &&
+        hasText(form.address) &&
+        hasText(form.startsAt) &&
+        [form.surveyOne, form.surveyTwo].some(hasText) &&
+        [form.venueOptionOne, form.venueOptionTwo].some(hasText),
+      step: "venue"
+    },
+    {
+      label: "费用和结算",
+      detail: "收费或 AA 活动需要大于 0 的金额；所有活动都需要结算说明。",
+      ok: hasText(form.settlementRule) && (!isPaidEvent || isPositiveNumber(form.price)),
+      step: "finance"
+    },
+    {
+      label: "报名和订单规则",
+      detail: "人数上限、截止时间和订单编号规则需要可生成；自定义前缀时必须填写前缀。",
+      ok: isPositiveNumber(form.capacity) && hasText(form.deadline) && (!usesCustomOrderPrefix || hasText(form.orderPrefix)),
+      step: "rules"
+    },
+    {
+      label: "收款和选座",
+      detail: "收费活动需要收款方式和付款说明；需要选座时要有排数和每排座位数。",
+      ok:
+        (!isPaidEvent || (form.paymentMethod !== "无需收款" && hasText(form.paymentNote))) &&
+        (!needsSeatConfig || (isPositiveNumber(form.rows) && isPositiveNumber(form.seatsPerRow))),
+      step: "payment"
+    }
+  ];
+}
+
 export default function NewEventPage() {
   const [activeStep, setActiveStep] = useState<StepId>("basic");
   const [form, setForm] = useState(initialForm);
@@ -146,6 +215,9 @@ export default function NewEventPage() {
     ];
   }, [form]);
   const draftPayload = useMemo(() => buildDraftPayload(form), [form]);
+  const publishChecks = useMemo(() => buildPublishChecks(form), [form]);
+  const publishIssueCount = publishChecks.filter((item) => !item.ok).length;
+  const canPublish = publishIssueCount === 0;
 
   useEffect(() => {
     const savedDraft = window.localStorage.getItem(draftStorageKey);
@@ -219,6 +291,20 @@ export default function NewEventPage() {
     window.localStorage.setItem(draftStorageKey, JSON.stringify(form));
     window.localStorage.setItem(draftSavedAtStorageKey, savedAt);
     setDraftNotice(`草稿已保存，保存时间：${savedAt}。`);
+  }
+
+  function simulatePublish() {
+    if (!canPublish) {
+      const firstIssue = publishChecks.find((item) => !item.ok);
+      if (firstIssue) {
+        setActiveStep(firstIssue.step);
+      }
+      setDraftNotice(`还有 ${publishIssueCount} 项发布前检查需要处理。`);
+      return;
+    }
+
+    saveDraft();
+    setDraftNotice("发布检查已通过。当前仍是原型，已先保存为本地草稿，接数据库后即可写入真实活动。");
   }
 
   function resetDraft() {
@@ -405,6 +491,33 @@ export default function NewEventPage() {
 
           {activeStep === "review" && (
             <>
+              <section className={`publish-readiness ${canPublish ? "ready" : "blocked"}`}>
+                <div className="section-heading">
+                  <div>
+                    <h3>发布前检查</h3>
+                    <p className="subtle">
+                      {canPublish ? "所有关键配置都已就绪，可以进入数据库发布环节。" : `还有 ${publishIssueCount} 项需要处理，避免活动发布后再返工。`}
+                    </p>
+                  </div>
+                  {canPublish ? <CheckCircle2 size={20} /> : <AlertCircle size={20} />}
+                </div>
+                <div className="publish-check-list">
+                  {publishChecks.map((check) => (
+                    <button
+                      className={`publish-check-row ${check.ok ? "ok" : "needs-work"}`}
+                      key={check.label}
+                      type="button"
+                      onClick={() => setActiveStep(check.step)}
+                    >
+                      {check.ok ? <CheckCircle2 size={17} /> : <AlertCircle size={17} />}
+                      <span>
+                        <strong>{check.label}</strong>
+                        <small>{check.detail}</small>
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </section>
               <div className="review-grid">
                 {summary.map(([label, value]) => (
                   <div className="result-row" key={label}>
@@ -429,6 +542,11 @@ export default function NewEventPage() {
               {isLastStep ? "保存草稿" : "下一步"}
               {!isLastStep && <ChevronRight size={17} />}
             </button>
+            {isLastStep && (
+              <button className="button primary" type="button" onClick={simulatePublish}>
+                模拟发布检查
+              </button>
+            )}
           </div>
         </article>
 
