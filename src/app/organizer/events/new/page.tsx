@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   BadgeCheck,
   CalendarCheck,
@@ -28,6 +28,9 @@ const steps = [
 ] as const;
 
 type StepId = (typeof steps)[number]["id"];
+
+const draftStorageKey = "gatherup_event_draft_v0_1";
+const draftSavedAtStorageKey = "gatherup_event_draft_saved_at_v0_1";
 
 const initialForm = {
   name: "春季社团招新开放日",
@@ -64,9 +67,63 @@ const initialForm = {
   description: "校园社团联合开放日，支持报名、名单、签到和活动通知。"
 };
 
+type EventDraftForm = typeof initialForm;
+
+function buildDraftPayload(form: EventDraftForm) {
+  const collaboratorIds = form.collaboratorIds
+    .split(",")
+    .map((id) => id.trim())
+    .filter(Boolean);
+
+  return {
+    event: {
+      name: form.name.trim(),
+      publicCode: form.publicCode.trim().toUpperCase(),
+      category: form.category,
+      template: form.template,
+      customTypeLabel: form.customTypeLabel.trim(),
+      city: form.city.trim(),
+      venue: form.venueName.trim(),
+      address: form.address.trim(),
+      startsAt: form.startsAt.trim(),
+      deadline: form.deadline.trim(),
+      description: form.description.trim()
+    },
+    organizers: [
+      { publicId: form.ownerId.trim().toUpperCase(), role: "主办" },
+      ...collaboratorIds.map((publicId) => ({
+        publicId: publicId.toUpperCase(),
+        role: form.collaboratorRole
+      }))
+    ],
+    setup: {
+      surveyOptions: [form.surveyOne, form.surveyTwo].map((label) => label.trim()).filter(Boolean),
+      venueOptions: [form.venueOptionOne, form.venueOptionTwo].map((label) => label.trim()).filter(Boolean),
+      venueSource: form.venueSource,
+      paymentMethod: form.paymentMethod,
+      paymentNote: form.paymentNote.trim(),
+      seatingMode: form.seatingMode,
+      seatMapSource: form.seatMapSource,
+      rows: Number(form.rows) || 0,
+      seatsPerRow: Number(form.seatsPerRow) || 0
+    },
+    rules: {
+      feeMode: form.feeMode,
+      price: Number(form.price) || 0,
+      settlementRule: form.settlementRule.trim(),
+      capacity: Number(form.capacity) || 0,
+      allowMulti: form.allowMulti === "允许",
+      orderFormat: form.orderFormat,
+      orderPrefix: form.orderPrefix.trim().toUpperCase()
+    }
+  };
+}
+
 export default function NewEventPage() {
   const [activeStep, setActiveStep] = useState<StepId>("basic");
   const [form, setForm] = useState(initialForm);
+  const [hasLoadedDraft, setHasLoadedDraft] = useState(false);
+  const [draftNotice, setDraftNotice] = useState("");
   const [shareCopied, setShareCopied] = useState(false);
   const [qrGenerated, setQrGenerated] = useState(false);
   const [seatImageName, setSeatImageName] = useState("");
@@ -88,6 +145,31 @@ export default function NewEventPage() {
       ["座位", form.seatingMode]
     ];
   }, [form]);
+  const draftPayload = useMemo(() => buildDraftPayload(form), [form]);
+
+  useEffect(() => {
+    const savedDraft = window.localStorage.getItem(draftStorageKey);
+    const savedAt = window.localStorage.getItem(draftSavedAtStorageKey);
+
+    if (savedDraft) {
+      try {
+        setForm({ ...initialForm, ...(JSON.parse(savedDraft) as Partial<EventDraftForm>) });
+        setDraftNotice(savedAt ? `已恢复 ${savedAt} 保存的草稿。` : "已恢复上次保存的草稿。");
+      } catch {
+        setDraftNotice("草稿读取失败，已使用默认示例继续。");
+      }
+    }
+
+    setHasLoadedDraft(true);
+  }, []);
+
+  useEffect(() => {
+    if (!hasLoadedDraft) {
+      return;
+    }
+
+    window.localStorage.setItem(draftStorageKey, JSON.stringify(form));
+  }, [form, hasLoadedDraft]);
 
   function updateField(field: keyof typeof form, value: string) {
     setForm((current) => ({ ...current, [field]: value }));
@@ -124,6 +206,26 @@ export default function NewEventPage() {
     if (!isLastStep) {
       setActiveStep(steps[activeIndex + 1].id);
     }
+  }
+
+  function saveDraft() {
+    const savedAt = new Date().toLocaleString("zh-CN", {
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit"
+    });
+
+    window.localStorage.setItem(draftStorageKey, JSON.stringify(form));
+    window.localStorage.setItem(draftSavedAtStorageKey, savedAt);
+    setDraftNotice(`草稿已保存，保存时间：${savedAt}。`);
+  }
+
+  function resetDraft() {
+    window.localStorage.removeItem(draftStorageKey);
+    window.localStorage.removeItem(draftSavedAtStorageKey);
+    setForm(initialForm);
+    setDraftNotice("已清空本地草稿，并恢复默认示例。");
   }
 
   return (
@@ -166,6 +268,8 @@ export default function NewEventPage() {
             </div>
             <ActiveStepIcon size={22} />
           </div>
+
+          {draftNotice && <p className="inline-notice">{draftNotice}</p>}
 
           {activeStep === "basic" && (
             <div className="form-grid two-column">
@@ -300,14 +404,20 @@ export default function NewEventPage() {
           )}
 
           {activeStep === "review" && (
-            <div className="review-grid">
-              {summary.map(([label, value]) => (
-                <div className="result-row" key={label}>
-                  <span>{label}</span>
-                  <strong>{value}</strong>
-                </div>
-              ))}
-            </div>
+            <>
+              <div className="review-grid">
+                {summary.map(([label, value]) => (
+                  <div className="result-row" key={label}>
+                    <span>{label}</span>
+                    <strong>{value}</strong>
+                  </div>
+                ))}
+              </div>
+              <div className="draft-payload-preview">
+                <strong>草稿数据预览</strong>
+                <pre>{JSON.stringify(draftPayload, null, 2)}</pre>
+              </div>
+            </>
           )}
 
           <div className="wizard-actions">
@@ -315,7 +425,7 @@ export default function NewEventPage() {
               <ChevronLeft size={17} />
               上一步
             </button>
-            <button className="button primary" type="button" onClick={isLastStep ? undefined : goToNextStep}>
+            <button className="button primary" type="button" onClick={isLastStep ? saveDraft : goToNextStep}>
               {isLastStep ? "保存草稿" : "下一步"}
               {!isLastStep && <ChevronRight size={17} />}
             </button>
@@ -332,6 +442,9 @@ export default function NewEventPage() {
               </div>
             ))}
           </dl>
+          <button className="button secondary full" type="button" onClick={resetDraft}>
+            清空本地草稿
+          </button>
         </aside>
       </section>
     </>

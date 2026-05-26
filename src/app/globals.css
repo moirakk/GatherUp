@@ -1474,6 +1474,34 @@ h3 {
   gap: 10px;
 }
 
+.draft-payload-preview {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid rgba(143, 163, 145, 0.34);
+  border-radius: 8px;
+  background: #f7f5f0;
+}
+
+.draft-payload-preview strong {
+  font-size: 14px;
+}
+
+.draft-payload-preview pre {
+  max-height: 260px;
+  margin: 0;
+  overflow: auto;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 253, 249, 0.84);
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
 .progress-rail {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(92px, 1fr));
