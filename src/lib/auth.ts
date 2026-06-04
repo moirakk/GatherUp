@@ -128,6 +128,18 @@ export const USER_COOKIE = "gatherup_user";
 export const NAME_COOKIE = "gatherup_name";
 export const ID_COOKIE = "gatherup_id";
 
+export function getSafeInternalPath(value: string | null | undefined, fallback = "/") {
+  if (!value || !value.startsWith("/") || value.startsWith("//") || value.startsWith("/login")) {
+    return fallback;
+  }
+
+  return value;
+}
+
+export function isPublicRoutePath(pathname: string) {
+  return pathname === "/login" || /^\/events\/[^/]+\/?$/.test(pathname);
+}
+
 export const demoAccounts: DemoAccount[] = [
   {
     email: "miki@gatherup.local",

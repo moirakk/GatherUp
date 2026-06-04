@@ -1,5 +1,6 @@
--- GatherUp v0.1 Supabase/PostgreSQL schema draft.
--- This file is intended as a starting point for the real app database.
+-- GatherUp commercial v0.1 Supabase/PostgreSQL schema draft.
+-- This file is intended as the starting point for the real app database.
+-- It still needs to be executed and tuned in a real Supabase project before production use.
 
 create extension if not exists pgcrypto;
 
@@ -24,27 +25,44 @@ create type event_template as enum (
 create type event_visibility as enum ('public', 'unlisted');
 create type event_status as enum (
   'draft',
-  'registration',
-  'payment',
-  'seating',
-  'confirmed',
-  'finished',
+  'interest_collecting',
+  'registration_scheduled',
+  'registration_open',
+  'registration_closed',
+  'payment_reviewing',
+  'seat_selection_scheduled',
+  'seat_selection_open',
+  'ready',
+  'completed',
   'cancelled'
 );
 
 create type registration_status as enum (
-  'pending',
+  'draft',
+  'pending_review',
+  'awaiting_payment',
+  'payment_submitted',
+  'payment_rejected_resubmittable',
+  'partial_paid_needs_topup',
   'confirmed',
   'waitlisted',
-  'cancelled'
+  'cancelled',
+  'expired',
+  'refunding',
+  'refunded'
 );
 
 create type payment_status as enum (
   'unpaid',
   'submitted',
+  'partially_confirmed',
+  'topup_required',
   'confirmed',
   'rejected',
-  'refunded'
+  'overpaid',
+  'refunding',
+  'refunded',
+  'disputed'
 );
 
 create type seat_status as enum (
@@ -65,9 +83,9 @@ create type order_number_format as enum (
 
 create type event_organizer_role as enum (
   'owner',
-  'co_host',
+  'cohost',
   'finance',
-  'checkin',
+  'staff',
   'viewer'
 );
 
@@ -93,6 +111,181 @@ create type auth_identity_provider as enum (
   'kakao'
 );
 
+create type organizer_verification_status as enum (
+  'not_applied',
+  'pending',
+  'light_verified',
+  'enhanced_verified',
+  'rejected',
+  'suspended'
+);
+
+create type review_target_type as enum (
+  'organizer_verification',
+  'event',
+  'collection_code',
+  'venue_record',
+  'complaint',
+  'refund_dispute'
+);
+
+create type review_status as enum (
+  'not_required',
+  'pending',
+  'approved',
+  'rejected',
+  'changes_requested',
+  'suspended'
+);
+
+create type price_visibility as enum ('public', 'login_required');
+create type location_visibility as enum (
+  'public',
+  'login_required',
+  'registered_only',
+  'confirmed_only',
+  'hidden_until_announcement'
+);
+
+create type seat_selection_mode as enum (
+  'none',
+  'after_payment_confirmation',
+  'scheduled',
+  'manual'
+);
+
+create type collection_code_status as enum (
+  'draft',
+  'active',
+  'pending_review',
+  'rejected',
+  'archived'
+);
+
+create type payment_proof_type as enum (
+  'initial',
+  'topup',
+  'difference_adjustment'
+);
+
+create type payment_proof_status as enum (
+  'submitted',
+  'confirmed',
+  'rejected',
+  'voided'
+);
+
+create type refund_status as enum (
+  'requested',
+  'approved',
+  'rejected',
+  'paid_offline',
+  'proof_uploaded',
+  'confirmed',
+  'disputed',
+  'cancelled'
+);
+
+create type waitlist_status as enum (
+  'waiting',
+  'invited',
+  'converted',
+  'expired',
+  'cancelled',
+  'skipped'
+);
+
+create type seat_lock_status as enum (
+  'active',
+  'confirmed',
+  'expired',
+  'released'
+);
+
+create type check_in_status as enum (
+  'not_arrived',
+  'arrived',
+  'exception'
+);
+
+create type notification_channel as enum (
+  'in_app',
+  'email',
+  'wechat'
+);
+
+create type notification_delivery_status as enum (
+  'pending',
+  'sent',
+  'failed',
+  'cancelled'
+);
+
+create type activity_material_type as enum (
+  'image',
+  'pdf',
+  'document_link',
+  'external_link',
+  'other'
+);
+
+create type activity_material_visibility as enum (
+  'participant',
+  'organizer_internal'
+);
+
+create type export_status as enum (
+  'requested',
+  'processing',
+  'ready',
+  'failed',
+  'expired'
+);
+
+create type complaint_target_type as enum (
+  'event',
+  'organizer',
+  'order',
+  'refund',
+  'notification',
+  'venue'
+);
+
+create type complaint_status as enum (
+  'pending',
+  'in_progress',
+  'resolved',
+  'rejected',
+  'needs_more_information'
+);
+
+create type admin_role as enum (
+  'super_admin',
+  'operations',
+  'risk',
+  'finance',
+  'support'
+);
+
+create type admin_status as enum (
+  'active',
+  'disabled'
+);
+
+create type platform_setting_value_type as enum (
+  'string',
+  'integer',
+  'boolean',
+  'json'
+);
+
+create type audit_risk_level as enum (
+  'low',
+  'medium',
+  'high',
+  'critical'
+);
+
 create table public.users (
   id uuid primary key default gen_random_uuid(),
   auth_user_id uuid unique,
@@ -107,6 +300,16 @@ create table public.users (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   constraint users_public_id_format check (public_id ~ '^GU-[A-Z0-9-]{3,18}$')
+);
+
+create table public.user_public_id_history (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references public.users(id) on delete cascade,
+  old_public_id text,
+  new_public_id text not null,
+  changed_by uuid references public.users(id) on delete set null,
+  change_reason text,
+  created_at timestamptz not null default now()
 );
 
 create table public.user_auth_identities (
@@ -129,6 +332,25 @@ create table public.user_auth_identities (
   constraint user_auth_identities_provider_user_id_not_empty check (length(trim(provider_user_id)) > 0)
 );
 
+create table public.organizer_verifications (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null unique references public.users(id) on delete cascade,
+  status organizer_verification_status not null default 'not_applied',
+  contact_email text,
+  contact_phone text,
+  community_account text,
+  past_event_summary text,
+  submitted_materials jsonb not null default '{}'::jsonb,
+  reviewed_by uuid references public.users(id) on delete set null,
+  reviewed_at timestamptz,
+  review_note text,
+  paid_event_count integer not null default 0 check (paid_event_count >= 0),
+  successful_paid_event_count integer not null default 0 check (successful_paid_event_count >= 0),
+  force_review_required boolean not null default false,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
 create table public.events (
   id uuid primary key default gen_random_uuid(),
   public_code text not null unique,
@@ -138,20 +360,43 @@ create table public.events (
   template event_template not null default 'basic_registration',
   custom_type_label text,
   city text not null,
+  country_region text,
+  district text,
   venue_name text not null,
   address text,
+  map_url text,
+  location_note text,
+  timezone text not null default 'Asia/Shanghai',
   starts_at timestamptz not null,
+  ends_at timestamptz,
+  registration_starts_at timestamptz,
   registration_deadline timestamptz,
   capacity integer not null check (capacity > 0),
   price_cents integer not null check (price_cents >= 0),
   currency text not null default 'CNY',
+  price_visibility price_visibility not null default 'public',
+  location_visibility location_visibility not null default 'public',
   description text,
   payment_instructions text,
   organizer_note text,
-  visibility event_visibility not null default 'public',
+  visibility event_visibility not null default 'unlisted',
   allow_multi_person_registration boolean not null default false,
   max_people_per_registration integer not null default 1 check (max_people_per_registration > 0),
+  allow_temporary_attendees boolean not null default false,
+  allow_multiple_orders_per_user boolean not null default false,
   accept_waitlist boolean not null default true,
+  waitlist_invitation_minutes integer not null default 30 check (waitlist_invitation_minutes > 0),
+  waitlist_expiry_behavior text not null default 'exit_waitlist',
+  capacity_hold_minutes integer not null default 30 check (capacity_hold_minutes > 0),
+  payment_resubmission_minutes integer not null default 60 check (payment_resubmission_minutes > 0),
+  seat_selection_mode seat_selection_mode not null default 'none',
+  seat_selection_opens_at timestamptz,
+  seat_lock_minutes integer not null default 5 check (seat_lock_minutes > 0),
+  requires_registration_review boolean not null default false,
+  cancellation_rule text,
+  refund_rule text,
+  terms_version text,
+  review_status review_status not null default 'not_required',
   order_number_format order_number_format not null default 'event_code_sequence',
   order_number_prefix text,
   status event_status not null default 'draft',
@@ -168,11 +413,46 @@ create table public.event_organizers (
   id uuid primary key default gen_random_uuid(),
   event_id uuid not null references public.events(id) on delete cascade,
   user_id uuid not null references public.users(id) on delete cascade,
-  role event_organizer_role not null default 'co_host',
+  role event_organizer_role not null default 'cohost',
+  permissions jsonb not null default '{}'::jsonb,
   invited_by uuid references public.users(id) on delete set null,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   unique (event_id, user_id)
+);
+
+create table public.review_requests (
+  id uuid primary key default gen_random_uuid(),
+  target_type review_target_type not null,
+  target_id uuid not null,
+  event_id uuid references public.events(id) on delete cascade,
+  requester_id uuid references public.users(id) on delete set null,
+  status review_status not null default 'pending',
+  reason text,
+  submitted_snapshot jsonb not null default '{}'::jsonb,
+  reviewed_by uuid references public.users(id) on delete set null,
+  reviewed_at timestamptz,
+  review_note text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table public.collection_code_versions (
+  id uuid primary key default gen_random_uuid(),
+  event_id uuid not null references public.events(id) on delete cascade,
+  version_number integer not null check (version_number > 0),
+  status collection_code_status not null default 'draft',
+  method text not null default 'wechat',
+  display_name text,
+  qr_file_url text,
+  instructions text,
+  uploaded_by uuid not null references public.users(id) on delete restrict,
+  change_reason text,
+  review_request_id uuid references public.review_requests(id) on delete set null,
+  active_from timestamptz,
+  archived_at timestamptz,
+  created_at timestamptz not null default now(),
+  unique (event_id, version_number)
 );
 
 create table public.event_finance_settings (
@@ -215,26 +495,45 @@ create table public.registrations (
   contact_value text not null,
   quantity integer not null check (quantity > 0),
   amount_due_cents integer not null check (amount_due_cents >= 0),
-  status registration_status not null default 'pending',
+  status registration_status not null default 'awaiting_payment',
+  collection_code_version_id uuid references public.collection_code_versions(id) on delete set null,
+  held_until timestamptz,
+  payment_due_at timestamptz,
+  payment_resubmission_due_at timestamptz,
+  confirmed_at timestamptz,
+  cancelled_at timestamptz,
+  expires_at timestamptz,
+  cancellation_reason text,
+  registration_answers jsonb not null default '{}'::jsonb,
+  accepted_terms_version text,
+  accepted_terms_at timestamptz,
   accepts_waitlist boolean not null default true,
   participant_note text,
   organizer_note text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  unique (event_id, order_number),
-  unique (event_id, user_id)
+  unique (event_id, order_number)
 );
 
 create table public.registration_attendees (
   id uuid primary key default gen_random_uuid(),
   registration_id uuid not null references public.registrations(id) on delete cascade,
   user_id uuid references public.users(id) on delete set null,
-  public_id text not null,
+  public_id text,
   display_name text,
   is_primary boolean not null default false,
+  is_temporary boolean not null default false,
+  contact_note text,
+  check_in_status check_in_status not null default 'not_arrived',
+  checked_in_at timestamptz,
+  checked_in_by uuid references public.users(id) on delete set null,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  unique (registration_id, public_id)
+  unique (registration_id, public_id),
+  constraint registration_attendees_identity_required check (
+    (is_temporary = false and public_id is not null)
+    or (is_temporary = true and display_name is not null)
+  )
 );
 
 create unique index registration_attendees_one_primary
@@ -247,6 +546,9 @@ create table public.payments (
   order_number text not null,
   amount_cents integer not null check (amount_cents >= 0),
   status payment_status not null default 'unpaid',
+  amount_confirmed_cents integer not null default 0 check (amount_confirmed_cents >= 0),
+  amount_reported_cents integer check (amount_reported_cents is null or amount_reported_cents >= 0),
+  amount_difference_cents integer not null default 0,
   proof_url text,
   submitted_at timestamptz,
   confirmed_at timestamptz,
@@ -259,9 +561,63 @@ create table public.payments (
 create table public.payment_proofs (
   id uuid primary key default gen_random_uuid(),
   payment_id uuid not null references public.payments(id) on delete cascade,
+  registration_id uuid references public.registrations(id) on delete cascade,
+  proof_type payment_proof_type not null default 'initial',
+  status payment_proof_status not null default 'submitted',
   file_url text not null,
+  amount_reported_cents integer check (amount_reported_cents is null or amount_reported_cents >= 0),
+  amount_confirmed_cents integer check (amount_confirmed_cents is null or amount_confirmed_cents >= 0),
   uploaded_by uuid not null references public.users(id) on delete restrict,
+  reviewed_by uuid references public.users(id) on delete set null,
+  reviewed_at timestamptz,
+  review_note text,
+  rejection_reason text,
   created_at timestamptz not null default now()
+);
+
+create table public.refund_requests (
+  id uuid primary key default gen_random_uuid(),
+  registration_id uuid not null references public.registrations(id) on delete cascade,
+  payment_id uuid references public.payments(id) on delete set null,
+  requested_by uuid not null references public.users(id) on delete restrict,
+  status refund_status not null default 'requested',
+  requested_amount_cents integer not null check (requested_amount_cents >= 0),
+  approved_amount_cents integer check (approved_amount_cents is null or approved_amount_cents >= 0),
+  reason text not null,
+  organizer_note text,
+  reviewed_by uuid references public.users(id) on delete set null,
+  reviewed_at timestamptz,
+  paid_at timestamptz,
+  confirmed_at timestamptz,
+  disputed_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table public.refund_proofs (
+  id uuid primary key default gen_random_uuid(),
+  refund_request_id uuid not null references public.refund_requests(id) on delete cascade,
+  file_url text not null,
+  amount_cents integer check (amount_cents is null or amount_cents >= 0),
+  uploaded_by uuid not null references public.users(id) on delete restrict,
+  uploaded_at timestamptz not null default now(),
+  note text
+);
+
+create table public.waitlist_entries (
+  id uuid primary key default gen_random_uuid(),
+  event_id uuid not null references public.events(id) on delete cascade,
+  user_id uuid not null references public.users(id) on delete restrict,
+  desired_quantity integer not null default 1 check (desired_quantity > 0),
+  status waitlist_status not null default 'waiting',
+  priority_position integer,
+  note text,
+  invited_at timestamptz,
+  invitation_expires_at timestamptz,
+  converted_registration_id uuid references public.registrations(id) on delete set null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (event_id, user_id)
 );
 
 create table public.seats (
@@ -276,6 +632,23 @@ create table public.seats (
   unique (event_id, display_label)
 );
 
+create table public.seat_locks (
+  id uuid primary key default gen_random_uuid(),
+  event_id uuid not null references public.events(id) on delete cascade,
+  seat_id uuid not null references public.seats(id) on delete cascade,
+  registration_id uuid not null references public.registrations(id) on delete cascade,
+  locked_by uuid not null references public.users(id) on delete restrict,
+  status seat_lock_status not null default 'active',
+  expires_at timestamptz not null,
+  confirmed_at timestamptz,
+  released_at timestamptz,
+  created_at timestamptz not null default now()
+);
+
+create unique index seat_locks_one_active_per_seat
+  on public.seat_locks(event_id, seat_id)
+  where status = 'active';
+
 create table public.seat_assignments (
   id uuid primary key default gen_random_uuid(),
   event_id uuid not null references public.events(id) on delete cascade,
@@ -286,6 +659,17 @@ create table public.seat_assignments (
   created_at timestamptz not null default now(),
   unique (event_id, seat_id),
   unique (attendee_id)
+);
+
+create table public.check_ins (
+  id uuid primary key default gen_random_uuid(),
+  event_id uuid not null references public.events(id) on delete cascade,
+  registration_id uuid not null references public.registrations(id) on delete cascade,
+  attendee_id uuid references public.registration_attendees(id) on delete cascade,
+  status check_in_status not null default 'arrived',
+  checked_in_by uuid not null references public.users(id) on delete restrict,
+  checked_in_at timestamptz not null default now(),
+  note text
 );
 
 create table public.announcements (
@@ -299,34 +683,140 @@ create table public.announcements (
   updated_at timestamptz not null default now()
 );
 
+create table public.notification_deliveries (
+  id uuid primary key default gen_random_uuid(),
+  announcement_id uuid references public.announcements(id) on delete cascade,
+  event_id uuid references public.events(id) on delete cascade,
+  recipient_id uuid not null references public.users(id) on delete cascade,
+  channel notification_channel not null,
+  status notification_delivery_status not null default 'pending',
+  provider_message_id text,
+  error_message text,
+  sent_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table public.activity_materials (
+  id uuid primary key default gen_random_uuid(),
+  event_id uuid not null references public.events(id) on delete cascade,
+  title text not null,
+  material_type activity_material_type not null default 'other',
+  visibility activity_material_visibility not null default 'participant',
+  file_url text,
+  external_url text,
+  uploaded_by uuid not null references public.users(id) on delete restrict,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table public.export_jobs (
+  id uuid primary key default gen_random_uuid(),
+  event_id uuid not null references public.events(id) on delete cascade,
+  requested_by uuid not null references public.users(id) on delete restrict,
+  export_type text not null,
+  field_scope jsonb not null default '[]'::jsonb,
+  status export_status not null default 'requested',
+  file_url text,
+  error_message text,
+  created_at timestamptz not null default now(),
+  completed_at timestamptz,
+  expires_at timestamptz
+);
+
+create table public.complaints (
+  id uuid primary key default gen_random_uuid(),
+  target_type complaint_target_type not null,
+  target_id uuid not null,
+  event_id uuid references public.events(id) on delete set null,
+  registration_id uuid references public.registrations(id) on delete set null,
+  submitted_by uuid not null references public.users(id) on delete restrict,
+  status complaint_status not null default 'pending',
+  category text not null,
+  description text not null,
+  evidence jsonb not null default '[]'::jsonb,
+  assigned_to uuid references public.users(id) on delete set null,
+  resolved_at timestamptz,
+  resolution_note text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table public.platform_settings (
+  key text primary key,
+  value jsonb not null,
+  value_type platform_setting_value_type not null default 'json',
+  description text,
+  updated_by uuid references public.users(id) on delete set null,
+  updated_at timestamptz not null default now()
+);
+
+create table public.admin_users (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null unique references public.users(id) on delete cascade,
+  role admin_role not null default 'super_admin',
+  status admin_status not null default 'active',
+  granted_by uuid references public.users(id) on delete set null,
+  granted_at timestamptz not null default now(),
+  disabled_at timestamptz
+);
+
 create table public.audit_logs (
   id uuid primary key default gen_random_uuid(),
   actor_id uuid references public.users(id) on delete set null,
+  actor_role text,
   event_id uuid references public.events(id) on delete cascade,
   target_type text not null,
   target_id uuid,
   action text not null,
+  risk_level audit_risk_level not null default 'low',
+  reason text,
+  before_snapshot jsonb,
+  after_snapshot jsonb,
   metadata jsonb not null default '{}'::jsonb,
+  ip_address inet,
+  user_agent text,
   created_at timestamptz not null default now()
 );
 
 create index events_organizer_id_idx on public.events(organizer_id);
 create index events_public_code_idx on public.events(public_code);
+create index events_review_status_idx on public.events(review_status);
 create index event_organizers_event_id_idx on public.event_organizers(event_id);
 create index event_organizers_user_id_idx on public.event_organizers(user_id);
 create index event_expenses_event_id_idx on public.event_expenses(event_id);
 create index event_expenses_status_idx on public.event_expenses(status);
 create index user_auth_identities_user_id_idx on public.user_auth_identities(user_id);
+create index user_public_id_history_user_id_idx on public.user_public_id_history(user_id);
+create index organizer_verifications_user_id_status_idx on public.organizer_verifications(user_id, status);
 create index events_visibility_status_idx on public.events(visibility, status);
 create index events_category_template_idx on public.events(category, template);
 create index events_city_starts_at_idx on public.events(city, starts_at);
+create index review_requests_target_idx on public.review_requests(target_type, target_id);
+create index review_requests_status_idx on public.review_requests(status);
+create index collection_code_versions_event_status_idx on public.collection_code_versions(event_id, status);
 create index registrations_event_id_idx on public.registrations(event_id);
 create index registrations_user_id_idx on public.registrations(user_id);
+create index registrations_status_idx on public.registrations(status);
+create index registrations_collection_code_version_idx on public.registrations(collection_code_version_id);
 create index registration_attendees_registration_id_idx on public.registration_attendees(registration_id);
 create index payments_status_idx on public.payments(status);
+create index payment_proofs_payment_status_idx on public.payment_proofs(payment_id, status);
+create index refund_requests_registration_status_idx on public.refund_requests(registration_id, status);
+create index waitlist_entries_event_status_idx on public.waitlist_entries(event_id, status);
 create index seats_event_id_status_idx on public.seats(event_id, status);
+create index seat_locks_event_registration_idx on public.seat_locks(event_id, registration_id);
 create index seat_assignments_registration_id_idx on public.seat_assignments(registration_id);
+create index check_ins_event_registration_idx on public.check_ins(event_id, registration_id);
 create index announcements_event_id_status_idx on public.announcements(event_id, status);
+create index notification_deliveries_recipient_status_idx on public.notification_deliveries(recipient_id, status);
+create index activity_materials_event_visibility_idx on public.activity_materials(event_id, visibility);
+create index export_jobs_event_status_idx on public.export_jobs(event_id, status);
+create index complaints_status_idx on public.complaints(status);
+create index complaints_target_idx on public.complaints(target_type, target_id);
+create index admin_users_user_id_status_idx on public.admin_users(user_id, status);
+create index audit_logs_target_idx on public.audit_logs(target_type, target_id);
+create index audit_logs_actor_created_at_idx on public.audit_logs(actor_id, created_at);
 
 create or replace function public.set_updated_at()
 returns trigger as $$
@@ -344,12 +834,20 @@ create trigger user_auth_identities_set_updated_at
   before update on public.user_auth_identities
   for each row execute function public.set_updated_at();
 
+create trigger organizer_verifications_set_updated_at
+  before update on public.organizer_verifications
+  for each row execute function public.set_updated_at();
+
 create trigger events_set_updated_at
   before update on public.events
   for each row execute function public.set_updated_at();
 
 create trigger event_organizers_set_updated_at
   before update on public.event_organizers
+  for each row execute function public.set_updated_at();
+
+create trigger review_requests_set_updated_at
+  before update on public.review_requests
   for each row execute function public.set_updated_at();
 
 create trigger event_finance_settings_set_updated_at
@@ -376,6 +874,14 @@ create trigger payments_set_updated_at
   before update on public.payments
   for each row execute function public.set_updated_at();
 
+create trigger refund_requests_set_updated_at
+  before update on public.refund_requests
+  for each row execute function public.set_updated_at();
+
+create trigger waitlist_entries_set_updated_at
+  before update on public.waitlist_entries
+  for each row execute function public.set_updated_at();
+
 create trigger seats_set_updated_at
   before update on public.seats
   for each row execute function public.set_updated_at();
@@ -384,8 +890,22 @@ create trigger announcements_set_updated_at
   before update on public.announcements
   for each row execute function public.set_updated_at();
 
+create trigger notification_deliveries_set_updated_at
+  before update on public.notification_deliveries
+  for each row execute function public.set_updated_at();
+
+create trigger activity_materials_set_updated_at
+  before update on public.activity_materials
+  for each row execute function public.set_updated_at();
+
+create trigger complaints_set_updated_at
+  before update on public.complaints
+  for each row execute function public.set_updated_at();
+
 create or replace function public.prevent_public_id_over_limit()
 returns trigger as $$
+declare
+  actor_user_id uuid;
 begin
   if old.public_id is distinct from new.public_id then
     if old.public_id_change_count >= 2 then
@@ -393,6 +913,26 @@ begin
     end if;
 
     new.public_id_change_count = old.public_id_change_count + 1;
+
+    select id
+    into actor_user_id
+    from public.users
+    where auth_user_id = auth.uid()
+    limit 1;
+
+    insert into public.user_public_id_history (
+      user_id,
+      old_public_id,
+      new_public_id,
+      changed_by,
+      change_reason
+    ) values (
+      old.id,
+      old.public_id,
+      new.public_id,
+      actor_user_id,
+      'user_update'
+    );
   end if;
 
   return new;
@@ -471,7 +1011,7 @@ returns boolean as $$
     from public.event_organizers eo
     where eo.event_id = target_event_id
       and eo.user_id = public.current_app_user_id()
-      and eo.role in ('owner', 'co_host', 'finance', 'checkin')
+      and eo.role in ('owner', 'cohost', 'finance', 'staff')
   );
 $$ language sql stable security definer set search_path = public;
 
@@ -488,7 +1028,7 @@ returns boolean as $$
     from public.event_organizers eo
     where eo.event_id = target_event_id
       and eo.user_id = public.current_app_user_id()
-      and eo.role in ('owner', 'co_host')
+      and eo.role in ('owner', 'cohost')
   );
 $$ language sql stable security definer set search_path = public;
 
@@ -505,14 +1045,65 @@ returns boolean as $$
     from public.event_organizers eo
     where eo.event_id = target_event_id
       and eo.user_id = public.current_app_user_id()
-      and eo.role in ('owner', 'co_host', 'finance')
+      and eo.role in ('owner', 'cohost', 'finance')
+  );
+$$ language sql stable security definer set search_path = public;
+
+create or replace function public.can_manage_event_payments(target_event_id uuid)
+returns boolean as $$
+  select exists (
+    select 1
+    from public.events e
+    where e.id = target_event_id
+      and e.organizer_id = public.current_app_user_id()
+  )
+  or exists (
+    select 1
+    from public.event_organizers eo
+    where eo.event_id = target_event_id
+      and eo.user_id = public.current_app_user_id()
+      and (
+        eo.role in ('owner', 'finance')
+        or (eo.role = 'cohost' and coalesce((eo.permissions ->> 'can_manage_payments')::boolean, false))
+      )
+  );
+$$ language sql stable security definer set search_path = public;
+
+create or replace function public.can_handle_event_refunds(target_event_id uuid)
+returns boolean as $$
+  select exists (
+    select 1
+    from public.events e
+    where e.id = target_event_id
+      and e.organizer_id = public.current_app_user_id()
+  )
+  or exists (
+    select 1
+    from public.event_organizers eo
+    where eo.event_id = target_event_id
+      and eo.user_id = public.current_app_user_id()
+      and eo.role in ('owner', 'finance')
+  );
+$$ language sql stable security definer set search_path = public;
+
+create or replace function public.is_platform_admin()
+returns boolean as $$
+  select exists (
+    select 1
+    from public.admin_users au
+    where au.user_id = public.current_app_user_id()
+      and au.status = 'active'
   );
 $$ language sql stable security definer set search_path = public;
 
 alter table public.users enable row level security;
+alter table public.user_public_id_history enable row level security;
 alter table public.user_auth_identities enable row level security;
+alter table public.organizer_verifications enable row level security;
 alter table public.events enable row level security;
 alter table public.event_organizers enable row level security;
+alter table public.review_requests enable row level security;
+alter table public.collection_code_versions enable row level security;
 alter table public.event_finance_settings enable row level security;
 alter table public.event_expenses enable row level security;
 alter table public.event_order_counters enable row level security;
@@ -520,9 +1111,20 @@ alter table public.registrations enable row level security;
 alter table public.registration_attendees enable row level security;
 alter table public.payments enable row level security;
 alter table public.payment_proofs enable row level security;
+alter table public.refund_requests enable row level security;
+alter table public.refund_proofs enable row level security;
+alter table public.waitlist_entries enable row level security;
 alter table public.seats enable row level security;
+alter table public.seat_locks enable row level security;
 alter table public.seat_assignments enable row level security;
+alter table public.check_ins enable row level security;
 alter table public.announcements enable row level security;
+alter table public.notification_deliveries enable row level security;
+alter table public.activity_materials enable row level security;
+alter table public.export_jobs enable row level security;
+alter table public.complaints enable row level security;
+alter table public.platform_settings enable row level security;
+alter table public.admin_users enable row level security;
 alter table public.audit_logs enable row level security;
 
 -- RLS draft policies.
@@ -541,6 +1143,10 @@ create policy "users can update their own profile"
   using (auth.uid() = auth_user_id)
   with check (auth.uid() = auth_user_id);
 
+create policy "users can read own public id history"
+  on public.user_public_id_history for select
+  using (user_id = public.current_app_user_id() or public.is_platform_admin());
+
 create policy "users can read their own auth identities"
   on public.user_auth_identities for select
   using (user_id in (
@@ -556,9 +1162,22 @@ create policy "users can manage their own auth identities"
     select id from public.users where auth_user_id = auth.uid()
   ));
 
+create policy "users can read own organizer verification"
+  on public.organizer_verifications for select
+  using (user_id = public.current_app_user_id() or public.is_platform_admin());
+
+create policy "users can submit own organizer verification"
+  on public.organizer_verifications for insert
+  with check (user_id = public.current_app_user_id());
+
+create policy "users can update own pending organizer verification"
+  on public.organizer_verifications for update
+  using (user_id = public.current_app_user_id() or public.is_platform_admin())
+  with check (user_id = public.current_app_user_id() or public.is_platform_admin());
+
 create policy "public events are readable"
   on public.events for select
-  using (visibility = 'public' or public.can_manage_event(id));
+  using (visibility in ('public', 'unlisted') or public.can_manage_event(id) or public.is_platform_admin());
 
 create policy "organizers can insert events"
   on public.events for insert
@@ -579,6 +1198,42 @@ create policy "owners can manage event organizers"
   on public.event_organizers for all
   using (public.can_edit_event(event_id))
   with check (public.can_edit_event(event_id));
+
+create policy "review requests visible to requester admins and event managers"
+  on public.review_requests for select
+  using (
+    requester_id = public.current_app_user_id()
+    or public.is_platform_admin()
+    or (event_id is not null and public.can_manage_event(event_id))
+  );
+
+create policy "users can create review requests"
+  on public.review_requests for insert
+  with check (requester_id = public.current_app_user_id() or public.is_platform_admin());
+
+create policy "admins can update review requests"
+  on public.review_requests for update
+  using (public.is_platform_admin())
+  with check (public.is_platform_admin());
+
+create policy "collection codes visible only to payable orders and payment roles"
+  on public.collection_code_versions for select
+  using (
+    public.can_manage_event_payments(event_id)
+    or public.is_platform_admin()
+    or id in (
+      select r.collection_code_version_id
+      from public.registrations r
+      where r.user_id = public.current_app_user_id()
+        and r.collection_code_version_id is not null
+        and r.status in ('awaiting_payment', 'payment_rejected_resubmittable', 'partial_paid_needs_topup')
+    )
+  );
+
+create policy "payment roles can manage collection codes"
+  on public.collection_code_versions for all
+  using (public.can_manage_event_payments(event_id) or public.is_platform_admin())
+  with check (public.can_manage_event_payments(event_id) or public.is_platform_admin());
 
 create policy "finance settings visible to event managers"
   on public.event_finance_settings for select
@@ -639,7 +1294,7 @@ create policy "payments visible to owner and organizer"
     select r.id
     from public.registrations r
     join public.users u on u.auth_user_id = auth.uid()
-    where r.user_id = u.id or public.can_manage_event(r.event_id)
+    where r.user_id = u.id or public.can_manage_event_payments(r.event_id) or public.is_platform_admin()
   ));
 
 create policy "organizers can update payments"
@@ -647,7 +1302,7 @@ create policy "organizers can update payments"
   using (registration_id in (
     select r.id
     from public.registrations r
-    where public.can_manage_event_finance(r.event_id)
+    where public.can_manage_event_payments(r.event_id) or public.is_platform_admin()
   ));
 
 create policy "users can create payment proofs for own orders"
@@ -667,8 +1322,76 @@ create policy "payment proofs visible to owner and organizer"
     from public.payments p
     join public.registrations r on r.id = p.registration_id
     join public.users u on u.auth_user_id = auth.uid()
-    where r.user_id = u.id or public.can_manage_event(r.event_id)
+    where r.user_id = u.id or public.can_manage_event_payments(r.event_id) or public.is_platform_admin()
   ));
+
+create policy "payment roles can update payment proofs"
+  on public.payment_proofs for update
+  using (payment_id in (
+    select p.id
+    from public.payments p
+    join public.registrations r on r.id = p.registration_id
+    where public.can_manage_event_payments(r.event_id) or public.is_platform_admin()
+  ));
+
+create policy "refund requests visible to owner refund roles and admins"
+  on public.refund_requests for select
+  using (registration_id in (
+    select r.id
+    from public.registrations r
+    where r.user_id = public.current_app_user_id()
+      or public.can_handle_event_refunds(r.event_id)
+      or public.is_platform_admin()
+  ));
+
+create policy "users can request refunds for own orders"
+  on public.refund_requests for insert
+  with check (registration_id in (
+    select r.id
+    from public.registrations r
+    where r.user_id = public.current_app_user_id()
+      and requested_by = public.current_app_user_id()
+  ));
+
+create policy "refund roles can update refund requests"
+  on public.refund_requests for update
+  using (registration_id in (
+    select r.id
+    from public.registrations r
+    where public.can_handle_event_refunds(r.event_id) or public.is_platform_admin()
+  ));
+
+create policy "refund proofs visible to owner refund roles and admins"
+  on public.refund_proofs for select
+  using (refund_request_id in (
+    select rr.id
+    from public.refund_requests rr
+    join public.registrations r on r.id = rr.registration_id
+    where r.user_id = public.current_app_user_id()
+      or public.can_handle_event_refunds(r.event_id)
+      or public.is_platform_admin()
+  ));
+
+create policy "refund roles can create refund proofs"
+  on public.refund_proofs for insert
+  with check (refund_request_id in (
+    select rr.id
+    from public.refund_requests rr
+    join public.registrations r on r.id = rr.registration_id
+    where public.can_handle_event_refunds(r.event_id) or public.is_platform_admin()
+  ));
+
+create policy "waitlist visible to owner and event managers"
+  on public.waitlist_entries for select
+  using (user_id = public.current_app_user_id() or public.can_manage_event(event_id) or public.is_platform_admin());
+
+create policy "users can join waitlist"
+  on public.waitlist_entries for insert
+  with check (user_id = public.current_app_user_id());
+
+create policy "event managers can update waitlist"
+  on public.waitlist_entries for update
+  using (public.can_manage_event(event_id) or public.is_platform_admin());
 
 create policy "seats visible for readable events"
   on public.seats for select
@@ -681,6 +1404,31 @@ create policy "seats visible for readable events"
 create policy "organizers can manage seats"
   on public.seats for all
   using (public.can_manage_event(event_id));
+
+create policy "seat locks visible to owner and organizer"
+  on public.seat_locks for select
+  using (registration_id in (
+    select r.id
+    from public.registrations r
+    where r.user_id = public.current_app_user_id()
+      or public.can_manage_event(r.event_id)
+      or public.is_platform_admin()
+  ));
+
+create policy "participants can create seat locks for own confirmed registrations"
+  on public.seat_locks for insert
+  with check (registration_id in (
+    select r.id
+    from public.registrations r
+    join public.payments p on p.registration_id = r.id
+    where r.user_id = public.current_app_user_id()
+      and p.status = 'confirmed'
+      and locked_by = public.current_app_user_id()
+  ));
+
+create policy "event managers can update seat locks"
+  on public.seat_locks for update
+  using (public.can_manage_event(event_id) or locked_by = public.current_app_user_id() or public.is_platform_admin());
 
 create policy "seat assignments visible to owner and organizer"
   on public.seat_assignments for select
@@ -705,6 +1453,21 @@ create policy "organizers can manage seat assignments"
   on public.seat_assignments for all
   using (public.can_manage_event(event_id));
 
+create policy "check ins visible to event managers and order owner"
+  on public.check_ins for select
+  using (registration_id in (
+    select r.id
+    from public.registrations r
+    where r.user_id = public.current_app_user_id()
+      or public.can_manage_event(r.event_id)
+      or public.is_platform_admin()
+  ));
+
+create policy "event staff can manage check ins"
+  on public.check_ins for all
+  using (public.can_manage_event(event_id) or public.is_platform_admin())
+  with check (public.can_manage_event(event_id) or public.is_platform_admin());
+
 create policy "published announcements visible"
   on public.announcements for select
   using (status = 'published' or public.can_manage_event(event_id));
@@ -712,6 +1475,81 @@ create policy "published announcements visible"
 create policy "organizers can manage announcements"
   on public.announcements for all
   using (public.can_edit_event(event_id));
+
+create policy "notification deliveries visible to recipients and event managers"
+  on public.notification_deliveries for select
+  using (
+    recipient_id = public.current_app_user_id()
+    or (event_id is not null and public.can_manage_event(event_id))
+    or public.is_platform_admin()
+  );
+
+create policy "event managers can manage notification deliveries"
+  on public.notification_deliveries for all
+  using ((event_id is not null and public.can_manage_event(event_id)) or public.is_platform_admin());
+
+create policy "public materials visible or organizer internal guarded"
+  on public.activity_materials for select
+  using (
+    visibility = 'participant'
+    or public.can_manage_event(event_id)
+    or public.is_platform_admin()
+  );
+
+create policy "event managers can manage materials"
+  on public.activity_materials for all
+  using (public.can_manage_event(event_id) or public.is_platform_admin())
+  with check (public.can_manage_event(event_id) or public.is_platform_admin());
+
+create policy "export jobs visible to requester event owners and admins"
+  on public.export_jobs for select
+  using (
+    requested_by = public.current_app_user_id()
+    or public.can_manage_event(event_id)
+    or public.is_platform_admin()
+  );
+
+create policy "event managers can create export jobs"
+  on public.export_jobs for insert
+  with check (requested_by = public.current_app_user_id() and public.can_manage_event(event_id));
+
+create policy "complaints visible to submitter admins and event managers"
+  on public.complaints for select
+  using (
+    submitted_by = public.current_app_user_id()
+    or public.is_platform_admin()
+    or (event_id is not null and public.can_manage_event(event_id))
+  );
+
+create policy "users can create complaints"
+  on public.complaints for insert
+  with check (submitted_by = public.current_app_user_id());
+
+create policy "admins can update complaints"
+  on public.complaints for update
+  using (public.is_platform_admin())
+  with check (public.is_platform_admin());
+
+create policy "platform settings visible to admins"
+  on public.platform_settings for select
+  using (public.is_platform_admin());
+
+create policy "admins can manage platform settings"
+  on public.platform_settings for all
+  using (public.is_platform_admin())
+  with check (public.is_platform_admin());
+
+create policy "admin users visible to admins"
+  on public.admin_users for select
+  using (public.is_platform_admin() or user_id = public.current_app_user_id());
+
+create policy "audit logs visible to admins and event managers"
+  on public.audit_logs for select
+  using (
+    public.is_platform_admin()
+    or actor_id = public.current_app_user_id()
+    or (event_id is not null and public.can_manage_event(event_id))
+  );
 
 -- Data API grants.
 -- RLS still decides which rows each user can access; these grants only allow

@@ -13,12 +13,13 @@ import {
   demoAccounts,
   getProfileOnboardingStorageKey,
   getAuthSession,
+  getSafeInternalPath,
   normalizeEmail,
   parsePrototypeAccounts,
   signInWithPassword,
   stringifyPrototypeAccounts
 } from "@/lib/auth";
-import { isSupabaseConfigured } from "@/lib/supabase/client";
+import { getSupabaseBrowserClient, isSupabaseConfigured } from "@/lib/supabase/client";
 import {
   sendSupabaseEmailCode,
   sendSupabasePasswordReset,
@@ -26,6 +27,7 @@ import {
   signUpWithSupabasePassword,
   verifySupabaseEmailCode
 } from "@/lib/supabase/auth";
+import { getCurrentSupabaseProfile } from "@/lib/supabase/profile";
 
 type AuthMode = "login" | "register" | "code" | "reset";
 
@@ -79,7 +81,7 @@ function LoginFallback() {
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const nextPath = searchParams.get("next") ?? "/";
+  const nextPath = getSafeInternalPath(searchParams.get("next"));
   const [mode, setMode] = useState<AuthMode>("login");
   const [name, setName] = useState("");
   const [email, setEmail] = useState(demoAccounts[0].email);
@@ -90,10 +92,39 @@ function LoginForm() {
   const supabaseEnabled = isSupabaseConfigured();
 
   useEffect(() => {
-    if (getAuthSession(document.cookie)) {
-      router.replace(nextPath.startsWith("/") ? nextPath : "/");
+    async function redirectExistingSession() {
+      const existingSession = getAuthSession(document.cookie);
+
+      if (existingSession) {
+        router.replace(nextPath);
+        return;
+      }
+
+      if (!supabaseEnabled) {
+        return;
+      }
+
+      const supabase = getSupabaseBrowserClient();
+      const userResult = await supabase.auth.getUser();
+
+      if (userResult.error || !userResult.data.user) {
+        return;
+      }
+
+      const profileResult = await getCurrentSupabaseProfile();
+
+      if (!profileResult.ok) {
+        return;
+      }
+
+      createSessionCookies(profileResult.account, "supabase").forEach((cookie) => {
+        document.cookie = cookie;
+      });
+      router.replace(nextPath);
     }
-  }, [nextPath, router]);
+
+    redirectExistingSession();
+  }, [nextPath, router, supabaseEnabled]);
 
   const currentCopy = authModeCopy[mode];
 
@@ -105,7 +136,7 @@ function LoginForm() {
     createSessionCookies(account, sessionType).forEach((cookie) => {
       document.cookie = cookie;
     });
-    router.replace(destination.startsWith("/") ? destination : "/");
+    router.replace(getSafeInternalPath(destination));
   }
 
   async function login() {

@@ -24,10 +24,10 @@ insert into public.user_auth_identities (
   is_primary,
   verified_at
 ) values
-  ('00000000-0000-0000-0000-000000000001', 'email', 'miki@example.com', 'miki@example.com', '比奇堡miki', true, now()),
-  ('00000000-0000-0000-0000-000000000002', 'email', 'tsuki@example.com', 'tsuki@example.com', '月见草', true, now()),
-  ('00000000-0000-0000-0000-000000000003', 'email', 'lime@example.com', 'lime@example.com', '青柠', true, now())
-on conflict (provider, provider_user_id) do nothing;
+  ('00000000-0000-0000-0000-000000000001', 'email', '90000000-0000-0000-0000-000000000001', 'miki@example.com', '比奇堡miki', true, now()),
+  ('00000000-0000-0000-0000-000000000002', 'email', '90000000-0000-0000-0000-000000000002', 'tsuki@example.com', '月见草', true, now()),
+  ('00000000-0000-0000-0000-000000000003', 'email', '90000000-0000-0000-0000-000000000003', 'lime@example.com', '青柠', true, now())
+on conflict (user_id, provider) do nothing;
 
 insert into public.events (
   id,
@@ -78,7 +78,7 @@ insert into public.events (
   true,
   'event_code_sequence',
   'RYU',
-  'registration'
+  'registration_open'
 ) on conflict (id) do nothing;
 
 insert into public.event_organizers (
@@ -96,7 +96,7 @@ insert into public.event_organizers (
   (
     '10000000-0000-0000-0000-000000000001',
     '00000000-0000-0000-0000-000000000002',
-    'co_host',
+    'cohost',
     '00000000-0000-0000-0000-000000000001'
   ),
   (
@@ -106,6 +106,67 @@ insert into public.event_organizers (
     '00000000-0000-0000-0000-000000000001'
   )
 on conflict (event_id, user_id) do nothing;
+
+insert into public.organizer_verifications (
+  user_id,
+  status,
+  contact_email,
+  community_account,
+  past_event_summary,
+  reviewed_by,
+  reviewed_at,
+  review_note,
+  paid_event_count,
+  successful_paid_event_count
+) values (
+  '00000000-0000-0000-0000-000000000001',
+  'light_verified',
+  'miki@example.com',
+  '微博/小红书：比奇堡miki',
+  '曾组织小型观影和生日咖啡活动。',
+  '00000000-0000-0000-0000-000000000001',
+  now(),
+  '演示数据：轻量认证通过。',
+  1,
+  1
+) on conflict (user_id) do nothing;
+
+insert into public.platform_settings (
+  key,
+  value,
+  value_type,
+  description
+) values
+  ('low_risk_paid_event_limit_cents', '300000'::jsonb, 'integer', '轻量认证组织者单场低风险收费活动默认上限。'),
+  ('new_organizer_review_event_count', '3'::jsonb, 'integer', '新组织者前几场收费活动默认需要审核。'),
+  ('payment_proof_access_days_after_event', '90'::jsonb, 'integer', '活动结束后组织者默认可查看付款截图的天数。')
+on conflict (key) do nothing;
+
+insert into public.collection_code_versions (
+  id,
+  event_id,
+  version_number,
+  status,
+  method,
+  display_name,
+  qr_file_url,
+  instructions,
+  uploaded_by,
+  change_reason,
+  active_from
+) values (
+  '40000000-0000-0000-0000-000000000001',
+  '10000000-0000-0000-0000-000000000001',
+  1,
+  'active',
+  'wechat',
+  '主办方微信收款码',
+  'collection-codes/demo/ryu-wechat-v1.png',
+  '请备注订单编号，付款后上传截图。',
+  '00000000-0000-0000-0000-000000000001',
+  '初始收款码。',
+  now()
+) on conflict (event_id, version_number) do nothing;
 
 insert into public.event_order_counters (event_id, current_number)
 values ('10000000-0000-0000-0000-000000000001', 4)
@@ -171,6 +232,7 @@ insert into public.registrations (
   quantity,
   amount_due_cents,
   status,
+  collection_code_version_id,
   accepts_waitlist,
   participant_note
 ) values
@@ -185,6 +247,7 @@ insert into public.registrations (
     2,
     17600,
     'confirmed',
+    '40000000-0000-0000-0000-000000000001',
     true,
     '希望尽量安排在中间区域。'
   ),
@@ -198,7 +261,8 @@ insert into public.registrations (
     'tsuki',
     1,
     8800,
-    'pending',
+    'payment_submitted',
+    '40000000-0000-0000-0000-000000000001',
     true,
     null
   )

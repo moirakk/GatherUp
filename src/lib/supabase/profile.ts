@@ -112,7 +112,7 @@ export async function ensureSupabaseProfile(input: EnsureProfileInput): Promise<
     const identityResult = await upsertPrimaryIdentity({
       userId: profile.id,
       provider: input.provider ?? "email",
-      providerUserId: normalizedEmail,
+      providerUserId: input.authUserId,
       email: normalizedEmail,
       displayName,
       avatarUrl: input.avatarUrl
@@ -153,7 +153,7 @@ export async function ensureSupabaseProfile(input: EnsureProfileInput): Promise<
   const identityResult = await upsertPrimaryIdentity({
     userId: profile.id,
     provider: input.provider ?? "email",
-    providerUserId: normalizedEmail,
+    providerUserId: input.authUserId,
     email: normalizedEmail,
     displayName,
     avatarUrl: input.avatarUrl
@@ -289,7 +289,7 @@ async function upsertPrimaryIdentity(input: {
       last_sign_in_at: new Date().toISOString()
     },
     {
-      onConflict: "provider,provider_user_id"
+      onConflict: "user_id,provider"
     }
   );
 

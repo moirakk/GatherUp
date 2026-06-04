@@ -2,10 +2,15 @@
   "name": "gatherup",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "next dev",
     "dev:webpack": "next dev --webpack",
     "build": "next build",
+    "test": "node --test tests/*.test.mts",
+    "test:auth": "node --test tests/auth-rules.test.mts",
+    "test:schema": "node --test tests/schema-contract.test.mts",
+    "verify": "npm test && npm run typecheck",
     "start": "next start",
     "typecheck": "tsc --noEmit"
   },

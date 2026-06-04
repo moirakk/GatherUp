@@ -7,13 +7,16 @@ import { usePathname, useRouter } from "next/navigation";
 import { CalendarRange, LayoutDashboard, LogOut, MapPinned, Plus, UserRound } from "lucide-react";
 
 import {
+  createSessionCookies,
   createExpiredSessionCookies,
   demoAccounts,
   getAuthSession,
   getProfileOnboardingStorageKey,
+  isPublicRoutePath,
   type AuthSession
 } from "@/lib/auth";
 import { getSupabaseBrowserClient, isSupabaseConfigured } from "@/lib/supabase/client";
+import { getCurrentSupabaseProfile } from "@/lib/supabase/profile";
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
@@ -22,29 +25,65 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<AuthSession | null>(null);
 
   useEffect(() => {
-    const currentSession = getAuthSession(document.cookie);
-    setSession(currentSession);
-    setIsCheckingAuth(false);
+    let isCancelled = false;
+    const isPublicRoute = isPublicRoutePath(pathname);
 
-    if (!currentSession && pathname !== "/login") {
-      router.replace(`/login?next=${encodeURIComponent(pathname)}`);
-    }
+    async function checkAuth() {
+      setIsCheckingAuth(true);
+      let currentSession = getAuthSession(document.cookie);
 
-    if (currentSession && pathname !== "/onboarding") {
-      const isSeedDemoAccount = currentSession.email === demoAccounts[0].email;
-      const hasCompletedProfile = window.localStorage.getItem(getProfileOnboardingStorageKey(currentSession.email)) === "done";
+      if (!currentSession && isSupabaseConfigured()) {
+        const supabase = getSupabaseBrowserClient();
+        const userResult = await supabase.auth.getUser();
 
-      if (!isSeedDemoAccount && !hasCompletedProfile) {
-        router.replace("/onboarding");
+        if (!userResult.error && userResult.data.user) {
+          const profileResult = await getCurrentSupabaseProfile();
+
+          if (profileResult.ok) {
+            createSessionCookies(profileResult.account, "supabase").forEach((cookie) => {
+              document.cookie = cookie;
+            });
+            currentSession = {
+              ...profileResult.account,
+              sessionType: "supabase"
+            };
+          }
+        }
+      }
+
+      if (isCancelled) {
+        return;
+      }
+
+      setSession(currentSession);
+      setIsCheckingAuth(false);
+
+      if (!currentSession && !isPublicRoute) {
+        router.replace(`/login?next=${encodeURIComponent(pathname)}`);
+      }
+
+      if (currentSession && pathname !== "/onboarding") {
+        const isSeedDemoAccount = currentSession.email === demoAccounts[0].email;
+        const hasCompletedProfile = window.localStorage.getItem(getProfileOnboardingStorageKey(currentSession.email)) === "done";
+
+        if (!isSeedDemoAccount && !hasCompletedProfile) {
+          router.replace("/onboarding");
+        }
       }
     }
+
+    checkAuth();
+
+    return () => {
+      isCancelled = true;
+    };
   }, [pathname, router]);
 
   if (pathname === "/login") {
     return <>{children}</>;
   }
 
-  if (isCheckingAuth || !session) {
+  if (isCheckingAuth) {
     return (
       <main className="login-shell">
         <section className="login-panel">
@@ -53,6 +92,46 @@ export function AppShell({ children }: { children: ReactNode }) {
             <div>
               <strong>GatherUp</strong>
               <span>正在确认登录状态。</span>
+            </div>
+          </div>
+        </section>
+      </main>
+    );
+  }
+
+  if (!session && isPublicRoutePath(pathname)) {
+    return (
+      <div className="app-shell">
+        <header className="topbar">
+          <Link className="brand" href="/">
+            <span className="brand-mark">G</span>
+            <span>
+              <strong>GatherUp</strong>
+              <small>活动详情</small>
+            </span>
+          </Link>
+
+          <div className="topbar-actions">
+            <Link className="button secondary" href={`/login?next=${encodeURIComponent(pathname)}`}>
+              登录
+            </Link>
+          </div>
+        </header>
+
+        <main className="page-shell">{children}</main>
+      </div>
+    );
+  }
+
+  if (!session) {
+    return (
+      <main className="login-shell">
+        <section className="login-panel">
+          <div className="login-brand">
+            <span className="brand-mark">G</span>
+            <div>
+              <strong>GatherUp</strong>
+              <span>正在前往登录入口。</span>
             </div>
           </div>
         </section>
