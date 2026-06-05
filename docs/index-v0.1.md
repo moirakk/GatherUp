@@ -12,6 +12,7 @@ This index organizes the GatherUp documents by how they should be used. The comm
 - [Commercial v0.1 decision log](./decision-log-v0.1.md): confirmed decisions and rationale.
 - [Commercial v0.1 engineering plan](./commercial-v0.1-engineering-plan.md): phased implementation plan.
 - [Schema validation checklist](./schema-validation-checklist-v0.1.md): SQL, RLS, Storage, and service-layer validation checklist.
+- [Supabase live validation log](./supabase-live-validation-log-v0.1.md): real Supabase project checks and findings.
 - [Service-layer contract](./service-layer-contract-v0.1.md): required server-side operations and invariants.
 - [GitHub repository profile copy](./github-repository-profile-v0.1.md): suggested GitHub About, description, topics, and public-facing intro.
 
@@ -32,6 +33,7 @@ This index organizes the GatherUp documents by how they should be used. The comm
 ## Supabase
 
 - [Supabase SQL execution runbook](./supabase-sql-execution-runbook-v0.1.md): step-by-step schema and seed execution guide.
+- [Supabase live validation log](./supabase-live-validation-log-v0.1.md): live project preflight and validation findings.
 - [Schema SQL draft](../supabase/schema.sql): PostgreSQL/Supabase schema draft.
 - [Seed SQL draft](../supabase/seed.sql): sample data draft.
 - [Storage SQL draft](../supabase/storage.sql): Supabase Storage buckets and RLS policy draft.
