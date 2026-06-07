@@ -142,6 +142,7 @@ Supabase:
 - [SQL draft](./supabase/schema.sql)
 - [Seed draft](./supabase/seed.sql)
 - [Storage policy draft](./supabase/storage.sql)
+- [Copy-ready Supabase validation SQL files](./supabase/validation)
 - [Schema validation checklist](./docs/schema-validation-checklist-v0.1.md)
 - [Supabase SQL execution runbook](./docs/supabase-sql-execution-runbook-v0.1.md)
 - [Clean Supabase validation checklist](./docs/supabase-clean-project-validation-v0.1.md)

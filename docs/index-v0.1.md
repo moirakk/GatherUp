@@ -39,6 +39,7 @@ This index organizes the GatherUp documents by how they should be used. The comm
 - [Schema SQL draft](../supabase/schema.sql): PostgreSQL/Supabase schema draft.
 - [Seed SQL draft](../supabase/seed.sql): sample data draft.
 - [Storage SQL draft](../supabase/storage.sql): Supabase Storage buckets and RLS policy draft.
+- [Supabase validation SQL files](../supabase/validation): copy-ready SQL checks for Supabase SQL Editor.
 
 ## Code Artifacts
 

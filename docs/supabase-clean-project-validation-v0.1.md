@@ -6,6 +6,17 @@ Use this checklist for the first full execution of GatherUp commercial v0.1 SQL 
 
 This document is intentionally operational. The goal is to make the real database validation repeatable, auditable, and easy to debug when Supabase returns an error.
 
+## Copy-ready SQL Files
+
+Use these SQL files in Supabase SQL Editor instead of copying query blocks from Markdown:
+
+- [`supabase/validation/00-clean-project-preflight.sql`](../supabase/validation/00-clean-project-preflight.sql)
+- [`supabase/validation/01-coverage-audit.sql`](../supabase/validation/01-coverage-audit.sql)
+- [`supabase/validation/02-post-seed-counts.sql`](../supabase/validation/02-post-seed-counts.sql)
+- [`supabase/validation/03-identity-integrity.sql`](../supabase/validation/03-identity-integrity.sql)
+- [`supabase/validation/04-payment-setup.sql`](../supabase/validation/04-payment-setup.sql)
+- [`supabase/validation/05-storage-buckets.sql`](../supabase/validation/05-storage-buckets.sql)
+
 ## 1. Validation Goal
 
 Validate that these files execute cleanly in a real Supabase project:
@@ -37,10 +48,10 @@ Required target posture:
 
 Do not use the current live `gatherup` project for full schema execution. It is already partially initialized.
 
-Before running write SQL, run the read-only preflight query in:
+Before running write SQL, run:
 
 ```text
-docs/supabase-sql-execution-runbook-v0.1.md
+supabase/validation/00-clean-project-preflight.sql
 ```
 
 Expected result for clean validation:
@@ -177,17 +188,8 @@ Screenshot/export available: yes/no
 
 Run after schema and seed succeed:
 
-```sql
-select count(*) as users from public.users;
-select count(*) as identities from public.user_auth_identities;
-select count(*) as events from public.events;
-select count(*) as event_organizers from public.event_organizers;
-select count(*) as organizer_verifications from public.organizer_verifications;
-select count(*) as collection_code_versions from public.collection_code_versions;
-select count(*) as registrations from public.registrations;
-select count(*) as payments from public.payments;
-select count(*) as seats from public.seats;
-select count(*) as seat_assignments from public.seat_assignments;
+```text
+supabase/validation/02-post-seed-counts.sql
 ```
 
 Expected minimums:
@@ -207,17 +209,8 @@ Expected minimums:
 
 Run:
 
-```sql
-select
-  u.id,
-  u.auth_user_id,
-  u.email,
-  i.provider,
-  i.provider_user_id,
-  i.email as identity_email
-from public.users u
-join public.user_auth_identities i on i.user_id = u.id
-order by u.id;
+```text
+supabase/validation/03-identity-integrity.sql
 ```
 
 Expected:
@@ -231,17 +224,8 @@ Expected:
 
 Run:
 
-```sql
-select
-  e.public_code,
-  e.status,
-  e.visibility,
-  e.price_cents,
-  c.method,
-  c.status as collection_code_status,
-  c.qr_file_url
-from public.events e
-join public.collection_code_versions c on c.event_id = e.id;
+```text
+supabase/validation/04-payment-setup.sql
 ```
 
 Expected:
@@ -253,20 +237,7 @@ Expected:
 - Collection code status is `active`.
 - QR path is present, but the actual file may not exist yet.
 
-Run:
-
-```sql
-select
-  r.order_number,
-  r.status as registration_status,
-  p.status as payment_status,
-  p.amount_cents
-from public.registrations r
-join public.payments p on p.registration_id = r.id
-order by r.order_number;
-```
-
-Expected:
+This file also checks:
 
 - Each demo registration has one payment row.
 - Confirmed demo registration has confirmed payment.
@@ -276,25 +247,8 @@ Expected:
 
 Run after `storage.sql` succeeds:
 
-```sql
-select
-  id,
-  name,
-  public,
-  file_size_limit,
-  allowed_mime_types
-from storage.buckets
-where id in (
-  'activity-covers',
-  'activity-materials',
-  'collection-codes',
-  'payment-proofs',
-  'refund-proofs',
-  'expense-proofs',
-  'complaint-evidence',
-  'exports'
-)
-order by id;
+```text
+supabase/validation/05-storage-buckets.sql
 ```
 
 Expected:
@@ -337,4 +291,3 @@ Exact error if failure:
 Rows or counts if success:
 Screenshot/export available: yes/no
 ```
-

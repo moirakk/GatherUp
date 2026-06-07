@@ -21,6 +21,15 @@ const markdownFiles = [
   "docs/github-repository-profile-v0.1.md"
 ];
 
+const requiredSupportFiles = [
+  "supabase/validation/00-clean-project-preflight.sql",
+  "supabase/validation/01-coverage-audit.sql",
+  "supabase/validation/02-post-seed-counts.sql",
+  "supabase/validation/03-identity-integrity.sql",
+  "supabase/validation/04-payment-setup.sql",
+  "supabase/validation/05-storage-buckets.sql"
+];
+
 function extractLocalLinks(markdown: string) {
   return Array.from(markdown.matchAll(/\[[^\]]+\]\(([^)]+)\)/g), (match) => match[1]).filter((href) => {
     return !href.startsWith("http://") && !href.startsWith("https://") && !href.startsWith("#") && !href.startsWith("mailto:");
@@ -70,6 +79,10 @@ describe("documentation links", () => {
     for (const file of markdownFiles) {
       assert.equal(extname(file), ".md");
       assert.ok(existsSync(join(repoRoot, file)), `Missing curated doc ${file}`);
+    }
+
+    for (const file of requiredSupportFiles) {
+      assert.ok(existsSync(join(repoRoot, file)), `Missing required support file ${file}`);
     }
   });
 });
