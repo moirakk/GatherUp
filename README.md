@@ -144,6 +144,7 @@ Supabase:
 - [Storage policy draft](./supabase/storage.sql)
 - [Schema validation checklist](./docs/schema-validation-checklist-v0.1.md)
 - [Supabase SQL execution runbook](./docs/supabase-sql-execution-runbook-v0.1.md)
+- [Clean Supabase validation checklist](./docs/supabase-clean-project-validation-v0.1.md)
 - [Supabase live validation log](./docs/supabase-live-validation-log-v0.1.md)
 
 ## Engineering Principles

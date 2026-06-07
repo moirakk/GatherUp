@@ -15,6 +15,7 @@ const markdownFiles = [
   "docs/commercial-v0.1-engineering-plan.md",
   "docs/schema-validation-checklist-v0.1.md",
   "docs/supabase-sql-execution-runbook-v0.1.md",
+  "docs/supabase-clean-project-validation-v0.1.md",
   "docs/supabase-live-validation-log-v0.1.md",
   "docs/service-layer-contract-v0.1.md",
   "docs/github-repository-profile-v0.1.md"
