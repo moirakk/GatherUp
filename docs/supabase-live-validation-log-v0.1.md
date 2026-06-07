@@ -213,3 +213,43 @@ Recommended next step:
 
 1. Create and validate against a fresh dev/staging Supabase project first.
 2. After the clean dev/staging execution passes, decide whether to rebuild the live project or write an incremental migration for the missing objects above.
+
+## 2026-06-07 Clean Dev/Staging Preparation
+
+Actions completed:
+
+1. Created a new Supabase organization for isolated validation:
+   - Organization name: `GatherUp Dev`
+   - Plan shown in Dashboard: `Free`
+   - Organization ref shown in project creation URL: `juvctqcorlckelbvhefc`
+2. Opened the new project creation page under `GatherUp Dev`.
+3. Set the intended validation project name to:
+   - `gatherup-commercial-v01-validation`
+4. Confirmed the project creation defaults that need attention before creating the project:
+   - `Enable Data API`: enabled by default.
+   - `Automatically expose new tables`: enabled by default, but should be disabled for controlled RLS/service validation.
+   - `Enable automatic RLS`: disabled by default.
+   - Region selector displayed `Asia-Pacific`; exact city/region still needs confirmation before project creation.
+
+Current state:
+
+- The clean validation organization exists.
+- The clean validation project has not yet been confirmed as created.
+- No `schema.sql`, `seed.sql`, `storage.sql`, or validation SQL has been executed against the clean validation project yet.
+- Browser interaction became unstable while handling the database password/autofill prompt, so SQL execution was not started.
+
+Required next step:
+
+1. Reopen the Supabase Dashboard.
+2. Go to organization `GatherUp Dev`.
+3. Finish creating project `gatherup-commercial-v01-validation`.
+4. Before clicking create, verify:
+   - Region is appropriate for dev/staging, preferably Tokyo/Japan if available.
+   - Database password is saved somewhere safe outside the repository, such as the browser password manager.
+   - `Automatically expose new tables` is disabled.
+5. After project creation finishes, run `supabase/validation/00-clean-project-preflight.sql`.
+
+Important:
+
+- Do not record database passwords in repository files.
+- Do not run SQL against the live `gatherup` project.
