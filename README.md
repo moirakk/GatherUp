@@ -8,7 +8,7 @@ GatherUp is designed as a general offline event platform, not a fandom-only tool
 
 ## Status
 
-Current status: **frontend prototype plus commercial v0.1 backend foundation drafts and contract tests**.
+Current status: **frontend prototype plus commercial v0.1 backend foundation drafts, contract tests, and live Supabase preflight coverage audit**.
 
 Implemented prototype coverage:
 
@@ -22,12 +22,13 @@ Implemented prototype coverage:
 - Venue intelligence prototype.
 - Supabase client dependency, Auth adapter, user profile sync adapter, schema/seed/Storage SQL drafts, and contract tests.
 - Middleware-level login redirect foundation and safe internal `next` path handling.
+- Real Supabase live project preflight and read-only coverage audit logs.
 
 Not production-ready yet:
 
 - Core business data still uses mock/local prototype data.
 - Event creation, registration, payment proof, refund, seat selection, check-in, finance, and admin workflows are not yet backed by real database services.
-- Supabase schema, seed, and Storage policy drafts exist but still need execution in a real Supabase/PostgreSQL project.
+- Supabase schema, seed, and Storage policy drafts exist. A live Supabase project has been restored and audited, but it is partially initialized, so full SQL execution must happen first in a fresh dev/staging project.
 - Permission enforcement and RLS need real database testing.
 - Transactional service functions, email business notifications, organizer verification UI, admin review UI, complaints, audit log writes, and data retention jobs are still planned.
 
@@ -143,6 +144,7 @@ Supabase:
 - [Storage policy draft](./supabase/storage.sql)
 - [Schema validation checklist](./docs/schema-validation-checklist-v0.1.md)
 - [Supabase SQL execution runbook](./docs/supabase-sql-execution-runbook-v0.1.md)
+- [Supabase live validation log](./docs/supabase-live-validation-log-v0.1.md)
 
 ## Engineering Principles
 
