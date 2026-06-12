@@ -63,7 +63,19 @@ const initialForm = {
   orderFormat: "{eventCode}-0001",
   orderPrefix: "CLUB",
   paymentMethod: "无需收款",
+  paymentCodeImg: "",
+  wechatGroupImg: "",
   paymentNote: "免费活动无需付款，报名成功后等待组织者确认。",
+  customFormConfig: JSON.stringify(
+    {
+      fields: [
+        { id: "notes", label: "报名备注", type: "textarea", required: false },
+        { id: "arrival_time", label: "预计到达时间", type: "text", required: false }
+      ]
+    },
+    null,
+    2
+  ),
   seatingMode: "不需要选座",
   rows: "0",
   seatsPerRow: "0",
@@ -98,6 +110,7 @@ function buildDraftPayload(form: EventDraftForm) {
       address: form.address.trim(),
       startsAt: form.startsAt.trim(),
       deadline: form.deadline.trim(),
+      customFormConfig: form.customFormConfig.trim(),
       description: form.description.trim()
     },
     organizers: [
@@ -112,6 +125,8 @@ function buildDraftPayload(form: EventDraftForm) {
       venueOptions: [form.venueOptionOne, form.venueOptionTwo].map((label) => label.trim()).filter(Boolean),
       venueSource: form.venueSource,
       paymentMethod: form.paymentMethod,
+      paymentCodeImg: form.paymentCodeImg.trim(),
+      wechatGroupImg: form.wechatGroupImg.trim(),
       paymentNote: form.paymentNote.trim(),
       seatingMode: form.seatingMode,
       seatMapSource: form.seatMapSource,
@@ -209,6 +224,8 @@ function buildLocalCreatedEvent(form: EventDraftForm) {
     price: draftPayload.rules.price,
     capacity: draftPayload.rules.capacity,
     paymentMethod: draftPayload.setup.paymentMethod,
+    paymentCodeImg: draftPayload.setup.paymentCodeImg,
+    wechatGroupImg: draftPayload.setup.wechatGroupImg,
     seatingMode: draftPayload.setup.seatingMode,
     organizerIds: draftPayload.organizers.map((organizer) => organizer.publicId),
     setupStatus: "发布检查通过" as const,
@@ -239,6 +256,9 @@ export default function NewEventPage() {
       ["费用模式", form.feeMode],
       ["报名人数", `${form.capacity} 人`],
       ["多人报名", form.allowMulti],
+      ["自定义表单", form.customFormConfig.trim() ? "已配置" : "未配置"],
+      ["收款码", form.paymentCodeImg.trim() ? "已配置" : "未配置"],
+      ["微信群码", form.wechatGroupImg.trim() ? "审核通过后展示" : "未配置"],
       ["座位", form.seatingMode]
     ];
   }, [form]);
@@ -321,7 +341,7 @@ export default function NewEventPage() {
     setDraftNotice(`草稿已保存，保存时间：${savedAt}。`);
   }
 
-  function simulatePublish() {
+  async function simulatePublish() {
     if (!canPublish) {
       const firstIssue = publishChecks.find((item) => !item.ok);
       if (firstIssue) {
@@ -332,8 +352,31 @@ export default function NewEventPage() {
     }
 
     saveDraft();
-    saveLocalCreatedEvent(buildLocalCreatedEvent(form));
-    setDraftNotice("发布检查已通过，并已生成本地活动记录。返回组织工作台即可看到它；接数据库后会写入真实活动表。");
+    const localEvent = buildLocalCreatedEvent(form);
+    saveLocalCreatedEvent(localEvent);
+
+    try {
+      const response = await fetch("/api/events", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...draftPayload,
+          custom_form_config: form.customFormConfig,
+          payment_code_img: form.paymentCodeImg,
+          wechat_group_img: form.wechatGroupImg
+        })
+      });
+      const result = (await response.json()) as { ok?: boolean; event_id?: string; message?: string };
+
+      if (response.ok && result.ok) {
+        setDraftNotice(`发布检查已通过，并已写入活动表：${result.event_id}。本地活动记录也已更新。`);
+        return;
+      }
+
+      setDraftNotice(`发布检查已通过，本地活动记录已生成；数据库写入未完成：${result.message ?? "接口返回失败"}`);
+    } catch {
+      setDraftNotice("发布检查已通过，本地活动记录已生成；当前无法连接活动创建接口，稍后可重试发布。");
+    }
   }
 
   function resetDraft() {
@@ -482,8 +525,10 @@ export default function NewEventPage() {
           {activeStep === "payment" && (
             <div className="form-grid two-column">
               <label>收款方式<select value={form.paymentMethod} onChange={(event) => updateField("paymentMethod", event.target.value)}><option>无需收款</option><option>微信收款码</option><option>支付宝收款码</option><option>银行转账</option></select></label>
-              <label>收款二维码<input type="file" accept="image/*" /></label>
+              <label>收款码图片链接<input value={form.paymentCodeImg} onChange={(event) => updateField("paymentCodeImg", event.target.value)} placeholder="https://.../payment-code.png" /></label>
+              <label>微信群二维码链接<input value={form.wechatGroupImg} onChange={(event) => updateField("wechatGroupImg", event.target.value)} placeholder="https://.../wechat-group.png" /></label>
               <label className="wide-field">付款说明<input value={form.paymentNote} onChange={(event) => updateField("paymentNote", event.target.value)} /></label>
+              <label className="wide-field">自定义表单配置<textarea value={form.customFormConfig} onChange={(event) => updateField("customFormConfig", event.target.value)} rows={6} /></label>
               <label>座位模式<select value={form.seatingMode} onChange={(event) => updateField("seatingMode", event.target.value)}><option>不需要选座</option><option>付款确认后选座</option><option>组织者手动分配</option></select></label>
               <label>座位图来源<select value={form.seatMapSource} onChange={(event) => updateField("seatMapSource", event.target.value)}><option>手动填写</option><option>截图自动识别</option><option>复用场地库座位图</option></select></label>
               <div className="seat-import-card wide-field">

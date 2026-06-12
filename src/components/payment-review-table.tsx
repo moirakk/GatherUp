@@ -19,7 +19,8 @@ export function PaymentReviewTable({ registrations }: PaymentReviewTableProps) {
     [rows]
   );
 
-  function updatePayment(orderNumber: string, paymentStatus: Registration["paymentStatus"]) {
+  async function updatePayment(orderNumber: string, paymentStatus: Registration["paymentStatus"]) {
+    const previousRows = rows;
     setRows((current) =>
       current.map((registration) =>
         registration.orderNumber === orderNumber
@@ -32,7 +33,29 @@ export function PaymentReviewTable({ registrations }: PaymentReviewTableProps) {
           : registration
       )
     );
-    setNotice(`${orderNumber} 已${paymentStatus === "付款已确认" ? "通过" : "驳回"}付款审核`);
+
+    try {
+      const response = await fetch("/api/orders/review", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          order_id: orderNumber,
+          result: paymentStatus === "付款已确认" ? "APPROVED" : "REJECTED"
+        })
+      });
+      const result = (await response.json()) as { ok?: boolean; message?: string };
+
+      if (!response.ok || !result.ok) {
+        setRows(previousRows);
+        setNotice(`${orderNumber} 审核未写入数据库：${result.message ?? "接口返回失败"}`);
+        return;
+      }
+
+      setNotice(`${orderNumber} 已${paymentStatus === "付款已确认" ? "通过" : "驳回"}付款审核`);
+    } catch {
+      setRows(previousRows);
+      setNotice(`${orderNumber} 审核未写入数据库，请稍后重试。`);
+    }
   }
 
   return (

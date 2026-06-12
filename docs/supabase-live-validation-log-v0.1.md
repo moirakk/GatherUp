@@ -1,6 +1,6 @@
 # GatherUp commercial v0.1 Supabase live validation log
 
-Last updated: 2026-06-07
+Last updated: 2026-06-12
 
 This log records real Supabase validation attempts and findings. It is not a replacement for the SQL execution runbook; it captures what actually happened against a live project.
 
@@ -297,3 +297,71 @@ Important:
 
 - Do not record database passwords in repository files.
 - Do not run SQL against the live `gatherup` project.
+
+## 2026-06-12 Public Read Grant Follow-Up
+
+Reason:
+
+- The public event detail page is intentionally visible before login for public and link-only events.
+- The existing RLS policies allowed the public surfaces, but the schema grant section did not yet grant anonymous `select` on those public-facing tables.
+- Without the grants, the first Supabase-backed public read path could fail even when RLS policy logic is correct.
+
+Local changes completed:
+
+1. Added anonymous read grants in `supabase/schema.sql` for only the public event detail surfaces:
+   - `public.events`
+   - `public.announcements`
+   - `public.activity_materials`
+2. Added anonymous execute grants for helper functions referenced by public read RLS policies:
+   - `public.current_app_user_id()`
+   - `public.can_manage_event(uuid)`
+   - `public.is_platform_admin()`
+3. Kept sensitive workflow tables private to authenticated/service flows:
+   - `registrations`
+   - `payments`
+   - `payment_proofs`
+   - `refund_requests`
+   - `refund_proofs`
+4. Added a schema contract test to prevent accidental anonymous grants on sensitive workflow tables.
+5. Added `supabase/validation/06-public-read-grants.sql` as a patch for clean dev/staging databases that were created before the grant update.
+6. Added `supabase/validation/07-clean-dev-post-execution-summary.sql` to consolidate post-execution validation into one result table.
+
+Real SQL execution status:
+
+- `06-public-read-grants.sql`: pending in Supabase SQL Editor.
+- `07-clean-dev-post-execution-summary.sql`: pending in Supabase SQL Editor.
+
+Blocker:
+
+- The local environment rejected the required system-clipboard authorization used to paste SQL into the already-authenticated Supabase SQL Editor.
+- Because the approval denial explicitly prohibited indirect workarounds, the SQL Editor execution step was not forced through another path.
+
+Next required action:
+
+1. Run `supabase/validation/06-public-read-grants.sql` in the clean dev/staging project `oxbrxkllftyevlzmiydt`.
+2. Run `supabase/validation/07-clean-dev-post-execution-summary.sql` in the same project.
+3. Record the resulting rows here. The expected state is that every returned row has `ok = true`.
+
+## 2026-06-12 First Supabase-Backed Public Reads
+
+Local application changes completed:
+
+1. Added a server-side Supabase client in `src/lib/supabase/server.ts`.
+2. Added `src/lib/events-data.ts` as the first real-data adapter for public event reads.
+3. Updated `/` to load activity square data through `getPublicEvents()`.
+4. Updated `/events/[eventId]` to load event detail data through `getPublicEventDetail()`.
+5. Preserved mock fallback behavior for local development and unavailable Supabase environments.
+
+Current read behavior:
+
+- Activity square lists only `visibility = 'public'` events.
+- Event detail can be loaded by UUID or `public_code`.
+- Public and link-only detail access remains governed by database RLS.
+- Published announcements are read from Supabase when available.
+- Registration counts, payment counts, seat counts, organizer public profile data, and write workflows remain mock/future-service-layer work.
+
+Local verification:
+
+- `npm run verify`: passed before this documentation update.
+- `npm run build`: passed before this documentation update.
+- `git diff --check`: passed before this documentation update.

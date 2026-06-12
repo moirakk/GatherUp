@@ -31,6 +31,9 @@ export type GatherEvent = {
   maxPeoplePerOrder: number;
   orderPrefix: string;
   description: string;
+  customFormConfig?: unknown;
+  paymentCodeImg?: string;
+  wechatGroupImg?: string;
 };
 
 export type EventOrganizerRole = "主办" | "联合主办" | "财务" | "现场协作" | "只读";
@@ -56,6 +59,9 @@ export type Registration = {
   createdAt: string;
   confirmationEta: string;
   paymentProof?: string;
+  formAnswers?: unknown;
+  checkInCode?: string;
+  checkInStatus?: "NOT_ARRIVED" | "CHECKED_IN";
   refundPolicy: string;
 };
 
@@ -165,6 +171,14 @@ export const events: GatherEvent[] = [
     allowMulti: true,
     maxPeoplePerOrder: 4,
     orderPrefix: "RYU",
+    customFormConfig: {
+      fields: [
+        { id: "favorite_track", label: "最想听/看的片段", type: "text", required: false },
+        { id: "notes", label: "同行备注", type: "textarea", required: false }
+      ]
+    },
+    paymentCodeImg: "collection-codes/demo/ryu-wechat-v1.png",
+    wechatGroupImg: "wechat-groups/demo/ryu-group.png",
     description:
       "同好组织的线下观影活动。报名成功后请按订单金额付款并上传截图，组织者确认后开放选座。"
   },
@@ -728,6 +742,9 @@ export const registrations: Registration[] = [
     createdAt: "2026-05-18",
     confirmationEta: "已确认",
     paymentProof: "wechat-pay-ryu-0001.jpg",
+    formAnswers: { favorite_track: "Merry Christmas Mr. Lawrence", notes: "希望和同行坐一起" },
+    checkInCode: "RYU0001-DEMO-CHECK-IN",
+    checkInStatus: "NOT_ARRIVED",
     refundPolicy: "开场前 48 小时可联系组织者登记退款，手续费按实际支付渠道规则处理。"
   },
   {
@@ -743,6 +760,9 @@ export const registrations: Registration[] = [
     createdAt: "2026-05-18",
     confirmationEta: "预计 24 小时内确认",
     paymentProof: "alipay-spr-0007.jpg",
+    formAnswers: { notes: "付款截图已上传" },
+    checkInCode: "SPR0007-DEMO-CHECK-IN",
+    checkInStatus: "NOT_ARRIVED",
     refundPolicy: "活动未成团会原路退款；个人取消需在报名截止前联系组织者。"
   },
   {
@@ -758,6 +778,9 @@ export const registrations: Registration[] = [
     createdAt: "2026-05-19",
     confirmationEta: "预计 24 小时内确认",
     paymentProof: "pending-upload-preview.jpg",
+    formAnswers: { notes: "等待审核" },
+    checkInCode: "SPR0029-DEMO-CHECK-IN",
+    checkInStatus: "NOT_ARRIVED",
     refundPolicy: "活动未成团会原路退款；个人取消需在报名截止前联系组织者。"
   }
 ];

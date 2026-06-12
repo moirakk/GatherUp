@@ -8,7 +8,7 @@ GatherUp is designed as a general offline event platform, not a fandom-only tool
 
 ## Status
 
-Current status: **frontend prototype plus commercial v0.1 backend foundation drafts, contract tests, organizer workflow UX improvements, and clean Supabase dev/staging execution validation in progress**.
+Current status: **frontend prototype plus commercial v0.1 backend foundation drafts, contract tests, organizer workflow UX improvements, clean Supabase dev/staging execution validation, and first Supabase-backed public event reads in progress**.
 
 Implemented prototype coverage:
 
@@ -22,15 +22,19 @@ Implemented prototype coverage:
 - Organizer promotion center, notification center, payment review prototype, seat management prototype.
 - Venue intelligence prototype.
 - Supabase client dependency, Auth adapter, user profile sync adapter, schema/seed/Storage SQL drafts, and contract tests.
+- Server-side Supabase read adapter for public event listing and public/unlisted event detail, with mock fallback when Supabase is not configured or unavailable.
+- Initial guarded server APIs for event creation, registration orders, payment review, check-in verification, and Excel exports. These require a logged-in session and use the Supabase service role only on the server.
 - Middleware-level login redirect foundation and safe internal `next` path handling.
 - Real Supabase live project preflight, read-only coverage audit logs, and clean dev/staging schema, seed, and Storage execution notes.
 
 Not production-ready yet:
 
-- Core business data still uses mock/local prototype data.
+- Most business workflows still use mock/local prototype data; public event listing and public/unlisted event detail now have an initial Supabase read path.
+- Real write APIs are early integration endpoints, not final transaction services. Capacity locking, atomic order numbering, Storage uploads, and full Supabase Auth/RLS session enforcement still need production-grade implementation.
 - Event creation, registration, payment proof, refund, seat selection, check-in, finance, and admin workflows are not yet backed by real database services.
 - Supabase schema, seed, and Storage policy drafts exist. The original live project has been restored and audited as partially initialized. A clean dev/staging project has been created, `schema.sql` and `seed.sql` have executed successfully, and `storage.sql` has been corrected after a real enum mismatch surfaced during execution.
-- Permission enforcement and RLS need real database testing.
+- Anonymous public-read grants for public event detail surfaces are now included in the schema draft and local contract tests. The follow-up grant patch and consolidated post-execution summary SQL still need to be run in the clean Supabase project after dashboard access/tooling is available.
+- Permission enforcement and RLS need continued real database testing beyond the first public read path.
 - Transactional service functions, email business notifications, organizer verification UI, admin review UI, complaints, audit log writes, and data retention jobs are still planned.
 
 ## Commercial v0.1 Direction
@@ -168,9 +172,9 @@ Every core feature should be implemented in this order:
 
 Recommended order:
 
-1. Finish clean Supabase post-execution validation queries and record the results.
-2. Auth foundation: real Supabase session strategy, route protection, user profile sync, and `/dev/status` reliability.
-3. Real event creation: draft, publish, organizer roles, visibility, capacity, and review gates.
+1. Run `supabase/validation/06-public-read-grants.sql` and `07-clean-dev-post-execution-summary.sql` in the clean Supabase project and record the results.
+2. Expand the real data service layer beyond public reads: event creation, draft/publish, organizer roles, visibility, capacity, and review gates.
+3. Auth foundation: real Supabase session strategy, route protection, user profile sync, and `/dev/status` reliability.
 4. Real registration and order service: capacity hold, order number generation, attendee records, waitlist.
 5. Organizer-collected payment proof workflow: collection-code versions, Storage upload, review, top-up, overpayment/underpayment.
 6. Refund tracking and finance.

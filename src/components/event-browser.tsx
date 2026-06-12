@@ -1,0 +1,84 @@
+"use client";
+
+import { useMemo, useState } from "react";
+import { SlidersHorizontal } from "lucide-react";
+
+import { EventCard } from "@/components/event-card";
+import { type EventCategory, type GatherEvent } from "@/lib/mock-data";
+
+const categoryFilters = ["全部", "同好活动", "校园活动", "会议会务", "好友聚会"] as const;
+
+type EventBrowserProps = {
+  events: GatherEvent[];
+};
+
+export function EventBrowser({ events }: EventBrowserProps) {
+  const [categoryFilter, setCategoryFilter] = useState<"全部" | EventCategory>("全部");
+  const [query, setQuery] = useState("");
+
+  const filteredEvents = useMemo(() => {
+    const normalizedQuery = query.trim().toLowerCase();
+
+    return events.filter((event) => {
+      const matchesCategory = categoryFilter === "全部" || event.category === categoryFilter;
+      const matchesQuery =
+        normalizedQuery.length === 0 ||
+        [event.name, event.publicCode, event.city, event.venue, event.category, event.customTypeLabel, event.template]
+          .join(" ")
+          .toLowerCase()
+          .includes(normalizedQuery);
+
+      return matchesCategory && matchesQuery;
+    });
+  }, [events, query, categoryFilter]);
+
+  return (
+    <>
+      <section className="filter-bar" aria-label="活动筛选">
+        <label className="search-field">
+          <span>⌕</span>
+          <input
+            placeholder="搜索活动、活动ID、城市或场地"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+          />
+        </label>
+        {categoryFilters.map((category) => (
+          <button
+            aria-pressed={categoryFilter === category}
+            className={`chip ${categoryFilter === category ? "active" : ""}`}
+            key={category}
+            type="button"
+            onClick={() => setCategoryFilter(category)}
+          >
+            {category === "全部" ? "全部活动" : category}
+          </button>
+        ))}
+        <button
+          className="chip icon-chip"
+          type="button"
+          onClick={() => {
+            setCategoryFilter("全部");
+            setQuery("");
+          }}
+        >
+          <SlidersHorizontal size={15} />
+          重置
+        </button>
+      </section>
+
+      {filteredEvents.length > 0 ? (
+        <section className="event-grid">
+          {filteredEvents.map((event) => (
+            <EventCard event={event} key={event.id} />
+          ))}
+        </section>
+      ) : (
+        <section className="empty-state">
+          <strong>没有找到匹配的活动</strong>
+          <span>换个关键词，或者切回全部活动看看。</span>
+        </section>
+      )}
+    </>
+  );
+}

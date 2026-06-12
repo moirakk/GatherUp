@@ -1,10 +1,10 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { AlertCircle, Clock3, FileImage, TicketCheck, UsersRound } from "lucide-react";
+import { AlertCircle, Clock3, FileImage, QrCode, TicketCheck, UsersRound } from "lucide-react";
 
 import { ParticipantOrderActions } from "@/components/participant-order-actions";
 import { StatusBadge } from "@/components/status-badge";
-import { events, findRegistration } from "@/lib/mock-data";
+import { getOrderDetail } from "@/lib/orders-data";
 
 type OrderPageProps = {
   params: Promise<{ orderNumber: string }>;
@@ -12,19 +12,15 @@ type OrderPageProps = {
 
 export default async function OrderPage({ params }: OrderPageProps) {
   const { orderNumber } = await params;
-  const registration = findRegistration(orderNumber);
+  const orderDetail = await getOrderDetail(orderNumber);
 
-  if (!registration) {
+  if (!orderDetail) {
     notFound();
   }
 
-  const event = events.find((item) => item.id === registration.eventId);
-
-  if (!event) {
-    notFound();
-  }
-
+  const { event, registration } = orderDetail;
   const isConfirmed = registration.paymentStatus === "付款已确认";
+  const checkInQrData = registration.checkInCode ? `gatherup://check-in/${registration.checkInCode}` : "";
 
   return (
     <>
@@ -77,6 +73,31 @@ export default async function OrderPage({ params }: OrderPageProps) {
           </dl>
           <ParticipantOrderActions eventId={event.id} registration={registration} />
         </aside>
+
+        <article className="content-card">
+          <div className="section-heading">
+            <div>
+              <h2>电子票与群信息</h2>
+              <p className="subtle">
+                {isConfirmed ? "订单已审核通过，以下信息可用于进群和现场核销。" : "订单还在待审核状态，审核通过后才会显示微信群二维码和入场核销数据。"}
+              </p>
+            </div>
+            <QrCode size={20} />
+          </div>
+          {isConfirmed ? (
+            <dl className="info-list">
+              <div><dt>核销码</dt><dd>{registration.checkInCode ?? "待生成"}</dd></div>
+              <div><dt>二维码数据</dt><dd>{checkInQrData || "待生成"}</dd></div>
+              <div><dt>签到状态</dt><dd>{registration.checkInStatus === "CHECKED_IN" ? "已签到" : "未到场"}</dd></div>
+              <div><dt>微信群二维码</dt><dd>{event.wechatGroupImg ? <a href={event.wechatGroupImg}>{event.wechatGroupImg}</a> : "组织者暂未配置"}</dd></div>
+            </dl>
+          ) : (
+            <div className="notice-list">
+              <div><Clock3 size={16} />付款凭证已提交，组织者审核通过后会自动开放电子票。</div>
+              <div><AlertCircle size={16} />当前不会暴露微信群二维码，避免未确认订单提前进群。</div>
+            </div>
+          )}
+        </article>
 
         <article className="content-card">
           <div className="section-heading">

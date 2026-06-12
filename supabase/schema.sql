@@ -378,6 +378,9 @@ create table public.events (
   location_visibility location_visibility not null default 'public',
   description text,
   payment_instructions text,
+  custom_form_config jsonb not null default '{}'::jsonb,
+  payment_code_img text,
+  wechat_group_img text,
   organizer_note text,
   visibility event_visibility not null default 'unlisted',
   allow_multi_person_registration boolean not null default false,
@@ -505,6 +508,10 @@ create table public.registrations (
   expires_at timestamptz,
   cancellation_reason text,
   registration_answers jsonb not null default '{}'::jsonb,
+  form_answers jsonb not null default '{}'::jsonb,
+  payment_screenshot_img text,
+  check_in_code text not null unique default encode(gen_random_bytes(24), 'hex'),
+  check_in_status check_in_status not null default 'not_arrived',
   accepted_terms_version text,
   accepted_terms_at timestamptz,
   accepts_waitlist boolean not null default true,
@@ -799,6 +806,8 @@ create index registrations_event_id_idx on public.registrations(event_id);
 create index registrations_user_id_idx on public.registrations(user_id);
 create index registrations_status_idx on public.registrations(status);
 create index registrations_collection_code_version_idx on public.registrations(collection_code_version_id);
+create index registrations_check_in_code_idx on public.registrations(check_in_code);
+create index registrations_event_check_in_status_idx on public.registrations(event_id, check_in_status);
 create index registration_attendees_registration_id_idx on public.registration_attendees(registration_id);
 create index payments_status_idx on public.payments(status);
 create index payment_proofs_payment_status_idx on public.payment_proofs(payment_id, status);
@@ -1553,8 +1562,14 @@ create policy "audit logs visible to admins and event managers"
 
 -- Data API grants.
 -- RLS still decides which rows each user can access; these grants only allow
--- authenticated users to reach the tables through Supabase's generated API.
+-- users to reach the tables through Supabase's generated API.
 grant usage on schema public to anon, authenticated;
+grant select on public.events to anon;
+grant select on public.announcements to anon;
+grant select on public.activity_materials to anon;
+grant execute on function public.current_app_user_id() to anon;
+grant execute on function public.can_manage_event(uuid) to anon;
+grant execute on function public.is_platform_admin() to anon;
 grant select, insert, update, delete on all tables in schema public to authenticated;
 grant execute on all functions in schema public to authenticated;
 

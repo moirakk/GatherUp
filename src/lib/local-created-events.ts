@@ -15,6 +15,8 @@ export type LocalCreatedEvent = {
   price: number;
   capacity: number;
   paymentMethod: string;
+  paymentCodeImg?: string;
+  wechatGroupImg?: string;
   seatingMode: string;
   organizerIds: string[];
   setupStatus: "本地草稿" | "发布检查通过";

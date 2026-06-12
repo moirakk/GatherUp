@@ -276,6 +276,18 @@ describe("commercial schema contract", () => {
     }
   });
 
+  it("grants anonymous read access only to public event detail surfaces", () => {
+    expectSql(schema, "grant usage on schema public to anon, authenticated;");
+    expectSql(schema, "grant select on public.events to anon;");
+    expectSql(schema, "grant select on public.announcements to anon;");
+    expectSql(schema, "grant select on public.activity_materials to anon;");
+    expectSql(schema, "grant execute on function public.current_app_user_id() to anon;");
+    expectSql(schema, "grant execute on function public.can_manage_event(uuid) to anon;");
+    expectSql(schema, "grant execute on function public.is_platform_admin() to anon;");
+    assert.doesNotMatch(schema, /grant select, insert, update, delete on all tables in schema public to anon/);
+    assert.doesNotMatch(schema, /grant select on public\.(registrations|payments|payment_proofs|refund_requests|refund_proofs) to anon/);
+  });
+
   it("defines helper and trigger functions before they are used", () => {
     const firstPolicyIndex = schema.indexOf("create policy");
     assert.notEqual(firstPolicyIndex, -1, "Missing RLS policies");

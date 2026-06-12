@@ -7,7 +7,7 @@ import { EventMaterials } from "@/components/event-materials";
 import { EventReminderButton } from "@/components/event-reminder-button";
 import { MetricCard } from "@/components/metric-card";
 import { StatusBadge } from "@/components/status-badge";
-import { findEvent, getEventAnnouncements, getEventOrganizers, getEventSetup } from "@/lib/mock-data";
+import { getPublicEventDetail } from "@/lib/events-data";
 
 type EventPageProps = {
   params: Promise<{ eventId: string }>;
@@ -15,15 +15,13 @@ type EventPageProps = {
 
 export default async function EventPage({ params }: EventPageProps) {
   const { eventId } = await params;
-  const event = findEvent(eventId);
+  const eventDetail = await getPublicEventDetail(eventId);
 
-  if (!event) {
+  if (!eventDetail) {
     notFound();
   }
 
-  const setup = getEventSetup(eventId);
-  const announcements = getEventAnnouncements(eventId);
-  const organizers = getEventOrganizers(eventId);
+  const { announcements, event, organizers, setup } = eventDetail;
   const remaining = event.capacity - event.registered;
   const canRegister = setup.setupStatus === "报名已开放";
   const primaryAction = canRegister ? "登录并报名" : "提交数调和地点偏好";

@@ -2342,3 +2342,12 @@ h3 {
     grid-template-columns: 1fr;
   }
 }
+
+.inline-preview-img {
+  aspect-ratio: 1;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  max-width: 148px;
+  object-fit: cover;
+  width: 100%;
+}

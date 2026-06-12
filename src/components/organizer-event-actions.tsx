@@ -26,19 +26,6 @@ function getEventUrl(eventId: string) {
   return `${window.location.origin}/events/${eventId}`;
 }
 
-function downloadCsv(filename: string, rows: string[][]) {
-  const csv = rows
-    .map((row) => row.map((cell) => `"${cell.replaceAll('"', '""')}"`).join(","))
-    .join("\n");
-  const blob = new Blob([`\uFEFF${csv}`], { type: "text/csv;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement("a");
-  anchor.href = url;
-  anchor.download = filename;
-  anchor.click();
-  URL.revokeObjectURL(url);
-}
-
 export function OrganizerEventActions({
   eventId,
   eventName,
@@ -60,21 +47,13 @@ export function OrganizerEventActions({
   }
 
   function exportRegistrations() {
-    downloadCsv(`${publicCode}-orders.csv`, [
-      ["活动", eventName],
-      ["活动 ID", publicCode],
-      [],
-      ["订单号", "昵称", "人数", "金额", "付款状态", "座位状态"],
-      ...registrations.map((registration) => [
-        registration.orderNumber,
-        registration.nickname,
-        String(registration.quantity),
-        String(registration.amount),
-        registration.paymentStatus,
-        registration.seatStatus
-      ])
-    ]);
-    setNotice("报名订单已导出");
+    window.location.href = `/api/export/attendees?event_id=${encodeURIComponent(publicCode)}`;
+    setNotice("正在下载报名名单 .xlsx");
+  }
+
+  function exportFinance() {
+    window.location.href = `/api/export/finance?event_id=${encodeURIComponent(publicCode)}`;
+    setNotice("正在下载财务对账单 .xlsx");
   }
 
   if (variant === "setup") {
@@ -103,7 +82,11 @@ export function OrganizerEventActions({
       </button>
       <button className="button secondary" type="button" onClick={exportRegistrations}>
         <Download size={16} />
-        导出
+        名单
+      </button>
+      <button className="button secondary" type="button" onClick={exportFinance}>
+        <Download size={16} />
+        财务
       </button>
       {notice && <span className="button-feedback">{notice}</span>}
     </>

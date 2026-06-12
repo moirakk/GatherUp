@@ -56,6 +56,7 @@ export function RegistrationFlow({ event, initialStep, setup }: RegistrationFlow
   const [contact, setContact] = useState("moirahoumiki@example.com");
   const [quantity, setQuantity] = useState(1);
   const [attendeeIds, setAttendeeIds] = useState(["GU-MIKI"]);
+  const [formAnswers, setFormAnswers] = useState('{"notes":"希望和同行坐一起"}');
   const [screenshotName, setScreenshotName] = useState("");
   const [selectedSchedules, setSelectedSchedules] = useState<string[]>([scheduleOptions[1]]);
   const [selectedLocation, setSelectedLocation] = useState(event.venue);
@@ -118,6 +119,35 @@ export function RegistrationFlow({ event, initialStep, setup }: RegistrationFlow
     });
   }
 
+  async function createPendingOrder(paymentScreenshotImg = "") {
+    try {
+      const response = await fetch("/api/orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          event_id: event.id,
+          public_id: attendeeIds[0] || "GU-MIKI",
+          nickname,
+          contact,
+          quantity,
+          order_number: orderNumber,
+          form_answers: formAnswers,
+          payment_screenshot_img: paymentScreenshotImg
+        })
+      });
+      const result = (await response.json()) as { ok?: boolean; message?: string; check_in_code?: string };
+
+      if (!response.ok || !result.ok) {
+        setMessage(`订单已进入本地原型流程；数据库写入未完成：${result.message ?? "接口返回失败"}`);
+        return;
+      }
+
+      setMessage(`订单已提交待审核，核销码已生成：${result.check_in_code}`);
+    } catch {
+      setMessage("订单已进入本地原型流程；当前无法连接报名接口，稍后可重试同步。");
+    }
+  }
+
   function submitSurvey() {
     if (selectedSchedules.length === 0) {
       setMessage("请至少选择一个你可以参加的时间。");
@@ -138,10 +168,11 @@ export function RegistrationFlow({ event, initialStep, setup }: RegistrationFlow
     setStep(canEnterRegistration ? "profile" : "locked");
   }
 
-  function submitProfile() {
+  async function submitProfile() {
     setMessage("");
 
     if (isFreeEvent) {
+      await createPendingOrder();
       setStep("waiting");
       return;
     }
@@ -149,13 +180,13 @@ export function RegistrationFlow({ event, initialStep, setup }: RegistrationFlow
     setStep("payment");
   }
 
-  function submitPayment() {
+  async function submitPayment() {
     if (!screenshotName) {
       setMessage("请先选择付款截图，再提交给组织者确认。");
       return;
     }
 
-    setMessage("");
+    await createPendingOrder(`local-upload-preview/${screenshotName}`);
     setStep("waiting");
   }
 
@@ -329,6 +360,7 @@ export function RegistrationFlow({ event, initialStep, setup }: RegistrationFlow
                     ))}
                   </select>
                 </label>
+                <label className="wide-field">自定义表单答案<textarea value={formAnswers} onChange={(event) => setFormAnswers(event.target.value)} rows={5} /></label>
               </div>
 
               <div className="attendee-list">
@@ -460,9 +492,10 @@ export function RegistrationFlow({ event, initialStep, setup }: RegistrationFlow
             <div><dt>地点偏好</dt><dd>{selectedLocation || "未选择"}</dd></div>
             <div><dt>订单号</dt><dd>{orderNumber}</dd></div>
             <div><dt>报名人</dt><dd>{nickname || "未填写"}</dd></div>
-            <div><dt>人数</dt><dd>{quantity} 人</dd></div>
-            <div><dt>金额</dt><dd>{isFreeEvent ? "免费" : `¥${amount}`}</dd></div>
-            <div><dt>多人报名</dt><dd>{event.allowMulti ? `最多 ${event.maxPeoplePerOrder} 人` : "不支持"}</dd></div>
+                <div><dt>人数</dt><dd>{quantity} 人</dd></div>
+                <div><dt>金额</dt><dd>{isFreeEvent ? "免费" : `¥${amount}`}</dd></div>
+                <div><dt>表单答案</dt><dd>{formAnswers.trim() ? "已填写" : "未填写"}</dd></div>
+                <div><dt>多人报名</dt><dd>{event.allowMulti ? `最多 ${event.maxPeoplePerOrder} 人` : "不支持"}</dd></div>
           </dl>
           <div className="notice-strip">
             <UsersRound size={16} />
