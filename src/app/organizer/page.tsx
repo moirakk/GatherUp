@@ -3,7 +3,17 @@ import { CalendarCheck, CircleDollarSign, MapPinned, Plus, QrCode, ServerCog } f
 
 import { LocalCreatedEventList } from "@/components/local-created-event-list";
 import { MetricCard } from "@/components/metric-card";
-import { eventSetups, events, getEventOrganizers, registrations } from "@/lib/mock-data";
+import { getNextActions } from "@/components/next-action-card";
+import { eventSetups, events, getEventOrganizers, registrations, type EventSetup, type GatherEvent, type Registration } from "@/lib/mock-data";
+
+function getPrimaryAction(event: GatherEvent, setup: EventSetup, eventRegistrations: Registration[]) {
+  return getNextActions({
+    basePath: `/organizer/events/${event.id}`,
+    event,
+    registrations: eventRegistrations,
+    setup
+  })[0];
+}
 
 export default function OrganizerPage() {
   const activeSetups = eventSetups.filter((setup) => setup.setupStatus !== "报名已开放");
@@ -45,8 +55,10 @@ export default function OrganizerPage() {
       <section className="setup-grid" id="setup-list">
         {activeSetups.map((setup) => {
           const event = events.find((item) => item.id === setup.eventId) ?? events[0];
+          const eventRegistrations = registrations.filter((registration) => registration.eventId === event.id);
           const selectedTime = setup.surveyOptions.find((option) => option.selected);
           const selectedVenue = setup.venueOptions.find((option) => option.selected);
+          const primaryAction = getPrimaryAction(event, setup, eventRegistrations);
 
           return (
             <article className="content-card setup-card" key={setup.eventId}>
@@ -69,9 +81,9 @@ export default function OrganizerPage() {
                   <MapPinned size={15} />地点领先：{selectedVenue?.label ?? "未选择"}
                 </span>
               </div>
-              <p className="subtle">{setup.nextAction}</p>
+              <p className="subtle">{primaryAction.description}</p>
               <div className="button-row">
-                <Link className="button secondary" href={`/organizer/events/${event.id}`}>进入管理台</Link>
+                <Link className={`button ${primaryAction.urgent ? "primary" : "secondary"}`} href={primaryAction.href}>{primaryAction.label}</Link>
                 <Link className="button secondary" href={`/organizer/events/${event.id}/finance`}><CircleDollarSign size={16} />财务</Link>
               </div>
             </article>
@@ -81,11 +93,14 @@ export default function OrganizerPage() {
 
       <section className="data-table">
         <div className="table-row header">
-          <span>活动</span><span>阶段</span><span>报名</span><span>收款</span><span>操作</span>
+          <span>活动</span><span>阶段</span><span>报名</span><span>待处理</span><span>操作</span>
         </div>
         {events.map((event) => {
           const setup = eventSetups.find((item) => item.eventId === event.id);
           const organizers = getEventOrganizers(event.id);
+          const pendingPaymentCount = registrations.filter(
+            (registration) => registration.eventId === event.id && registration.paymentStatus === "待审核"
+          ).length;
 
           return (
             <div className="table-row" key={event.id}>
@@ -95,7 +110,15 @@ export default function OrganizerPage() {
               </span>
               <span>{setup?.setupStatus ?? event.status}</span>
               <span>{event.registered}/{event.capacity}</span>
-              <span>{setup?.paymentQrStatus ?? "未配置"}</span>
+              <span>
+                {pendingPaymentCount > 0 ? (
+                  <Link className="status-badge warning" href={`/organizer/events/${event.id}?panel=orders`}>
+                    {pendingPaymentCount} 笔付款
+                  </Link>
+                ) : (
+                  <span className="status-badge neutral">无待办</span>
+                )}
+              </span>
               <Link className="button secondary" href={`/organizer/events/${event.id}`}>管理</Link>
             </div>
           );

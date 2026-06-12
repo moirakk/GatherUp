@@ -1,12 +1,13 @@
 # GatherUp v0.1 documentation index
 
-Last updated: 2026-06-07
+Last updated: 2026-06-12
 
 This index organizes the GatherUp documents by how they should be used. The commercial v0.1 documents are the current source of truth for product direction.
 
 ## Start Here
 
 - [Current project state](./current-state-v0.1.md): what exists in the codebase today.
+- [Project architecture brief](./project-architecture-brief-v0.1.md): structured product and engineering architecture summary for reviews.
 - [Product operating map](./product-operating-map-v0.1.md): one-page product and engineering map for commercial v0.1.
 - [Commercial v0.1 PRD](./commercial-v0.1-prd.md): commercial product requirements and acceptance criteria.
 - [Commercial v0.1 decision log](./decision-log-v0.1.md): confirmed decisions and rationale.
@@ -19,6 +20,7 @@ This index organizes the GatherUp documents by how they should be used. The comm
 
 ## Product
 
+- [Project architecture brief](./project-architecture-brief-v0.1.md): concise architecture, module, validation, and roadmap summary.
 - [Product operating map](./product-operating-map-v0.1.md): current commercial v0.1 product map.
 - [Commercial v0.1 PRD](./commercial-v0.1-prd.md): requirements and acceptance criteria.
 - [Commercial v0.1 decision log](./decision-log-v0.1.md): confirmed business decisions and rationale.

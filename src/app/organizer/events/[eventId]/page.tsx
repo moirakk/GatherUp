@@ -5,11 +5,13 @@ import { ArrowLeft, AtSign, BellRing, CalendarCheck, CircleDollarSign, MapPinned
 import { AnnouncementCenter } from "@/components/announcement-center";
 import { EventIdentityPanel } from "@/components/event-identity-panel";
 import { MetricCard } from "@/components/metric-card";
+import { NextActionCard } from "@/components/next-action-card";
 import { OrganizerEventActions } from "@/components/organizer-event-actions";
 import { PaymentReviewTable } from "@/components/payment-review-table";
 import { PollDecisionPanel } from "@/components/poll-decision-panel";
 import { PromotionCenter } from "@/components/promotion-center";
 import { SeatMap } from "@/components/seat-map";
+import { WorkflowStepper } from "@/components/workflow-stepper";
 import { findEvent, getEventAnnouncements, getEventOrganizers, getEventRegistrations, getEventSetup } from "@/lib/mock-data";
 
 type OrganizerEventPageProps = {
@@ -74,6 +76,9 @@ export default async function OrganizerEventPage({ params, searchParams }: Organ
           <Link className="button secondary" href={`/organizer/events/${event.id}/finance`}><CircleDollarSign size={16} />财务</Link>
         </div>
       </section>
+
+      <WorkflowStepper event={event} />
+      <NextActionCard basePath={basePath} event={event} registrations={registrations} setup={setup} />
 
       <section className="metrics-grid">
         {moduleLinks.map((item) => (

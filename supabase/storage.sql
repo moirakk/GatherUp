@@ -68,19 +68,9 @@ create policy "activity materials readable by visibility and role"
       where m.id = public.storage_folder_uuid(name, 2)
         and m.event_id = public.storage_folder_uuid(name, 1)
         and (
-          m.visibility = 'public'
+          m.visibility = 'participant'
           or public.can_manage_event(m.event_id)
           or public.is_platform_admin()
-          or (
-            m.visibility = 'participants_only'
-            and exists (
-              select 1
-              from public.registrations r
-              where r.event_id = m.event_id
-                and r.user_id = public.current_app_user_id()
-                and r.status in ('payment_submitted', 'confirmed')
-            )
-          )
         )
     )
   );

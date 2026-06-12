@@ -1,6 +1,6 @@
 # GatherUp commercial v0.1 Supabase live validation log
 
-Last updated: 2026-06-06
+Last updated: 2026-06-07
 
 This log records real Supabase validation attempts and findings. It is not a replacement for the SQL execution runbook; it captures what actually happened against a live project.
 
@@ -214,7 +214,7 @@ Recommended next step:
 1. Create and validate against a fresh dev/staging Supabase project first.
 2. After the clean dev/staging execution passes, decide whether to rebuild the live project or write an incremental migration for the missing objects above.
 
-## 2026-06-07 Clean Dev/Staging Preparation
+## 2026-06-07 Clean Dev/Staging Execution
 
 Actions completed:
 
@@ -222,32 +222,76 @@ Actions completed:
    - Organization name: `GatherUp Dev`
    - Plan shown in Dashboard: `Free`
    - Organization ref shown in project creation URL: `juvctqcorlckelbvhefc`
-2. Opened the new project creation page under `GatherUp Dev`.
-3. Set the intended validation project name to:
-   - `gatherup-commercial-v01-validation`
-4. Confirmed the project creation defaults that need attention before creating the project:
-   - `Enable Data API`: enabled by default.
-   - `Automatically expose new tables`: enabled by default, but should be disabled for controlled RLS/service validation.
-   - `Enable automatic RLS`: disabled by default.
-   - Region selector displayed `Asia-Pacific`; exact city/region still needs confirmation before project creation.
+2. Created the clean validation project:
+   - Supabase project name: `gatherup-commercial-v01-validation`
+   - Supabase project ref: `oxbrxkllftyevlzmiydt`
+   - Dashboard URL: `https://supabase.com/dashboard/project/oxbrxkllftyevlzmiydt`
+   - API URL: `https://oxbrxkllftyevlzmiydt.supabase.co`
+   - Dashboard branch label: `main`
+   - Dashboard environment label: `PRODUCTION`
+   - Region: Tokyo, `ap-northeast-1`
+   - Compute: Nano, `t4g.nano`
+3. Confirmed project creation posture:
+   - `Enable Data API`: enabled.
+   - `Automatically expose new tables`: disabled before creation.
+   - `Enable automatic RLS`: left disabled because `supabase/schema.sql` explicitly enables RLS on all public tables.
+4. Ran `supabase/validation/00-clean-project-preflight.sql`.
+5. Ran `supabase/schema.sql`.
+6. Ran `supabase/seed.sql`.
+7. Ran `supabase/storage.sql`.
+
+Preflight result:
+
+- Existing target public tables: `0`
+- Existing target custom types: `0`
+- Conclusion: safe clean first-run validation target.
+
+Execution result:
+
+- `supabase/schema.sql`: succeeded with `Success. No rows returned`.
+- `supabase/seed.sql`: succeeded with `Success. No rows returned`.
+- `supabase/storage.sql`: first attempt failed, then succeeded after local fix.
+
+Storage failure:
+
+```text
+ERROR: 22P02: invalid input value for enum activity_material_visibility: "public"
+```
+
+Root cause:
+
+- `supabase/schema.sql` defines `activity_material_visibility` as:
+  - `participant`
+  - `organizer_internal`
+- `supabase/storage.sql` still referenced older draft values:
+  - `public`
+  - `participants_only`
+
+Fix applied:
+
+- Updated the activity material Storage read policy to use `m.visibility = 'participant'`.
+- Removed the stale `participants_only` participant-registration branch from the Storage policy.
+- This aligns Storage access with the table-level `activity_materials` read policy, where participant-visible materials are represented by `participant`.
 
 Current state:
 
-- The clean validation organization exists.
-- The clean validation project has not yet been confirmed as created.
-- No `schema.sql`, `seed.sql`, `storage.sql`, or validation SQL has been executed against the clean validation project yet.
-- Browser interaction became unstable while handling the database password/autofill prompt, so SQL execution was not started.
+- Clean dev/staging schema execution is validated through `schema.sql`, `seed.sql`, and corrected `storage.sql`.
+- The corrected `storage.sql` has been rerun successfully in the Supabase SQL Editor.
+- The SQL Editor became unstable while attempting follow-up validation queries, so the post-execution validation queries below still need to be run and recorded.
 
-Required next step:
+Remaining validation queries:
 
-1. Reopen the Supabase Dashboard.
-2. Go to organization `GatherUp Dev`.
-3. Finish creating project `gatherup-commercial-v01-validation`.
-4. Before clicking create, verify:
-   - Region is appropriate for dev/staging, preferably Tokyo/Japan if available.
-   - Database password is saved somewhere safe outside the repository, such as the browser password manager.
-   - `Automatically expose new tables` is disabled.
-5. After project creation finishes, run `supabase/validation/00-clean-project-preflight.sql`.
+1. `supabase/validation/02-post-seed-counts.sql`
+2. `supabase/validation/03-identity-integrity.sql`
+3. `supabase/validation/04-payment-setup.sql`
+4. `supabase/validation/05-storage-buckets.sql`
+5. `supabase/validation/01-coverage-audit.sql`
+
+Local verification after the Storage fix:
+
+- `npm run verify`: passed.
+- `npm run build`: passed.
+- `git diff --check`: passed.
 
 Important:
 

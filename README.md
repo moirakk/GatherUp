@@ -8,7 +8,7 @@ GatherUp is designed as a general offline event platform, not a fandom-only tool
 
 ## Status
 
-Current status: **frontend prototype plus commercial v0.1 backend foundation drafts, contract tests, and live Supabase preflight coverage audit**.
+Current status: **frontend prototype plus commercial v0.1 backend foundation drafts, contract tests, organizer workflow UX improvements, and clean Supabase dev/staging execution validation in progress**.
 
 Implemented prototype coverage:
 
@@ -17,18 +17,19 @@ Implemented prototype coverage:
 - Login/register/code/reset UI with Supabase Auth adapter preparation.
 - Activity square, event detail, registration flow, order detail, profile center.
 - Organizer workspace, event creation wizard, event management console, finance center.
+- Organizer workflow stepper and dynamic next-action guidance for the main organizer workspace and per-event management console.
 - Local event draft saving, publish readiness checks, and local created event records.
 - Organizer promotion center, notification center, payment review prototype, seat management prototype.
 - Venue intelligence prototype.
 - Supabase client dependency, Auth adapter, user profile sync adapter, schema/seed/Storage SQL drafts, and contract tests.
 - Middleware-level login redirect foundation and safe internal `next` path handling.
-- Real Supabase live project preflight and read-only coverage audit logs.
+- Real Supabase live project preflight, read-only coverage audit logs, and clean dev/staging schema, seed, and Storage execution notes.
 
 Not production-ready yet:
 
 - Core business data still uses mock/local prototype data.
 - Event creation, registration, payment proof, refund, seat selection, check-in, finance, and admin workflows are not yet backed by real database services.
-- Supabase schema, seed, and Storage policy drafts exist. A live Supabase project has been restored and audited, but it is partially initialized, so full SQL execution must happen first in a fresh dev/staging project.
+- Supabase schema, seed, and Storage policy drafts exist. The original live project has been restored and audited as partially initialized. A clean dev/staging project has been created, `schema.sql` and `seed.sql` have executed successfully, and `storage.sql` has been corrected after a real enum mismatch surfaced during execution.
 - Permission enforcement and RLS need real database testing.
 - Transactional service functions, email business notifications, organizer verification UI, admin review UI, complaints, audit log writes, and data retention jobs are still planned.
 
@@ -120,6 +121,7 @@ This demo mode is for prototype verification only. It is not a production accoun
 Start here:
 
 - [Documentation index](./docs/index-v0.1.md)
+- [Project architecture brief](./docs/project-architecture-brief-v0.1.md)
 - [Product operating map](./docs/product-operating-map-v0.1.md)
 - [Commercial v0.1 PRD](./docs/commercial-v0.1-prd.md)
 - [Commercial v0.1 decision log](./docs/decision-log-v0.1.md)
@@ -166,8 +168,8 @@ Every core feature should be implemented in this order:
 
 Recommended order:
 
-1. Auth foundation: real Supabase session strategy, route protection, user profile sync, and `/dev/status` reliability.
-2. Commercial schema update: organizer verification, activity state machine, orders, payment proofs, refunds, seat locks, audit logs, admin review.
+1. Finish clean Supabase post-execution validation queries and record the results.
+2. Auth foundation: real Supabase session strategy, route protection, user profile sync, and `/dev/status` reliability.
 3. Real event creation: draft, publish, organizer roles, visibility, capacity, and review gates.
 4. Real registration and order service: capacity hold, order number generation, attendee records, waitlist.
 5. Organizer-collected payment proof workflow: collection-code versions, Storage upload, review, top-up, overpayment/underpayment.

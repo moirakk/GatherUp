@@ -1,6 +1,6 @@
 # GatherUp GitHub repository profile copy
 
-Last updated: 2026-06-06
+Last updated: 2026-06-12
 
 Use this document when updating the GitHub repository About section, README summary, social preview copy, or public project introduction.
 
@@ -63,11 +63,11 @@ GatherUp brings those workflows into one product while keeping the data model ge
 
 ## Current Status Copy
 
-Current status: frontend prototype plus commercial v0.1 backend foundation drafts, contract tests, and live Supabase preflight coverage audit.
+Current status: frontend prototype plus commercial v0.1 backend foundation drafts, contract tests, organizer workflow UX improvements, and clean Supabase dev/staging execution validation in progress.
 
-The codebase already includes the Next.js app skeleton, local/mock workflows, Supabase Auth/profile adapter preparation, route protection middleware, commercial schema/seed/Storage SQL drafts, auth/schema/storage contract tests, event creation prototype, organizer workspace, registration flow, payment review prototype, seat management prototype, finance prototype, notification center, venue intelligence prototype, and real Supabase validation runbooks/logs.
+The codebase already includes the Next.js app skeleton, local/mock workflows, Supabase Auth/profile adapter preparation, route protection middleware, commercial schema/seed/Storage SQL drafts, auth/schema/storage contract tests, event creation prototype, organizer workspace, organizer workflow stepper, dynamic next-action guidance, registration flow, payment review prototype, seat management prototype, finance prototype, notification center, venue intelligence prototype, architecture briefing docs, and real Supabase validation runbooks/logs.
 
-The live Supabase project has been restored and audited. It is partially initialized, not empty and not complete, so the full schema draft must not be run against it as-is. The next engineering phase is to validate `schema.sql`, `seed.sql`, and `storage.sql` in a fresh dev/staging Supabase project, then implement transactional service functions, replace prototype data with real Supabase-backed workflows, enforce explicit permissions, write audit logs, connect Storage uploads, add organizer verification, and build minimum admin review.
+The original live Supabase project has been restored and audited. It is partially initialized, not empty and not complete, so the full schema draft must not be run against it as-is. A clean dev/staging Supabase project has executed `schema.sql`, `seed.sql`, and corrected `storage.sql`; remaining post-execution validation queries still need to be recorded. The next engineering phase is to implement transactional service functions, replace prototype data with real Supabase-backed workflows, enforce explicit permissions, write audit logs, connect Storage uploads, add organizer verification, and build minimum admin review.
 
 ## One-paragraph README Summary
 
