@@ -359,6 +359,24 @@ describe("commercial schema contract", () => {
     assert.doesNotMatch(schema, /grant execute on function public\.check_in_order_atomic\(text, text\) to anon/);
   });
 
+  it("keeps refund requests atomic and audited", () => {
+    expectSql(schema, "create or replace function public.request_refund_atomic(");
+    expectSql(schema, "v_user_id := public.current_app_user_id();");
+    expectSql(schema, "from public.registrations r");
+    expectSql(schema, "left join public.payments p on p.registration_id = r.id");
+    expectSql(schema, "for update of r, p;");
+    expectSql(schema, "v_order.user_id <> v_user_id");
+    expectSql(schema, "v_order.registration_status not in ('confirmed', 'refunding')");
+    expectSql(schema, "insert into public.refund_requests");
+    expectSql(schema, "update public.registrations");
+    expectSql(schema, "status = 'refunding'");
+    expectSql(schema, "update public.payments");
+    expectSql(schema, "insert into public.audit_logs");
+    expectSql(schema, "'refund.requested'");
+    expectSql(schema, "grant execute on function public.request_refund_atomic(uuid, integer, text) to authenticated;");
+    assert.doesNotMatch(schema, /grant execute on function public\.request_refund_atomic\(uuid, integer, text\) to anon/);
+  });
+
   it("defines helper and trigger functions before they are used", () => {
     const firstPolicyIndex = schema.indexOf("create policy");
     assert.notEqual(firstPolicyIndex, -1, "Missing RLS policies");

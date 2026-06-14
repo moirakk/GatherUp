@@ -18,6 +18,7 @@ describe("registration and payment proof API contracts", () => {
   const orderRoute = readSource("src/app/api/orders/route.ts");
   const paymentProofRoute = readSource("src/app/api/orders/payment-proof/route.ts");
   const paymentReviewRoute = readSource("src/app/api/orders/review/route.ts");
+  const orderRefundRoute = readSource("src/app/api/orders/refund/route.ts");
   const orderVerifyRoute = readSource("src/app/api/orders/verify/route.ts");
   const seatLockRoute = readSource("src/app/api/seats/lock/route.ts");
   const seatConfirmRoute = readSource("src/app/api/seats/confirm/route.ts");
@@ -69,6 +70,20 @@ describe("registration and payment proof API contracts", () => {
     assert.doesNotMatch(orderVerifyRoute, /getSupabaseServiceClient/);
     assert.doesNotMatch(orderVerifyRoute, /\.from\("registrations"\)\s*\n\s*\.update/);
     assert.doesNotMatch(orderVerifyRoute, /\.from\("registration_attendees"\)\s*\n\s*\.update/);
+  });
+
+  it("keeps participant refund requests on the user JWT RPC path", () => {
+    expectSource(orderRefundRoute, "readBearerToken(request)");
+    expectSource(orderRefundRoute, "verifySupabaseAccessToken(accessToken)");
+    expectSource(orderRefundRoute, "getSupabaseUserClient(accessToken)");
+    expectSource(orderRefundRoute, 'supabase.rpc("request_refund_atomic"');
+    expectSource(orderRefundRoute, "p_registration_id: registrationId");
+    expectSource(orderRefundRoute, "p_reason: reason");
+
+    assert.doesNotMatch(orderRefundRoute, /getSupabaseServiceClient/);
+    assert.doesNotMatch(orderRefundRoute, /\.from\("refund_requests"\)\s*\n\s*\.insert/);
+    assert.doesNotMatch(orderRefundRoute, /\.from\("registrations"\)\s*\n\s*\.update/);
+    assert.doesNotMatch(orderRefundRoute, /\.from\("payments"\)\s*\n\s*\.update/);
   });
 
   it("keeps payment proof files bound to the private Storage object path", () => {

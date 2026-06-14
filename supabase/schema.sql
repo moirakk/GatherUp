@@ -1736,6 +1736,172 @@ $$ language plpgsql security definer set search_path = public, auth, pg_temp;
 revoke all on function public.check_in_order_atomic(text, text) from public;
 grant execute on function public.check_in_order_atomic(text, text) to authenticated;
 
+create or replace function public.request_refund_atomic(
+  p_registration_id uuid,
+  p_requested_amount_cents integer default null,
+  p_reason text default null
+)
+returns jsonb as $$
+declare
+  v_user_id uuid;
+  v_order record;
+  v_refund_id uuid;
+  v_requested_amount_cents integer;
+begin
+  v_user_id := public.current_app_user_id();
+
+  if v_user_id is null then
+    return jsonb_build_object('success', false, 'error_code', 'UNAUTHORIZED', 'message', 'Please sign in before requesting a refund.');
+  end if;
+
+  if nullif(trim(coalesce(p_reason, '')), '') is null then
+    return jsonb_build_object('success', false, 'error_code', 'MISSING_REASON', 'message', 'Refund reason is required.');
+  end if;
+
+  select
+    r.id as registration_id,
+    r.event_id,
+    r.user_id,
+    r.order_number,
+    r.status as registration_status,
+    r.amount_due_cents,
+    p.id as payment_id,
+    p.status as payment_status,
+    p.amount_confirmed_cents
+  into v_order
+  from public.registrations r
+  left join public.payments p on p.registration_id = r.id
+  where r.id = p_registration_id
+  for update of r, p;
+
+  if not found then
+    return jsonb_build_object('success', false, 'error_code', 'REGISTRATION_NOT_FOUND', 'message', 'Registration not found.');
+  end if;
+
+  if v_order.user_id <> v_user_id then
+    return jsonb_build_object('success', false, 'error_code', 'FORBIDDEN', 'message', 'You can only request refunds for your own order.');
+  end if;
+
+  if v_order.registration_status not in ('confirmed', 'refunding') then
+    return jsonb_build_object('success', false, 'error_code', 'REFUND_UNAVAILABLE', 'message', 'This order is not eligible for refund requests.');
+  end if;
+
+  if v_order.amount_due_cents <= 0 then
+    return jsonb_build_object('success', false, 'error_code', 'FREE_ORDER', 'message', 'Free orders do not need a refund request.');
+  end if;
+
+  if coalesce(v_order.amount_confirmed_cents, 0) <= 0 then
+    return jsonb_build_object('success', false, 'error_code', 'NO_CONFIRMED_PAYMENT', 'message', 'This order has no confirmed payment.');
+  end if;
+
+  if exists (
+    select 1
+    from public.refund_requests rr
+    where rr.registration_id = v_order.registration_id
+      and rr.status not in ('confirmed', 'rejected', 'cancelled')
+  ) then
+    return jsonb_build_object('success', false, 'error_code', 'REFUND_ALREADY_OPEN', 'message', 'This order already has an active refund request.');
+  end if;
+
+  v_requested_amount_cents := least(
+    greatest(0, coalesce(p_requested_amount_cents, v_order.amount_confirmed_cents)),
+    v_order.amount_confirmed_cents
+  );
+
+  if v_requested_amount_cents <= 0 then
+    return jsonb_build_object('success', false, 'error_code', 'INVALID_AMOUNT', 'message', 'Refund amount must be greater than zero.');
+  end if;
+
+  v_refund_id := gen_random_uuid();
+
+  insert into public.refund_requests (
+    id,
+    registration_id,
+    payment_id,
+    requested_by,
+    status,
+    requested_amount_cents,
+    reason
+  ) values (
+    v_refund_id,
+    v_order.registration_id,
+    v_order.payment_id,
+    v_user_id,
+    'requested',
+    v_requested_amount_cents,
+    trim(p_reason)
+  );
+
+  update public.registrations
+  set
+    status = 'refunding',
+    updated_at = now()
+  where id = v_order.registration_id;
+
+  update public.payments
+  set
+    status = 'refunding',
+    updated_at = now()
+  where id = v_order.payment_id;
+
+  insert into public.audit_logs (
+    actor_id,
+    actor_role,
+    event_id,
+    target_type,
+    target_id,
+    action,
+    risk_level,
+    reason,
+    before_snapshot,
+    after_snapshot,
+    metadata
+  ) values (
+    v_user_id,
+    'user',
+    v_order.event_id,
+    'refund_request',
+    v_refund_id,
+    'refund.requested',
+    'medium',
+    trim(p_reason),
+    jsonb_build_object(
+      'registration_status', v_order.registration_status,
+      'payment_status', v_order.payment_status
+    ),
+    jsonb_build_object(
+      'registration_status', 'refunding',
+      'payment_status', 'refunding',
+      'refund_status', 'requested'
+    ),
+    jsonb_build_object(
+      'registration_id', v_order.registration_id,
+      'payment_id', v_order.payment_id,
+      'order_number', v_order.order_number,
+      'requested_amount_cents', v_requested_amount_cents
+    )
+  );
+
+  return jsonb_build_object(
+    'success', true,
+    'refund_request_id', v_refund_id,
+    'registration_id', v_order.registration_id,
+    'order_number', v_order.order_number,
+    'requested_amount_cents', v_requested_amount_cents,
+    'status', 'requested'
+  );
+exception
+  when deadlock_detected or serialization_failure then
+    return jsonb_build_object('success', false, 'error_code', 'CONCURRENT_CONFLICT', 'message', 'Refund request is busy. Please retry.');
+  when others then
+    raise warning '[GatherUp] request_refund_atomic: % | %', sqlstate, sqlerrm;
+    return jsonb_build_object('success', false, 'error_code', 'INTERNAL_ERROR', 'message', 'Refund request failed.');
+end;
+$$ language plpgsql security definer set search_path = public, auth, pg_temp;
+
+revoke all on function public.request_refund_atomic(uuid, integer, text) from public;
+grant execute on function public.request_refund_atomic(uuid, integer, text) to authenticated;
+
 create or replace function public.sync_seat_status_on_assignment()
 returns trigger as $$
 begin
