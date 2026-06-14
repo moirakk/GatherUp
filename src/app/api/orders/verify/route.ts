@@ -2,24 +2,23 @@ import { NextResponse } from "next/server";
 
 import {
   asRecord,
-  canManageEventByPublicId,
+  canManageEventByAuthUserId,
   checkInStatus,
-  isApiErrorResponse,
   jsonError,
   orderStatus,
-  requireApiSession,
   toPublicCheckInStatus,
   toPublicOrderStatus
 } from "@/lib/server/api";
-import { getSupabaseServiceClient } from "@/lib/supabase/server";
+import { getSupabaseServiceClient, readBearerToken, verifySupabaseAccessToken } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
-  const session = requireApiSession(request);
+  const accessToken = readBearerToken(request);
+  const authUser = await verifySupabaseAccessToken(accessToken);
 
-  if (isApiErrorResponse(session)) {
-    return session;
+  if (!authUser) {
+    return jsonError("请使用 Supabase 登录后再核销订单。", 401);
   }
 
   let body: Record<string, unknown>;
@@ -48,7 +47,7 @@ export async function POST(request: Request) {
       return jsonError("核销码无效。", 404);
     }
 
-    const canManage = await canManageEventByPublicId(supabase, registration.event_id, session.gatherUpId);
+    const canManage = await canManageEventByAuthUserId(supabase, registration.event_id, authUser.id);
 
     if (!canManage) {
       return jsonError("只有活动主办或现场协作者可以核销订单。", 403);

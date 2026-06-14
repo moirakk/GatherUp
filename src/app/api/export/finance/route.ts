@@ -1,6 +1,6 @@
-import { canManageEventByPublicId, isApiErrorResponse, jsonError, requireApiSession } from "@/lib/server/api";
+import { canManageEventByAuthUserId, jsonError } from "@/lib/server/api";
 import { buildWorkbookBuffer, excelResponse } from "@/lib/server/excel";
-import { getSupabaseServiceClient } from "@/lib/supabase/server";
+import { getSupabaseServiceClient, readBearerToken, verifySupabaseAccessToken } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
 
@@ -9,10 +9,11 @@ function isUuid(value: string) {
 }
 
 export async function GET(request: Request) {
-  const session = requireApiSession(request);
+  const accessToken = readBearerToken(request);
+  const authUser = await verifySupabaseAccessToken(accessToken);
 
-  if (isApiErrorResponse(session)) {
-    return session;
+  if (!authUser) {
+    return jsonError("请使用 Supabase 登录后再导出财务对账单。", 401);
   }
 
   const { searchParams } = new URL(request.url);
@@ -36,7 +37,7 @@ export async function GET(request: Request) {
       return jsonError("找不到活动。", 404);
     }
 
-    const canManage = await canManageEventByPublicId(supabase, event.id, session.gatherUpId);
+    const canManage = await canManageEventByAuthUserId(supabase, event.id, authUser.id);
 
     if (!canManage) {
       return jsonError("只有活动主办或财务协作者可以导出财务对账单。", 403);

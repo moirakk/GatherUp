@@ -3,8 +3,6 @@ import { randomBytes, randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { type SupabaseClient } from "@supabase/supabase-js";
 
-import { getAuthSession, type AuthSession } from "@/lib/auth";
-
 export type JsonRecord = Record<string, unknown>;
 
 export const orderStatus = {
@@ -20,20 +18,6 @@ export const checkInStatus = {
 
 export function jsonError(message: string, status = 400) {
   return NextResponse.json({ ok: false, message }, { status });
-}
-
-export function requireApiSession(request: Request): AuthSession | NextResponse {
-  const session = getAuthSession(request.headers.get("cookie") ?? "");
-
-  if (!session?.gatherUpId) {
-    return jsonError("请先登录后再继续。", 401);
-  }
-
-  return session;
-}
-
-export function isApiErrorResponse(value: AuthSession | NextResponse): value is NextResponse {
-  return value instanceof NextResponse;
 }
 
 export function asRecord(value: unknown): JsonRecord {
@@ -87,11 +71,11 @@ export function normalizeJsonInput(value: unknown) {
   return value;
 }
 
-export async function findUserByPublicId(supabase: SupabaseClient, publicId: string) {
+export async function findUserByAuthUserId(supabase: SupabaseClient, authUserId: string) {
   const { data, error } = await supabase
     .from("users")
     .select("id, public_id")
-    .eq("public_id", publicId.toUpperCase())
+    .eq("auth_user_id", authUserId)
     .single();
 
   if (error || !data?.id) {
@@ -101,8 +85,8 @@ export async function findUserByPublicId(supabase: SupabaseClient, publicId: str
   return data as { id: string; public_id: string };
 }
 
-export async function canManageEventByPublicId(supabase: SupabaseClient, eventId: string, publicId: string) {
-  const user = await findUserByPublicId(supabase, publicId);
+export async function canManageEventByAuthUserId(supabase: SupabaseClient, eventId: string, authUserId: string) {
+  const user = await findUserByAuthUserId(supabase, authUserId);
 
   if (!user) {
     return false;

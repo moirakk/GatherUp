@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 
 import { saveLocalCreatedEvent } from "@/lib/local-created-events";
+import { getSupabaseBrowserClient, isSupabaseConfigured } from "@/lib/supabase/client";
 
 const steps = [
   { id: "basic", label: "基础信息", icon: ClipboardList },
@@ -356,9 +357,21 @@ export default function NewEventPage() {
     saveLocalCreatedEvent(localEvent);
 
     try {
+      const accessToken = isSupabaseConfigured()
+        ? (await getSupabaseBrowserClient().auth.getSession()).data.session?.access_token
+        : "";
+
+      if (!accessToken) {
+        setDraftNotice("发布检查已通过，本地活动记录已生成；真实数据库创建需要先使用 Supabase 账号登录。");
+        return;
+      }
+
       const response = await fetch("/api/events", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`
+        },
         body: JSON.stringify({
           ...draftPayload,
           custom_form_config: form.customFormConfig,

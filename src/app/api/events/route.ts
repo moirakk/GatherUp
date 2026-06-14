@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
-import { asRecord, getNumber, getString, isApiErrorResponse, jsonError, normalizeJsonInput, requireApiSession } from "@/lib/server/api";
-import { getSupabaseServiceClient } from "@/lib/supabase/server";
+import { asRecord, findUserByAuthUserId, getNumber, getString, jsonError, normalizeJsonInput } from "@/lib/server/api";
+import { getSupabaseServiceClient, readBearerToken, verifySupabaseAccessToken } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
 
@@ -47,10 +47,11 @@ function mapEnum(value: string, values: Record<string, string>, fallback: string
 }
 
 export async function POST(request: Request) {
-  const session = requireApiSession(request);
+  const accessToken = readBearerToken(request);
+  const authUser = await verifySupabaseAccessToken(accessToken);
 
-  if (isApiErrorResponse(session)) {
-    return session;
+  if (!authUser) {
+    return jsonError("请使用 Supabase 登录后再创建真实活动。", 401);
   }
 
   let body: Record<string, unknown>;
@@ -64,31 +65,17 @@ export async function POST(request: Request) {
   const eventInput = asRecord(body.event ?? body);
   const setupInput = asRecord(body.setup);
   const rulesInput = asRecord(body.rules);
-  const organizerInput = Array.isArray(body.organizers) ? asRecord(body.organizers[0]) : asRecord(body.organizer);
   const publicCode = getString(eventInput, ["publicCode", "public_code"]).toUpperCase();
-  const ownerPublicId = getString(organizerInput, ["publicId", "public_id"]) || getString(body, ["owner_public_id"]);
 
   if (!publicCode.startsWith("GU-")) {
     return jsonError("活动公开 ID 必须以 GU- 开头。");
   }
 
-  if (!ownerPublicId) {
-    return jsonError("缺少主办方 GatherUp ID。");
-  }
-
-  if (ownerPublicId.toUpperCase() !== session.gatherUpId.toUpperCase()) {
-    return jsonError("只能用当前登录账号作为活动主办方。", 403);
-  }
-
   try {
     const supabase = getSupabaseServiceClient();
-    const { data: owner, error: ownerError } = await supabase
-      .from("users")
-      .select("id")
-      .eq("public_id", ownerPublicId.toUpperCase())
-      .single();
+    const owner = await findUserByAuthUserId(supabase, authUser.id);
 
-    if (ownerError || !owner?.id) {
+    if (!owner?.id) {
       return jsonError("找不到主办方用户，请先创建或同步 GatherUp 账号。", 404);
     }
 

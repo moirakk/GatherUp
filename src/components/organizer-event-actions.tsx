@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { Download, LinkIcon, QrCode } from "lucide-react";
 
+import { getSupabaseBrowserClient, isSupabaseConfigured } from "@/lib/supabase/client";
+
 type OrganizerEventActionsProps = {
   eventId: string;
   eventName: string;
@@ -26,6 +28,15 @@ function getEventUrl(eventId: string) {
   return `${window.location.origin}/events/${eventId}`;
 }
 
+function downloadBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  anchor.click();
+  URL.revokeObjectURL(url);
+}
+
 export function OrganizerEventActions({
   eventId,
   eventName,
@@ -46,14 +57,38 @@ export function OrganizerEventActions({
     }
   }
 
+  async function exportFile(kind: "attendees" | "finance") {
+    const accessToken = isSupabaseConfigured()
+      ? (await getSupabaseBrowserClient().auth.getSession()).data.session?.access_token
+      : "";
+
+    if (!accessToken) {
+      setNotice("请先使用 Supabase 账号登录，再导出真实数据。");
+      return;
+    }
+
+    const response = await fetch(`/api/export/${kind}?event_id=${encodeURIComponent(publicCode)}`, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`
+      }
+    });
+
+    if (!response.ok) {
+      const result = (await response.json().catch(() => ({}))) as { message?: string };
+      setNotice(result.message ?? "导出失败，请稍后重试。");
+      return;
+    }
+
+    downloadBlob(await response.blob(), `${publicCode}-${kind}.xlsx`);
+    setNotice(kind === "attendees" ? "报名名单已下载" : "财务对账单已下载");
+  }
+
   function exportRegistrations() {
-    window.location.href = `/api/export/attendees?event_id=${encodeURIComponent(publicCode)}`;
-    setNotice("正在下载报名名单 .xlsx");
+    void exportFile("attendees");
   }
 
   function exportFinance() {
-    window.location.href = `/api/export/finance?event_id=${encodeURIComponent(publicCode)}`;
-    setNotice("正在下载财务对账单 .xlsx");
+    void exportFile("finance");
   }
 
   if (variant === "setup") {

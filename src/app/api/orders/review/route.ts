@@ -2,15 +2,13 @@ import { NextResponse } from "next/server";
 
 import {
   asRecord,
-  canManageEventByPublicId,
-  isApiErrorResponse,
+  canManageEventByAuthUserId,
   jsonError,
   normalizeReviewDecision,
   orderStatus,
-  requireApiSession,
   toPublicOrderStatus
 } from "@/lib/server/api";
-import { getSupabaseServiceClient } from "@/lib/supabase/server";
+import { getSupabaseServiceClient, readBearerToken, verifySupabaseAccessToken } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
 
@@ -19,10 +17,11 @@ function isUuid(value: string) {
 }
 
 export async function POST(request: Request) {
-  const session = requireApiSession(request);
+  const accessToken = readBearerToken(request);
+  const authUser = await verifySupabaseAccessToken(accessToken);
 
-  if (isApiErrorResponse(session)) {
-    return session;
+  if (!authUser) {
+    return jsonError("请使用 Supabase 登录后再审核付款。", 401);
   }
 
   let body: Record<string, unknown>;
@@ -57,7 +56,7 @@ export async function POST(request: Request) {
       return jsonError("找不到订单。", 404);
     }
 
-    const canManage = await canManageEventByPublicId(supabase, registration.event_id, session.gatherUpId);
+    const canManage = await canManageEventByAuthUserId(supabase, registration.event_id, authUser.id);
 
     if (!canManage) {
       return jsonError("只有活动主办或协作者可以审核付款。", 403);
@@ -71,6 +70,7 @@ export async function POST(request: Request) {
         organizer_note: typeof body.review_note === "string" ? body.review_note : null
       })
       .eq("id", registration.id)
+      .eq("status", orderStatus.pending)
       .select("id, order_number, status")
       .single();
 

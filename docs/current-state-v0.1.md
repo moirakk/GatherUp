@@ -85,6 +85,7 @@ Supabase live 状态：
 - 已新增第一批受控写入/导出 API：活动创建、报名订单、付款审核、核销、名单导出、财务导出。它们要求登录会话；主办侧操作会检查当前 GatherUp ID 是否具备活动管理权限；没有 `SUPABASE_SERVICE_ROLE_KEY` 时会明确失败，不会伪装成真实写入。
 - 已新增 `create_registration_atomic` 数据库 RPC 草案：通过 `public.current_app_user_id()` 获取真实用户，锁定活动行校验容量，用 `event_order_counters.current_number` 原子生成订单号，并在同一事务路径中写入 `registrations`、主参与人和 payment stub。
 - `/api/orders` 已开始改为用户 JWT client 调用 RPC；前端在 Supabase 登录态下会附带 access token，让数据库内的 `auth.uid()` 和 `current_app_user_id()` 可用。
+- 主办敏感 API 已从原型 cookie 身份切换到 Supabase Bearer token 验证：活动创建、付款审核、核销、名单导出和财务导出不再信任可被客户端伪造的 `gatherup_id` cookie。
 - 这些 API 仍是早期集成层：Storage 上传、付款审核 RPC、审计日志、正式 seat lock/assignment、waitlist 和完整 RLS 行为实测仍需要继续补齐。
 
 ## 3. 本地运行

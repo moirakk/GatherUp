@@ -402,3 +402,35 @@ Real SQL execution status:
   1. Apply the updated `supabase/schema.sql` or an equivalent migration containing `create_registration_atomic`.
   2. Run `supabase/validation/08-create-registration-rpc-contract.sql`.
   3. Re-run `supabase/validation/07-clean-dev-post-execution-summary.sql`.
+
+## 2026-06-14 Organizer API JWT Gate
+
+Reason:
+
+- A code review identified that organizer-sensitive API routes still depended on the local prototype cookie session.
+- Prototype cookies are useful for UI flow gating, but they are not a trustworthy API authorization source because browser clients can edit them.
+
+Local changes completed:
+
+1. Replaced prototype-cookie API authorization with verified Supabase Bearer token authorization for:
+   - `POST /api/events`
+   - `POST /api/orders/review`
+   - `POST /api/orders/verify`
+   - `GET /api/export/attendees`
+   - `GET /api/export/finance`
+2. Added app-user lookup by `users.auth_user_id`.
+3. Added event management checks using the verified Supabase auth user id.
+4. Updated organizer UI callers to attach the current Supabase access token.
+5. Changed Excel exports from naked `window.location.href` downloads to authenticated `fetch` + Blob downloads.
+6. Removed obsolete cookie-based API helper functions to reduce the chance of future misuse.
+7. Added a payment review state guard so review writes only update registrations currently in `payment_submitted`.
+
+Local verification:
+
+- `npm run verify`: passed.
+- `npm run build`: pending after this log update.
+
+Remaining:
+
+- Page-level route protection still uses the prototype cookie bridge and should be replaced by a durable Supabase SSR/session strategy before production.
+- The clean Supabase project still needs live execution of the new RPC and validation scripts.

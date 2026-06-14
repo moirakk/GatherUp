@@ -5,6 +5,7 @@ import { Check, X } from "lucide-react";
 
 import { type Registration } from "@/lib/mock-data";
 import { StatusBadge } from "@/components/status-badge";
+import { getSupabaseBrowserClient, isSupabaseConfigured } from "@/lib/supabase/client";
 
 type PaymentReviewTableProps = {
   registrations: Registration[];
@@ -35,9 +36,22 @@ export function PaymentReviewTable({ registrations }: PaymentReviewTableProps) {
     );
 
     try {
+      const accessToken = isSupabaseConfigured()
+        ? (await getSupabaseBrowserClient().auth.getSession()).data.session?.access_token
+        : "";
+
+      if (!accessToken) {
+        setRows(previousRows);
+        setNotice(`${orderNumber} 审核未写入数据库：请先使用 Supabase 账号登录。`);
+        return;
+      }
+
       const response = await fetch("/api/orders/review", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`
+        },
         body: JSON.stringify({
           order_id: orderNumber,
           result: paymentStatus === "付款已确认" ? "APPROVED" : "REJECTED"
