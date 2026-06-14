@@ -18,6 +18,18 @@ type RegistrationRow = {
   created_at: string;
 };
 
+export type OrderAttendeeOption = {
+  id: string;
+  label: string;
+  seatLabel?: string;
+};
+
+export type OrderSeatOption = {
+  id: string;
+  label: string;
+  status: string;
+};
+
 type EventRow = {
   id: string;
   public_code: string;
@@ -43,6 +55,11 @@ type EventRow = {
 export type OrderDetailData = {
   event: GatherEvent;
   registration: Registration;
+  seatSelection?: {
+    registrationId: string;
+    attendees: OrderAttendeeOption[];
+    seats: OrderSeatOption[];
+  };
   source: "mock" | "supabase";
 };
 
@@ -146,10 +163,14 @@ export async function getOrderDetail(orderNumber: string): Promise<OrderDetailDa
     const registration = rowToRegistration(registrationData as RegistrationRow);
     const { data: attendeeData } = await supabase
       .from("registration_attendees")
-      .select("public_id, display_name")
+      .select("id, public_id, display_name")
       .eq("registration_id", registrationData.id)
       .order("is_primary", { ascending: false });
-    registration.attendeeIds = (attendeeData ?? []).map((attendee) => attendee.public_id || attendee.display_name || "未命名参与人");
+    const attendeeOptions: OrderAttendeeOption[] = (attendeeData ?? []).map((attendee) => ({
+      id: attendee.id,
+      label: attendee.public_id || attendee.display_name || "未命名参与人"
+    }));
+    registration.attendeeIds = attendeeOptions.map((attendee) => attendee.label);
 
     const { data: eventData, error: eventError } = await supabase
       .from("events")
@@ -161,9 +182,47 @@ export async function getOrderDetail(orderNumber: string): Promise<OrderDetailDa
       return mockOrderDetail(orderNumber);
     }
 
+    let seatSelection: OrderDetailData["seatSelection"];
+
+    if (registration.paymentStatus === "付款已确认") {
+      const { data: seatData } = await supabase
+        .from("seats")
+        .select("id, display_label, status")
+        .eq("event_id", registration.eventId)
+        .order("row_label", { ascending: true })
+        .order("seat_number", { ascending: true });
+      const { data: assignmentData } = await supabase
+        .from("seat_assignments")
+        .select("attendee_id, seat_id")
+        .eq("registration_id", registrationData.id);
+      const seatById = new Map((seatData ?? []).map((seat) => [seat.id, seat.display_label]));
+
+      for (const attendee of attendeeOptions) {
+        const assignment = (assignmentData ?? []).find((item) => item.attendee_id === attendee.id);
+
+        if (assignment?.seat_id) {
+          attendee.seatLabel = seatById.get(assignment.seat_id) ?? "已选座";
+        }
+      }
+
+      seatSelection = {
+        registrationId: registrationData.id,
+        attendees: attendeeOptions,
+        seats: (seatData ?? []).map((seat) => ({
+          id: seat.id,
+          label: seat.display_label,
+          status: seat.status
+        }))
+      };
+
+      const assignedLabels = attendeeOptions.map((attendee) => attendee.seatLabel).filter(Boolean);
+      registration.seatStatus = assignedLabels.length ? assignedLabels.join(", ") : "待选座/签到";
+    }
+
     return {
       event: rowToEvent(eventData as EventRow),
       registration,
+      seatSelection,
       source: "supabase"
     };
   } catch {

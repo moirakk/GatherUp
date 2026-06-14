@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { AlertCircle, Clock3, FileImage, QrCode, TicketCheck, UsersRound } from "lucide-react";
 
 import { ParticipantOrderActions } from "@/components/participant-order-actions";
+import { OrderSeatSelectionPanel } from "@/components/order-seat-selection-panel";
 import { StatusBadge } from "@/components/status-badge";
 import { getOrderDetail } from "@/lib/orders-data";
 
@@ -113,6 +114,14 @@ export default async function OrderPage({ params }: OrderPageProps) {
             ))}
           </div>
         </article>
+
+        {isConfirmed && orderDetail.seatSelection && orderDetail.seatSelection.seats.length > 0 && (
+          <OrderSeatSelectionPanel
+            attendees={orderDetail.seatSelection.attendees}
+            registrationId={orderDetail.seatSelection.registrationId}
+            seats={orderDetail.seatSelection.seats}
+          />
+        )}
 
         <article className="content-card">
           <div className="section-heading">

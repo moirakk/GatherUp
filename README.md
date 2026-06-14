@@ -28,14 +28,14 @@ Implemented prototype coverage:
 - Atomic registration RPC draft for real Supabase order creation: user identity is resolved in PostgreSQL through `current_app_user_id()`, event capacity is checked under an event-row lock, order numbers are generated through `event_order_counters`, attendee and payment stub rows are created in the same database transaction path.
 - Participant registration order creation now calls the atomic RPC through a user JWT client. Paid orders return the generated registration and payment identifiers needed for Storage-backed payment proof submission.
 - Payment proof submission has started moving to a real private Storage flow: the browser uploads to the `payment-proofs` bucket under the policy path `{event_id}/{registration_id}/{payment_id}/{filename}`, then a JWT-protected API records the proof and moves the order into payment review.
-- Seat locking now has PostgreSQL RPC drafts plus JWT API entry points for expiring stale locks, creating active locks, and confirming assignments under database constraints. UI integration and live Supabase validation are still pending.
+- Seat locking now has PostgreSQL RPC drafts plus JWT API entry points for expiring stale locks, creating active locks, and confirming assignments under database constraints. The order detail page has an initial real seat-selection panel; live Supabase validation is still pending.
 - Middleware-level login redirect foundation and safe internal `next` path handling.
 - Real Supabase live project preflight, read-only coverage audit logs, and clean dev/staging schema, seed, and Storage execution notes.
 
 Not production-ready yet:
 
 - Most business workflows still use mock/local prototype data; public event listing and public/unlisted event detail now have an initial Supabase read path.
-- Real write APIs are still early integration endpoints. Registration creation now uses the database RPC for atomic order numbering and capacity protection, organizer APIs verify Supabase JWTs, payment proof upload has an initial Storage-backed path, payment review has an audited RPC draft wired through the API, and seat locking has RPC-backed API endpoints; UI wiring and full live RLS verification still need production-grade implementation.
+- Real write APIs are still early integration endpoints. Registration creation now uses the database RPC for atomic order numbering and capacity protection, organizer APIs verify Supabase JWTs, payment proof upload has an initial Storage-backed path, payment review has an audited RPC draft wired through the API, and seat locking has RPC-backed API endpoints with an initial order-detail UI; full live RLS verification still needs production-grade implementation.
 - Event creation, payment review, refund, seat selection, check-in, finance, and admin workflows are not yet fully backed by production-grade database services.
 - Supabase schema, seed, and Storage policy drafts exist. The original live project has been restored and audited as partially initialized. A clean dev/staging project has been created, `schema.sql` and `seed.sql` have executed successfully, and `storage.sql` has been corrected after a real enum mismatch surfaced during execution.
 - Anonymous public-read grants for public event detail surfaces are now included in the schema draft and local contract tests. The follow-up grant patch and consolidated post-execution summary SQL still need to be run in the clean Supabase project after dashboard access/tooling is available.
@@ -184,7 +184,7 @@ Recommended order:
 5. Validate the new private Storage payment-proof flow against the clean Supabase project with real user sessions.
 6. Organizer-collected payment proof workflow: collection-code versions, review, top-up, overpayment/underpayment.
 7. Validate the audited payment review RPC against the clean Supabase project.
-8. Wire seat-lock RPCs into the participant seat selection UI and validate concurrency behavior.
+8. Validate the order-detail seat selection flow against real Supabase users and concurrency behavior.
 9. Lightweight check-in, refund tracking, notifications, export jobs, complaints, and minimum admin backend.
 
 ## Repository Notes

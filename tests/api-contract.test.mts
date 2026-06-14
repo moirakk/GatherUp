@@ -20,6 +20,8 @@ describe("registration and payment proof API contracts", () => {
   const paymentReviewRoute = readSource("src/app/api/orders/review/route.ts");
   const seatLockRoute = readSource("src/app/api/seats/lock/route.ts");
   const seatConfirmRoute = readSource("src/app/api/seats/confirm/route.ts");
+  const orderSeatSelectionPanel = readSource("src/components/order-seat-selection-panel.tsx");
+  const orderPage = readSource("src/app/me/orders/[orderNumber]/page.tsx");
   const registrationFlow = readSource("src/components/registration-flow.tsx");
 
   it("keeps order creation on the user JWT atomic registration RPC path", () => {
@@ -93,5 +95,17 @@ describe("registration and payment proof API contracts", () => {
     assert.doesNotMatch(seatConfirmRoute, /getSupabaseServiceClient/);
     assert.doesNotMatch(seatLockRoute, /\.from\("seat_locks"\)\s*\n\s*\.insert/);
     assert.doesNotMatch(seatConfirmRoute, /\.from\("seat_assignments"\)\s*\n\s*\.insert/);
+  });
+
+  it("keeps real seat selection wired through the order detail panel", () => {
+    expectSource(orderPage, "OrderSeatSelectionPanel");
+    expectSource(orderPage, "orderDetail.seatSelection");
+    expectSource(orderSeatSelectionPanel, 'fetch("/api/seats/lock"');
+    expectSource(orderSeatSelectionPanel, 'fetch("/api/seats/confirm"');
+    expectSource(orderSeatSelectionPanel, "Authorization: `Bearer ${accessToken}`");
+    expectSource(orderSeatSelectionPanel, "registration_id: registrationId");
+    expectSource(orderSeatSelectionPanel, "seat_id: selectedSeatId");
+    expectSource(orderSeatSelectionPanel, "seat_lock_id: lockResult.seat_lock_id");
+    expectSource(orderSeatSelectionPanel, "attendee_id: selectedAttendeeId");
   });
 });
