@@ -268,6 +268,7 @@ Implemented:
 - JWT-gated organizer APIs for event creation, payment review, check-in verification, and exports.
 - Initial private Storage payment-proof path: browser upload to `payment-proofs`, then `/api/orders/payment-proof` verifies user ownership, payment binding, object path, and Storage object existence before inserting `payment_proofs`.
 - Initial seat-lock RPC/API drafts and order-detail UI wiring for expiring stale locks, creating active locks, and confirming seat assignments under database constraints.
+- Initial check-in RPC/API draft that updates registration state, attendee state, `check_ins`, and `audit_logs` in one database function.
 
 Not implemented yet:
 
@@ -275,5 +276,6 @@ Not implemented yet:
 - Server actions for commercial workflows.
 - End-to-end real Supabase session/RLS validation for Storage uploads.
 - End-to-end real Supabase session/RLS validation for seat-lock RPCs and UI wiring.
+- End-to-end real Supabase session/RLS validation for check-in verification.
 - Real RLS role matrix execution in Supabase.
 - Audit log writes from service operations.

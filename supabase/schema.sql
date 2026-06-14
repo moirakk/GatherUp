@@ -1598,6 +1598,144 @@ $$ language plpgsql security definer set search_path = public, auth, pg_temp;
 revoke all on function public.confirm_seat_assignment_atomic(uuid, uuid) from public;
 grant execute on function public.confirm_seat_assignment_atomic(uuid, uuid) to authenticated;
 
+create or replace function public.check_in_order_atomic(
+  p_check_in_code text,
+  p_note text default null
+)
+returns jsonb as $$
+declare
+  v_actor_id uuid;
+  v_order record;
+  v_checked_in_at timestamptz := now();
+  v_attendee_count integer := 0;
+begin
+  v_actor_id := public.current_app_user_id();
+
+  if v_actor_id is null then
+    return jsonb_build_object('success', false, 'error_code', 'UNAUTHORIZED', 'message', 'Please sign in before checking in orders.');
+  end if;
+
+  if nullif(trim(p_check_in_code), '') is null then
+    return jsonb_build_object('success', false, 'error_code', 'MISSING_CHECK_IN_CODE', 'message', 'Check-in code is required.');
+  end if;
+
+  select
+    r.id,
+    r.event_id,
+    r.order_number,
+    r.status as registration_status,
+    r.check_in_status
+  into v_order
+  from public.registrations r
+  where r.check_in_code = trim(p_check_in_code)
+  for update;
+
+  if not found then
+    return jsonb_build_object('success', false, 'error_code', 'CHECK_IN_CODE_NOT_FOUND', 'message', 'Invalid check-in code.');
+  end if;
+
+  if not (public.can_manage_event(v_order.event_id) or public.is_platform_admin()) then
+    return jsonb_build_object('success', false, 'error_code', 'FORBIDDEN', 'message', 'Only event staff can check in this order.');
+  end if;
+
+  if v_order.registration_status <> 'confirmed' then
+    return jsonb_build_object('success', false, 'error_code', 'ORDER_NOT_CONFIRMED', 'message', 'This order is not confirmed.');
+  end if;
+
+  if v_order.check_in_status = 'arrived' then
+    return jsonb_build_object('success', false, 'error_code', 'ALREADY_CHECKED_IN', 'message', 'This order has already been checked in.');
+  end if;
+
+  if v_order.check_in_status <> 'not_arrived' then
+    return jsonb_build_object('success', false, 'error_code', 'INVALID_CHECK_IN_STATUS', 'message', 'This order cannot be checked in from its current status.');
+  end if;
+
+  update public.registrations
+  set
+    check_in_status = 'arrived',
+    updated_at = v_checked_in_at
+  where id = v_order.id;
+
+  update public.registration_attendees
+  set
+    check_in_status = 'arrived',
+    checked_in_at = v_checked_in_at,
+    checked_in_by = v_actor_id
+  where registration_id = v_order.id
+    and check_in_status = 'not_arrived';
+
+  get diagnostics v_attendee_count = row_count;
+
+  insert into public.check_ins (
+    event_id,
+    registration_id,
+    attendee_id,
+    status,
+    checked_in_by,
+    checked_in_at,
+    note
+  )
+  select
+    v_order.event_id,
+    v_order.id,
+    ra.id,
+    'arrived',
+    v_actor_id,
+    v_checked_in_at,
+    nullif(trim(p_note), '')
+  from public.registration_attendees ra
+  where ra.registration_id = v_order.id;
+
+  insert into public.audit_logs (
+    actor_id,
+    actor_role,
+    event_id,
+    target_type,
+    target_id,
+    action,
+    risk_level,
+    reason,
+    before_snapshot,
+    after_snapshot,
+    metadata
+  ) values (
+    v_actor_id,
+    case when public.is_platform_admin() then 'admin' else 'event_staff' end,
+    v_order.event_id,
+    'registration',
+    v_order.id,
+    'order.checked_in',
+    'medium',
+    nullif(trim(p_note), ''),
+    jsonb_build_object('check_in_status', v_order.check_in_status),
+    jsonb_build_object('check_in_status', 'arrived'),
+    jsonb_build_object(
+      'order_number', v_order.order_number,
+      'attendee_count', v_attendee_count
+    )
+  );
+
+  return jsonb_build_object(
+    'success', true,
+    'registration_id', v_order.id,
+    'order_number', v_order.order_number,
+    'status', v_order.registration_status,
+    'check_in_status', 'arrived',
+    'checked_in_at', v_checked_in_at,
+    'attendee_count', v_attendee_count
+  );
+exception
+  when deadlock_detected or serialization_failure then
+    return jsonb_build_object('success', false, 'error_code', 'CONCURRENT_CONFLICT', 'message', 'Check-in is busy. Please retry.');
+  when others then
+    raise warning '[GatherUp] check_in_order_atomic: % | %', sqlstate, sqlerrm;
+    return jsonb_build_object('success', false, 'error_code', 'INTERNAL_ERROR', 'message', 'Check-in failed.');
+end;
+$$ language plpgsql security definer set search_path = public, auth, pg_temp;
+
+revoke all on function public.check_in_order_atomic(text, text) from public;
+grant execute on function public.check_in_order_atomic(text, text) to authenticated;
+
 create or replace function public.sync_seat_status_on_assignment()
 returns trigger as $$
 begin

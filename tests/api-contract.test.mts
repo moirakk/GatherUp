@@ -18,6 +18,7 @@ describe("registration and payment proof API contracts", () => {
   const orderRoute = readSource("src/app/api/orders/route.ts");
   const paymentProofRoute = readSource("src/app/api/orders/payment-proof/route.ts");
   const paymentReviewRoute = readSource("src/app/api/orders/review/route.ts");
+  const orderVerifyRoute = readSource("src/app/api/orders/verify/route.ts");
   const seatLockRoute = readSource("src/app/api/seats/lock/route.ts");
   const seatConfirmRoute = readSource("src/app/api/seats/confirm/route.ts");
   const orderSeatSelectionPanel = readSource("src/components/order-seat-selection-panel.tsx");
@@ -56,6 +57,18 @@ describe("registration and payment proof API contracts", () => {
     assert.doesNotMatch(paymentReviewRoute, /\.from\("registrations"\)\s*\n\s*\.update/);
     assert.doesNotMatch(paymentReviewRoute, /\.from\("payments"\)\s*\n\s*\.update/);
     assert.doesNotMatch(paymentReviewRoute, /\.from\("payment_proofs"\)\s*\n\s*\.update/);
+  });
+
+  it("keeps order check-in on the user JWT RPC path", () => {
+    expectSource(orderVerifyRoute, "readBearerToken(request)");
+    expectSource(orderVerifyRoute, "verifySupabaseAccessToken(accessToken)");
+    expectSource(orderVerifyRoute, "getSupabaseUserClient(accessToken)");
+    expectSource(orderVerifyRoute, 'supabase.rpc("check_in_order_atomic"');
+    expectSource(orderVerifyRoute, "p_check_in_code: checkInCode");
+
+    assert.doesNotMatch(orderVerifyRoute, /getSupabaseServiceClient/);
+    assert.doesNotMatch(orderVerifyRoute, /\.from\("registrations"\)\s*\n\s*\.update/);
+    assert.doesNotMatch(orderVerifyRoute, /\.from\("registration_attendees"\)\s*\n\s*\.update/);
   });
 
   it("keeps payment proof files bound to the private Storage object path", () => {

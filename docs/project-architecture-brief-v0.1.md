@@ -22,6 +22,7 @@ GatherUp is currently at the **commercial v0.1 foundation stage**:
 - The first private Storage-backed payment-proof path has been added: browser upload to `payment-proofs`, then JWT-protected proof metadata submission.
 - Payment review now has an audited PostgreSQL RPC draft wired through the organizer review API.
 - Seat locking now has PostgreSQL RPC drafts, JWT API entry points, and an initial order-detail seat selection panel for expiring locks, creating locks, and confirming seat assignments.
+- Check-in now has an audited PostgreSQL RPC draft wired through the organizer verification API.
 - The app still uses mock/local data for most user-facing workflows, so real Supabase service-layer integration is the next major engineering phase.
 
 ```mermaid
@@ -34,7 +35,8 @@ flowchart LR
   F --> H["Private payment-proof Storage"]
   H --> J["Audited payment review RPC"]
   J --> K["Seat-lock RPCs"]
-  K --> I["Service layer and real data"]
+  K --> L["Audited check-in RPC"]
+  L --> I["Service layer and real data"]
   I --> G["Internal beta"]
 
   A:::done
@@ -46,6 +48,7 @@ flowchart LR
   H:::doing
   J:::doing
   K:::doing
+  L:::doing
   I:::todo
   G:::todo
 
@@ -130,6 +133,7 @@ Implemented stack:
 - Initial private Storage payment-proof upload and proof-record API
 - Initial audited payment-review RPC call path
 - Initial seat-lock and assignment RPC/API drafts plus order-detail UI wiring
+- Initial audited check-in RPC call path
 
 ## 5. Data architecture direction
 
@@ -220,7 +224,7 @@ The main remaining gaps are engineering depth, not product concept:
 
 - Mock/local data still needs to be replaced by real Supabase reads and writes.
 - Payment proof upload now has an initial service path, but still needs real clean-project user/session testing.
-- Refund and notification workflows still need service-layer implementation; payment review and seat selection now have initial RPC/API paths that still need live Supabase validation.
+- Refund and notification workflows still need service-layer implementation; payment review, seat selection, and check-in now have initial RPC/API paths that still need live Supabase validation.
 - Seat selection needs atomic locking and realtime updates.
 - Notification publishing needs a real email provider such as Resend.
 - Minimum admin review and broader audit tooling still need implementation.
@@ -232,7 +236,8 @@ flowchart LR
   A["Finish Supabase validation SQL"] --> B["Validate payment-proof Storage flow"]
   B --> C["Validate payment-review RPC"]
   C --> D["Validate seat-lock RPCs"]
-  D --> E["Expand real event services"]
+  D --> E["Validate check-in RPC"]
+  E --> F["Expand real event services"]
   E --> F["Add notifications and admin review"]
 ```
 
@@ -243,5 +248,6 @@ Immediate order:
 3. Validate private `payment-proofs` Storage upload with real Supabase users and RLS.
 4. Validate the audited payment-review RPC with real Supabase users and RLS.
 5. Validate order-detail seat selection against real Supabase users and concurrency behavior.
-6. Expand real Supabase-backed event and organizer services.
-7. Add notification delivery after the payment and seating flows are reliable.
+6. Validate check-in RPC/API against real Supabase users.
+7. Expand real Supabase-backed event and organizer services.
+8. Add notification delivery after the payment, seating, and check-in flows are reliable.
