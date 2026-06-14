@@ -20,6 +20,7 @@ describe("registration and payment proof API contracts", () => {
   const paymentReviewRoute = readSource("src/app/api/orders/review/route.ts");
   const orderRefundRoute = readSource("src/app/api/orders/refund/route.ts");
   const orderRefundReviewRoute = readSource("src/app/api/orders/refund/review/route.ts");
+  const orderRefundProofRoute = readSource("src/app/api/orders/refund/proof/route.ts");
   const orderVerifyRoute = readSource("src/app/api/orders/verify/route.ts");
   const seatLockRoute = readSource("src/app/api/seats/lock/route.ts");
   const seatConfirmRoute = readSource("src/app/api/seats/confirm/route.ts");
@@ -99,6 +100,27 @@ describe("registration and payment proof API contracts", () => {
     assert.doesNotMatch(orderRefundReviewRoute, /\.from\("refund_requests"\)\s*\n\s*\.update/);
     assert.doesNotMatch(orderRefundReviewRoute, /\.from\("registrations"\)\s*\n\s*\.update/);
     assert.doesNotMatch(orderRefundReviewRoute, /\.from\("payments"\)\s*\n\s*\.update/);
+  });
+
+  it("keeps organizer refund proof upload bound to the private Storage path and RPC", () => {
+    expectSource(orderRefundProofRoute, "readBearerToken(request)");
+    expectSource(orderRefundProofRoute, "verifySupabaseAccessToken(accessToken)");
+    expectSource(orderRefundProofRoute, "getSupabaseUserClient(accessToken)");
+    expectSource(orderRefundProofRoute, 'replace(/^refund-proofs\\//, "")');
+    expectSource(orderRefundProofRoute, "pathMatchesRefundProof(storagePath, eventId, refundRequest.id)");
+    expectSource(orderRefundProofRoute, '.schema("storage")');
+    expectSource(orderRefundProofRoute, '.from("objects")');
+    expectSource(orderRefundProofRoute, '.eq("bucket_id", "refund-proofs")');
+    expectSource(orderRefundProofRoute, '.eq("name", storagePath)');
+    expectSource(orderRefundProofRoute, 'supabase.rpc("record_refund_proof_atomic"');
+    expectSource(orderRefundProofRoute, "p_refund_request_id: refundRequestId");
+    expectSource(orderRefundProofRoute, "p_file_url: storagePath");
+
+    assert.doesNotMatch(orderRefundProofRoute, /getSupabaseServiceClient/);
+    assert.doesNotMatch(orderRefundProofRoute, /\.from\("refund_proofs"\)\s*\n\s*\.insert/);
+    assert.doesNotMatch(orderRefundProofRoute, /\.from\("refund_requests"\)\s*\n\s*\.update/);
+    assert.doesNotMatch(orderRefundProofRoute, /\.from\("registrations"\)\s*\n\s*\.update/);
+    assert.doesNotMatch(orderRefundProofRoute, /\.from\("payments"\)\s*\n\s*\.update/);
   });
 
   it("keeps payment proof files bound to the private Storage object path", () => {

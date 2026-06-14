@@ -8,7 +8,7 @@ GatherUp is designed as a general offline event platform, not a fandom-only tool
 
 ## Status
 
-Current status: **commercial v0.1 foundation with Supabase-backed public reads, JWT-gated organizer endpoints, atomic registration order creation, and the first private Storage payment-proof upload path in progress**.
+Current status: **commercial v0.1 foundation with Supabase-backed public reads, JWT-gated organizer endpoints, atomic registration order creation, and the first private Storage proof-upload paths in progress**.
 
 Implemented prototype coverage:
 
@@ -28,6 +28,7 @@ Implemented prototype coverage:
 - Atomic registration RPC draft for real Supabase order creation: user identity is resolved in PostgreSQL through `current_app_user_id()`, event capacity is checked under an event-row lock, order numbers are generated through `event_order_counters`, attendee and payment stub rows are created in the same database transaction path.
 - Participant registration order creation now calls the atomic RPC through a user JWT client. Paid orders return the generated registration and payment identifiers needed for Storage-backed payment proof submission.
 - Payment proof submission has started moving to a real private Storage flow: the browser uploads to the `payment-proofs` bucket under the policy path `{event_id}/{registration_id}/{payment_id}/{filename}`, then a JWT-protected API records the proof and moves the order into payment review.
+- Refund proof submission now has an initial private Storage-backed path: refund managers upload transfer proof to `refund-proofs` under `{event_id}/{refund_request_id}/{filename}`, then a JWT-protected API records the proof through an audited RPC and moves the refund to proof uploaded.
 - Seat locking now has PostgreSQL RPC drafts plus JWT API entry points for expiring stale locks, creating active locks, and confirming assignments under database constraints. The order detail page has an initial real seat-selection panel; live Supabase validation is still pending.
 - Check-in verification now has an audited PostgreSQL RPC path: event staff submit a check-in code through the JWT API, and the database updates the order, attendees, `check_ins`, and `audit_logs` together.
 - Middleware-level login redirect foundation and safe internal `next` path handling.
@@ -37,7 +38,7 @@ Not production-ready yet:
 
 - Most business workflows still use mock/local prototype data; public event listing and public/unlisted event detail now have an initial Supabase read path.
 - Real write APIs are still early integration endpoints. Registration creation now uses the database RPC for atomic order numbering and capacity protection, organizer APIs verify Supabase JWTs, payment proof upload has an initial Storage-backed path, payment review has an audited RPC draft wired through the API, and seat locking has RPC-backed API endpoints with an initial order-detail UI; full live RLS verification still needs production-grade implementation.
-- Event creation, finance, and admin workflows are not yet fully backed by production-grade database services; payment review, payment proof submission, refund request/review, seat selection, and check-in now have initial RPC/API paths that still need live Supabase validation.
+- Event creation, finance, and admin workflows are not yet fully backed by production-grade database services; payment review, payment proof submission, refund request/review/proof upload, seat selection, and check-in now have initial RPC/API paths that still need live Supabase validation.
 - Supabase schema, seed, and Storage policy drafts exist. The original live project has been restored and audited as partially initialized. A clean dev/staging project has been created, `schema.sql` and `seed.sql` have executed successfully, and `storage.sql` has been corrected after a real enum mismatch surfaced during execution.
 - Anonymous public-read grants for public event detail surfaces are now included in the schema draft and local contract tests. The follow-up grant patch and consolidated post-execution summary SQL still need to be run in the clean Supabase project after dashboard access/tooling is available.
 - Permission enforcement and RLS need continued real database testing beyond the first public read path.
@@ -186,7 +187,7 @@ Recommended order:
 6. Organizer-collected payment proof workflow: collection-code versions, review, top-up, overpayment/underpayment.
 7. Validate the audited payment review RPC against the clean Supabase project.
 8. Validate the order-detail seat selection flow against real Supabase users and concurrency behavior.
-9. Validate refund request/review, lightweight check-in, and seating against real Supabase users, then continue refund proof upload/confirmation, notifications, export jobs, complaints, and minimum admin backend.
+9. Validate refund request/review/proof upload, lightweight check-in, and seating against real Supabase users, then continue refund confirmation, disputes, notifications, export jobs, complaints, and minimum admin backend.
 
 ## Repository Notes
 

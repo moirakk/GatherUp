@@ -2080,6 +2080,163 @@ $$ language plpgsql security definer set search_path = public, auth, pg_temp;
 revoke all on function public.review_refund_request_atomic(uuid, text, integer, text) from public;
 grant execute on function public.review_refund_request_atomic(uuid, text, integer, text) to authenticated;
 
+create or replace function public.record_refund_proof_atomic(
+  p_refund_request_id uuid,
+  p_file_url text,
+  p_amount_cents integer default null
+)
+returns jsonb as $$
+declare
+  v_actor_id uuid;
+  v_refund record;
+  v_amount_cents integer;
+  v_now timestamptz := now();
+begin
+  v_actor_id := public.current_app_user_id();
+
+  if v_actor_id is null then
+    return jsonb_build_object('success', false, 'error_code', 'UNAUTHORIZED', 'message', 'Please sign in before uploading refund proof.');
+  end if;
+
+  if nullif(trim(coalesce(p_file_url, '')), '') is null then
+    return jsonb_build_object('success', false, 'error_code', 'MISSING_FILE', 'message', 'Refund proof file is required.');
+  end if;
+
+  select
+    rr.id as refund_request_id,
+    rr.registration_id,
+    rr.payment_id,
+    rr.status as refund_status,
+    rr.requested_amount_cents,
+    rr.approved_amount_cents,
+    r.event_id,
+    r.order_number,
+    r.status as registration_status,
+    p.status as payment_status
+  into v_refund
+  from public.refund_requests rr
+  join public.registrations r on r.id = rr.registration_id
+  join public.payments p on p.id = rr.payment_id
+  where rr.id = p_refund_request_id
+  for update of rr, r, p;
+
+  if not found then
+    return jsonb_build_object('success', false, 'error_code', 'REFUND_REQUEST_NOT_FOUND', 'message', 'Refund request not found.');
+  end if;
+
+  if not (public.can_handle_event_refunds(v_refund.event_id) or public.is_platform_admin()) then
+    return jsonb_build_object('success', false, 'error_code', 'FORBIDDEN', 'message', 'Only refund managers can upload refund proof.');
+  end if;
+
+  if v_refund.refund_status <> 'approved' then
+    return jsonb_build_object('success', false, 'error_code', 'INVALID_REFUND_STATUS', 'message', 'Refund proof can only be uploaded after approval.');
+  end if;
+
+  v_amount_cents := coalesce(p_amount_cents, v_refund.approved_amount_cents, v_refund.requested_amount_cents);
+
+  if v_amount_cents <= 0 then
+    return jsonb_build_object('success', false, 'error_code', 'INVALID_AMOUNT', 'message', 'Refund proof amount must be greater than zero.');
+  end if;
+
+  if v_refund.approved_amount_cents is not null and v_amount_cents > v_refund.approved_amount_cents then
+    return jsonb_build_object('success', false, 'error_code', 'INVALID_AMOUNT', 'message', 'Refund proof amount cannot exceed the approved refund amount.');
+  end if;
+
+  insert into public.refund_proofs (
+    refund_request_id,
+    file_url,
+    amount_cents,
+    uploaded_by,
+    uploaded_at
+  ) values (
+    v_refund.refund_request_id,
+    trim(p_file_url),
+    v_amount_cents,
+    v_actor_id,
+    v_now
+  );
+
+  update public.refund_requests
+  set
+    status = 'proof_uploaded',
+    paid_at = v_now,
+    updated_at = v_now
+  where id = v_refund.refund_request_id;
+
+  update public.registrations
+  set
+    status = 'refunding',
+    updated_at = v_now
+  where id = v_refund.registration_id;
+
+  update public.payments
+  set
+    status = 'refunding',
+    updated_at = v_now
+  where id = v_refund.payment_id;
+
+  insert into public.audit_logs (
+    actor_id,
+    actor_role,
+    event_id,
+    target_type,
+    target_id,
+    action,
+    risk_level,
+    reason,
+    before_snapshot,
+    after_snapshot,
+    metadata
+  ) values (
+    v_actor_id,
+    case when public.is_platform_admin() then 'admin' else 'refund_manager' end,
+    v_refund.event_id,
+    'refund_request',
+    v_refund.refund_request_id,
+    'refund.proof_uploaded',
+    'medium',
+    'Refund transfer proof uploaded',
+    jsonb_build_object(
+      'refund_status', v_refund.refund_status,
+      'registration_status', v_refund.registration_status,
+      'payment_status', v_refund.payment_status
+    ),
+    jsonb_build_object(
+      'refund_status', 'proof_uploaded',
+      'registration_status', 'refunding',
+      'payment_status', 'refunding',
+      'paid_at', v_now
+    ),
+    jsonb_build_object(
+      'registration_id', v_refund.registration_id,
+      'payment_id', v_refund.payment_id,
+      'order_number', v_refund.order_number,
+      'amount_cents', v_amount_cents,
+      'file_url', trim(p_file_url)
+    )
+  );
+
+  return jsonb_build_object(
+    'success', true,
+    'refund_request_id', v_refund.refund_request_id,
+    'registration_id', v_refund.registration_id,
+    'order_number', v_refund.order_number,
+    'status', 'proof_uploaded',
+    'amount_cents', v_amount_cents,
+    'file_url', trim(p_file_url)
+  );
+exception
+  when deadlock_detected or serialization_failure then
+    return jsonb_build_object('success', false, 'error_code', 'CONCURRENT_CONFLICT', 'message', 'Refund proof upload is busy. Please retry.');
+  when others then
+    raise warning '[GatherUp] record_refund_proof_atomic: % | %', sqlstate, sqlerrm;
+    return jsonb_build_object('success', false, 'error_code', 'INTERNAL_ERROR', 'message', 'Refund proof upload failed.');
+end;
+$$ language plpgsql security definer set search_path = public, auth, pg_temp;
+
+revoke all on function public.record_refund_proof_atomic(uuid, text, integer) from public;
+grant execute on function public.record_refund_proof_atomic(uuid, text, integer) to authenticated;
+
 create or replace function public.sync_seat_status_on_assignment()
 returns trigger as $$
 begin
