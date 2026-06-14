@@ -88,7 +88,7 @@ Supabase live 状态：
 - 付费报名现在拆成三步真实链路：先用 RPC 创建报名订单和 payment stub；再由浏览器使用用户 Supabase session 上传付款截图到私有 `payment-proofs` bucket；最后调用 `/api/orders/payment-proof` 写入 `payment_proofs` 并把订单推进到待审核。
 - 新增 `/api/orders/payment-proof`：要求 Supabase Bearer token，验证当前用户拥有该 registration，验证 payment 属于该 registration，并校验 Storage path 必须匹配 `{event_id}/{registration_id}/{payment_id}/{filename}`。
 - 付款审核已新增 `review_payment_atomic` RPC 草案：在数据库函数内校验当前用户具备活动付款管理权限，锁定 registration/payment，更新 registration、payment 和 payment_proofs，并写入 `audit_logs`。`/api/orders/review` 已改为用户 JWT client 调用该 RPC。
-- 选座已新增第一批 RPC 草案：`expire_seat_locks_for_event`、`create_seat_lock_atomic` 和 `confirm_seat_assignment_atomic`，用于释放过期锁、创建座位锁、确认座位分配。当前仍是 SQL/契约测试层，尚未接入前端座位图。
+- 选座已新增第一批 RPC 草案和 API 入口：`expire_seat_locks_for_event`、`create_seat_lock_atomic` 和 `confirm_seat_assignment_atomic`，以及 `/api/seats/lock`、`/api/seats/confirm`。它们用于释放过期锁、创建座位锁、确认座位分配。当前尚未接入前端座位图。
 - 主办敏感 API 已从原型 cookie 身份切换到 Supabase Bearer token 验证：活动创建、付款审核、核销、名单导出和财务导出不再信任可被客户端伪造的 `gatherup_id` cookie。
 - 这些 API/RPC 仍是早期集成层：付款凭证 Storage 链路、付款审核 RPC 和座位锁 RPC 还需要在干净 Supabase 项目中用真实用户 session 做端到端验证；waitlist 和完整 RLS 行为实测仍需要继续补齐。
 

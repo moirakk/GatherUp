@@ -18,6 +18,8 @@ describe("registration and payment proof API contracts", () => {
   const orderRoute = readSource("src/app/api/orders/route.ts");
   const paymentProofRoute = readSource("src/app/api/orders/payment-proof/route.ts");
   const paymentReviewRoute = readSource("src/app/api/orders/review/route.ts");
+  const seatLockRoute = readSource("src/app/api/seats/lock/route.ts");
+  const seatConfirmRoute = readSource("src/app/api/seats/confirm/route.ts");
   const registrationFlow = readSource("src/components/registration-flow.tsx");
 
   it("keeps order creation on the user JWT atomic registration RPC path", () => {
@@ -70,5 +72,26 @@ describe("registration and payment proof API contracts", () => {
     expectSource(registrationFlow, "`${proofEventId}/${registrationId}/${paymentId}/${Date.now()}-${getSafeFileName(file.name)}`");
     expectSource(registrationFlow, 'fetch("/api/orders/payment-proof"');
     expectSource(registrationFlow, "Authorization: `Bearer ${accessToken}`");
+  });
+
+  it("keeps seat locking and confirmation on user JWT RPC paths", () => {
+    expectSource(seatLockRoute, "readBearerToken(request)");
+    expectSource(seatLockRoute, "verifySupabaseAccessToken(accessToken)");
+    expectSource(seatLockRoute, "getSupabaseUserClient(accessToken)");
+    expectSource(seatLockRoute, 'supabase.rpc("create_seat_lock_atomic"');
+    expectSource(seatLockRoute, "p_registration_id: registrationId");
+    expectSource(seatLockRoute, "p_seat_id: seatId");
+
+    expectSource(seatConfirmRoute, "readBearerToken(request)");
+    expectSource(seatConfirmRoute, "verifySupabaseAccessToken(accessToken)");
+    expectSource(seatConfirmRoute, "getSupabaseUserClient(accessToken)");
+    expectSource(seatConfirmRoute, 'supabase.rpc("confirm_seat_assignment_atomic"');
+    expectSource(seatConfirmRoute, "p_seat_lock_id: seatLockId");
+    expectSource(seatConfirmRoute, "p_attendee_id: attendeeId");
+
+    assert.doesNotMatch(seatLockRoute, /getSupabaseServiceClient/);
+    assert.doesNotMatch(seatConfirmRoute, /getSupabaseServiceClient/);
+    assert.doesNotMatch(seatLockRoute, /\.from\("seat_locks"\)\s*\n\s*\.insert/);
+    assert.doesNotMatch(seatConfirmRoute, /\.from\("seat_assignments"\)\s*\n\s*\.insert/);
   });
 });

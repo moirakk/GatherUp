@@ -21,7 +21,7 @@ GatherUp is currently at the **commercial v0.1 foundation stage**:
 - Registration order creation now calls the atomic PostgreSQL RPC through a user JWT client.
 - The first private Storage-backed payment-proof path has been added: browser upload to `payment-proofs`, then JWT-protected proof metadata submission.
 - Payment review now has an audited PostgreSQL RPC draft wired through the organizer review API.
-- Seat locking now has PostgreSQL RPC drafts for expiring locks, creating locks, and confirming seat assignments.
+- Seat locking now has PostgreSQL RPC drafts and JWT API entry points for expiring locks, creating locks, and confirming seat assignments.
 - The app still uses mock/local data for most user-facing workflows, so real Supabase service-layer integration is the next major engineering phase.
 
 ```mermaid
@@ -129,7 +129,7 @@ Implemented stack:
 - Atomic registration RPC call path for order creation
 - Initial private Storage payment-proof upload and proof-record API
 - Initial audited payment-review RPC call path
-- Initial seat-lock and assignment RPC drafts
+- Initial seat-lock and assignment RPC/API drafts
 
 ## 5. Data architecture direction
 
