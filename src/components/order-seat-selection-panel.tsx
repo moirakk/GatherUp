@@ -34,14 +34,17 @@ async function getAccessToken() {
 }
 
 export function OrderSeatSelectionPanel({ attendees, registrationId, seats }: OrderSeatSelectionPanelProps) {
-  const firstUnseatedAttendee = useMemo(() => attendees.find((attendee) => !attendee.seatLabel), [attendees]);
-  const firstAvailableSeat = useMemo(() => seats.find((seat) => seat.status === "available"), [seats]);
+  const [localAttendees, setLocalAttendees] = useState(attendees);
+  const [localSeats, setLocalSeats] = useState(seats);
+  const firstUnseatedAttendee = useMemo(() => localAttendees.find((attendee) => !attendee.seatLabel), [localAttendees]);
+  const firstAvailableSeat = useMemo(() => localSeats.find((seat) => seat.status === "available"), [localSeats]);
   const [selectedAttendeeId, setSelectedAttendeeId] = useState(firstUnseatedAttendee?.id ?? attendees[0]?.id ?? "");
   const [selectedSeatId, setSelectedSeatId] = useState(firstAvailableSeat?.id ?? "");
   const [notice, setNotice] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const selectedAttendee = attendees.find((attendee) => attendee.id === selectedAttendeeId);
-  const selectableSeats = seats.filter((seat) => seat.status === "available" || seat.id === selectedSeatId);
+  const selectedAttendee = localAttendees.find((attendee) => attendee.id === selectedAttendeeId);
+  const selectableSeats = localSeats.filter((seat) => seat.status === "available" || seat.id === selectedSeatId);
+  const canSubmit = Boolean(selectedAttendeeId && selectedSeatId && !selectedAttendee?.seatLabel && selectableSeats.length);
 
   async function lockAndConfirmSeat() {
     setNotice("");
@@ -97,7 +100,19 @@ export function OrderSeatSelectionPanel({ attendees, registrationId, seats }: Or
         return;
       }
 
-      setNotice(`${selectedAttendee?.label ?? "参与人"} 已确认座位 ${confirmResult.seat_label ?? lockResult.seat_label ?? "已选座"}。`);
+      const confirmedSeatLabel = confirmResult.seat_label ?? lockResult.seat_label ?? "已选座";
+      const nextAttendee = localAttendees.find((attendee) => !attendee.seatLabel && attendee.id !== selectedAttendeeId);
+      const nextSeat = localSeats.find((seat) => seat.status === "available" && seat.id !== selectedSeatId);
+
+      setLocalAttendees((current) =>
+        current.map((attendee) => attendee.id === selectedAttendeeId ? { ...attendee, seatLabel: confirmedSeatLabel } : attendee)
+      );
+      setLocalSeats((current) =>
+        current.map((seat) => seat.id === selectedSeatId ? { ...seat, status: "assigned" } : seat)
+      );
+      setSelectedAttendeeId(nextAttendee?.id ?? "");
+      setSelectedSeatId(nextSeat?.id ?? "");
+      setNotice(`${selectedAttendee?.label ?? "参与人"} 已确认座位 ${confirmedSeatLabel}。`);
     } catch {
       setNotice("选座接口暂时不可用，请稍后重试。");
     } finally {
@@ -119,8 +134,9 @@ export function OrderSeatSelectionPanel({ attendees, registrationId, seats }: Or
         <label>
           参与人
           <select value={selectedAttendeeId} onChange={(event) => setSelectedAttendeeId(event.target.value)}>
-            {attendees.map((attendee) => (
-              <option key={attendee.id} value={attendee.id}>
+            {!selectedAttendeeId && <option value="">暂无待选座参与人</option>}
+            {localAttendees.map((attendee) => (
+              <option disabled={Boolean(attendee.seatLabel)} key={attendee.id} value={attendee.id}>
                 {attendee.label}{attendee.seatLabel ? ` · 已选 ${attendee.seatLabel}` : ""}
               </option>
             ))}
@@ -149,7 +165,7 @@ export function OrderSeatSelectionPanel({ attendees, registrationId, seats }: Or
 
       {notice && <p className="validation-note">{notice}</p>}
 
-      <button className="button primary" type="button" disabled={isSubmitting || !selectableSeats.length} onClick={lockAndConfirmSeat}>
+      <button className="button primary" type="button" disabled={isSubmitting || !canSubmit} onClick={lockAndConfirmSeat}>
         {isSubmitting ? "正在确认座位..." : "锁定并确认座位"}
       </button>
     </article>

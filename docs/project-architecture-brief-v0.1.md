@@ -220,7 +220,7 @@ The main remaining gaps are engineering depth, not product concept:
 
 - Mock/local data still needs to be replaced by real Supabase reads and writes.
 - Payment proof upload now has an initial service path, but still needs real clean-project user/session testing.
-- Payment review, refund, seat selection, and notification workflows still need service-layer implementation.
+- Refund and notification workflows still need service-layer implementation; payment review and seat selection now have initial RPC/API paths that still need live Supabase validation.
 - Seat selection needs atomic locking and realtime updates.
 - Notification publishing needs a real email provider such as Resend.
 - Minimum admin review and broader audit tooling still need implementation.

@@ -107,5 +107,8 @@ describe("registration and payment proof API contracts", () => {
     expectSource(orderSeatSelectionPanel, "seat_id: selectedSeatId");
     expectSource(orderSeatSelectionPanel, "seat_lock_id: lockResult.seat_lock_id");
     expectSource(orderSeatSelectionPanel, "attendee_id: selectedAttendeeId");
+    expectSource(orderSeatSelectionPanel, "setLocalAttendees");
+    expectSource(orderSeatSelectionPanel, "setLocalSeats");
+    expectSource(orderSeatSelectionPanel, 'status: "assigned"');
   });
 });
