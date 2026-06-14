@@ -1902,6 +1902,184 @@ $$ language plpgsql security definer set search_path = public, auth, pg_temp;
 revoke all on function public.request_refund_atomic(uuid, integer, text) from public;
 grant execute on function public.request_refund_atomic(uuid, integer, text) to authenticated;
 
+create or replace function public.review_refund_request_atomic(
+  p_refund_request_id uuid,
+  p_decision text,
+  p_approved_amount_cents integer default null,
+  p_organizer_note text default null
+)
+returns jsonb as $$
+declare
+  v_actor_id uuid;
+  v_refund record;
+  v_payment record;
+  v_approved_amount_cents integer;
+  v_next_refund_status refund_status;
+  v_next_registration_status registration_status;
+  v_next_payment_status payment_status;
+  v_now timestamptz := now();
+begin
+  v_actor_id := public.current_app_user_id();
+
+  if v_actor_id is null then
+    return jsonb_build_object('success', false, 'error_code', 'UNAUTHORIZED', 'message', 'Please sign in before reviewing refunds.');
+  end if;
+
+  if coalesce(p_decision, '') not in ('APPROVED', 'REJECTED') then
+    return jsonb_build_object('success', false, 'error_code', 'INVALID_DECISION', 'message', 'Decision must be APPROVED or REJECTED.');
+  end if;
+
+  select
+    rr.id as refund_request_id,
+    rr.registration_id,
+    rr.payment_id,
+    rr.requested_by,
+    rr.status as refund_status,
+    rr.requested_amount_cents,
+    rr.approved_amount_cents,
+    r.event_id,
+    r.order_number,
+    r.status as registration_status
+  into v_refund
+  from public.refund_requests rr
+  join public.registrations r on r.id = rr.registration_id
+  where rr.id = p_refund_request_id
+  for update of rr, r;
+
+  if not found then
+    return jsonb_build_object('success', false, 'error_code', 'REFUND_REQUEST_NOT_FOUND', 'message', 'Refund request not found.');
+  end if;
+
+  if v_refund.payment_id is null then
+    return jsonb_build_object('success', false, 'error_code', 'REFUND_PAYMENT_NOT_FOUND', 'message', 'Refund payment record is missing.');
+  end if;
+
+  select
+    status,
+    amount_confirmed_cents
+  into v_payment
+  from public.payments
+  where id = v_refund.payment_id
+  for update;
+
+  if not found then
+    return jsonb_build_object('success', false, 'error_code', 'REFUND_PAYMENT_NOT_FOUND', 'message', 'Refund payment record is missing.');
+  end if;
+
+  if not (public.can_handle_event_refunds(v_refund.event_id) or public.is_platform_admin()) then
+    return jsonb_build_object('success', false, 'error_code', 'FORBIDDEN', 'message', 'Only refund managers can review this request.');
+  end if;
+
+  if v_refund.refund_status <> 'requested' then
+    return jsonb_build_object('success', false, 'error_code', 'INVALID_REFUND_STATUS', 'message', 'This refund request is not waiting for review.');
+  end if;
+
+  v_approved_amount_cents := least(
+    greatest(0, coalesce(p_approved_amount_cents, v_refund.requested_amount_cents)),
+    v_refund.requested_amount_cents
+  );
+
+  if p_decision = 'APPROVED' and v_approved_amount_cents <= 0 then
+    return jsonb_build_object('success', false, 'error_code', 'INVALID_AMOUNT', 'message', 'Approved refund amount must be greater than zero.');
+  end if;
+
+  v_next_refund_status := case
+    when p_decision = 'APPROVED' then 'approved'::refund_status
+    else 'rejected'::refund_status
+  end;
+  v_next_registration_status := case
+    when p_decision = 'APPROVED' then 'refunding'::registration_status
+    else 'confirmed'::registration_status
+  end;
+  v_next_payment_status := case
+    when p_decision = 'APPROVED' then 'refunding'::payment_status
+    else 'confirmed'::payment_status
+  end;
+
+  update public.refund_requests
+  set
+    status = v_next_refund_status,
+    approved_amount_cents = case when p_decision = 'APPROVED' then v_approved_amount_cents else null end,
+    organizer_note = nullif(trim(p_organizer_note), ''),
+    reviewed_by = v_actor_id,
+    reviewed_at = v_now,
+    updated_at = v_now
+  where id = v_refund.refund_request_id;
+
+  update public.registrations
+  set
+    status = v_next_registration_status,
+    updated_at = v_now
+  where id = v_refund.registration_id;
+
+  update public.payments
+  set
+    status = v_next_payment_status,
+    updated_at = v_now
+  where id = v_refund.payment_id;
+
+  insert into public.audit_logs (
+    actor_id,
+    actor_role,
+    event_id,
+    target_type,
+    target_id,
+    action,
+    risk_level,
+    reason,
+    before_snapshot,
+    after_snapshot,
+    metadata
+  ) values (
+    v_actor_id,
+    case when public.is_platform_admin() then 'admin' else 'refund_manager' end,
+    v_refund.event_id,
+    'refund_request',
+    v_refund.refund_request_id,
+    case when p_decision = 'APPROVED' then 'refund.approved' else 'refund.rejected' end,
+    'medium',
+    nullif(trim(p_organizer_note), ''),
+    jsonb_build_object(
+      'refund_status', v_refund.refund_status,
+      'registration_status', v_refund.registration_status,
+      'payment_status', v_payment.status,
+      'approved_amount_cents', v_refund.approved_amount_cents
+    ),
+    jsonb_build_object(
+      'refund_status', v_next_refund_status,
+      'registration_status', v_next_registration_status,
+      'payment_status', v_next_payment_status,
+      'approved_amount_cents', case when p_decision = 'APPROVED' then v_approved_amount_cents else null end
+    ),
+    jsonb_build_object(
+      'registration_id', v_refund.registration_id,
+      'payment_id', v_refund.payment_id,
+      'order_number', v_refund.order_number,
+      'decision', p_decision,
+      'requested_amount_cents', v_refund.requested_amount_cents
+    )
+  );
+
+  return jsonb_build_object(
+    'success', true,
+    'refund_request_id', v_refund.refund_request_id,
+    'registration_id', v_refund.registration_id,
+    'order_number', v_refund.order_number,
+    'status', v_next_refund_status,
+    'approved_amount_cents', case when p_decision = 'APPROVED' then v_approved_amount_cents else null end
+  );
+exception
+  when deadlock_detected or serialization_failure then
+    return jsonb_build_object('success', false, 'error_code', 'CONCURRENT_CONFLICT', 'message', 'Refund review is busy. Please retry.');
+  when others then
+    raise warning '[GatherUp] review_refund_request_atomic: % | %', sqlstate, sqlerrm;
+    return jsonb_build_object('success', false, 'error_code', 'INTERNAL_ERROR', 'message', 'Refund review failed.');
+end;
+$$ language plpgsql security definer set search_path = public, auth, pg_temp;
+
+revoke all on function public.review_refund_request_atomic(uuid, text, integer, text) from public;
+grant execute on function public.review_refund_request_atomic(uuid, text, integer, text) to authenticated;
+
 create or replace function public.sync_seat_status_on_assignment()
 returns trigger as $$
 begin

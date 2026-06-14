@@ -19,6 +19,7 @@ describe("registration and payment proof API contracts", () => {
   const paymentProofRoute = readSource("src/app/api/orders/payment-proof/route.ts");
   const paymentReviewRoute = readSource("src/app/api/orders/review/route.ts");
   const orderRefundRoute = readSource("src/app/api/orders/refund/route.ts");
+  const orderRefundReviewRoute = readSource("src/app/api/orders/refund/review/route.ts");
   const orderVerifyRoute = readSource("src/app/api/orders/verify/route.ts");
   const seatLockRoute = readSource("src/app/api/seats/lock/route.ts");
   const seatConfirmRoute = readSource("src/app/api/seats/confirm/route.ts");
@@ -84,6 +85,20 @@ describe("registration and payment proof API contracts", () => {
     assert.doesNotMatch(orderRefundRoute, /\.from\("refund_requests"\)\s*\n\s*\.insert/);
     assert.doesNotMatch(orderRefundRoute, /\.from\("registrations"\)\s*\n\s*\.update/);
     assert.doesNotMatch(orderRefundRoute, /\.from\("payments"\)\s*\n\s*\.update/);
+  });
+
+  it("keeps organizer refund review on the user JWT RPC path", () => {
+    expectSource(orderRefundReviewRoute, "readBearerToken(request)");
+    expectSource(orderRefundReviewRoute, "verifySupabaseAccessToken(accessToken)");
+    expectSource(orderRefundReviewRoute, "getSupabaseUserClient(accessToken)");
+    expectSource(orderRefundReviewRoute, 'supabase.rpc("review_refund_request_atomic"');
+    expectSource(orderRefundReviewRoute, "p_refund_request_id: refundRequestId");
+    expectSource(orderRefundReviewRoute, "p_decision: decision");
+
+    assert.doesNotMatch(orderRefundReviewRoute, /getSupabaseServiceClient/);
+    assert.doesNotMatch(orderRefundReviewRoute, /\.from\("refund_requests"\)\s*\n\s*\.update/);
+    assert.doesNotMatch(orderRefundReviewRoute, /\.from\("registrations"\)\s*\n\s*\.update/);
+    assert.doesNotMatch(orderRefundReviewRoute, /\.from\("payments"\)\s*\n\s*\.update/);
   });
 
   it("keeps payment proof files bound to the private Storage object path", () => {
