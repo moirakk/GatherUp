@@ -1,5 +1,8 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { describe, it } from "node:test";
+import { fileURLToPath } from "node:url";
 
 import {
   createPublicIdFromEmail,
@@ -10,6 +13,9 @@ import {
   normalizePublicId,
   publicIdPattern
 } from "../src/lib/auth.ts";
+
+const repoRoot = dirname(dirname(fileURLToPath(import.meta.url)));
+const middlewareSource = readFileSync(join(repoRoot, "middleware.ts"), "utf8");
 
 describe("auth normalization rules", () => {
   it("normalizes emails and public GatherUp IDs", () => {
@@ -53,5 +59,13 @@ describe("route auth rules", () => {
     assert.equal(isPublicRoutePath("/events/event-1/register"), false);
     assert.equal(isPublicRoutePath("/organizer"), false);
     assert.equal(isPublicRoutePath("/me/orders/ORD-1"), false);
+  });
+
+  it("uses Supabase SSR middleware auth instead of prototype session cookies", () => {
+    assert.match(middlewareSource, /createServerClient/);
+    assert.match(middlewareSource, /supabase\.auth\.getUser\(\)/);
+    assert.match(middlewareSource, /pathname\.startsWith\("\/api\/"\)/);
+    assert.doesNotMatch(middlewareSource, /SESSION_COOKIE/);
+    assert.doesNotMatch(middlewareSource, /supabase\.auth\.getSession\(\)/);
   });
 });

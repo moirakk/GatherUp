@@ -25,13 +25,14 @@ Implemented prototype coverage:
 - Server-side Supabase read adapter for public event listing and public/unlisted event detail, with mock fallback when Supabase is not configured or unavailable.
 - Initial guarded server APIs for event creation, registration orders, payment review, check-in verification, and Excel exports.
 - Organizer-sensitive APIs now require verified Supabase Bearer tokens instead of trusting local prototype cookies.
+- Route protection now uses Supabase SSR middleware with verified `getUser()` session checks and cookie refresh support when Supabase is configured.
 - Atomic registration RPC draft for real Supabase order creation: user identity is resolved in PostgreSQL through `current_app_user_id()`, event capacity is checked under an event-row lock, order numbers are generated through `event_order_counters`, attendee and payment stub rows are created in the same database transaction path.
 - Participant registration order creation now calls the atomic RPC through a user JWT client. Paid orders return the generated registration and payment identifiers needed for Storage-backed payment proof submission.
 - Payment proof submission has started moving to a real private Storage flow: the browser uploads to the `payment-proofs` bucket under the policy path `{event_id}/{registration_id}/{payment_id}/{filename}`, then a JWT-protected API records the proof and moves the order into payment review.
 - Refund proof submission now has an initial private Storage-backed path: refund managers upload transfer proof to `refund-proofs` under `{event_id}/{refund_request_id}/{filename}`, then a JWT-protected API records the proof through an audited RPC and moves the refund to proof uploaded.
 - Seat locking now has PostgreSQL RPC drafts plus JWT API entry points for expiring stale locks, creating active locks, and confirming assignments under database constraints. The order detail page has an initial real seat-selection panel; live Supabase validation is still pending.
 - Check-in verification now has an audited PostgreSQL RPC path: event staff submit a check-in code through the JWT API, and the database updates the order, attendees, `check_ins`, and `audit_logs` together.
-- Middleware-level login redirect foundation and safe internal `next` path handling.
+- Supabase SSR middleware login redirect foundation and safe internal `next` path handling.
 - Real Supabase live project preflight, read-only coverage audit logs, and clean dev/staging schema, seed, and Storage execution notes.
 
 Not production-ready yet:

@@ -1,4 +1,6 @@
+import { createServerClient } from "@supabase/ssr";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { cookies } from "next/headers";
 
 import { isSupabaseConfigured } from "@/lib/supabase/client";
 
@@ -25,6 +27,33 @@ export function getSupabaseServerClient() {
   }
 
   return serverClient;
+}
+
+export async function createSupabaseServerClient() {
+  if (!isSupabaseConfigured()) {
+    throw new Error("Supabase is not configured. Add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.");
+  }
+
+  const cookieStore = await cookies();
+
+  return createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL as string,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string,
+    {
+      cookies: {
+        getAll() {
+          return cookieStore.getAll();
+        },
+        setAll(cookiesToSet) {
+          try {
+            cookiesToSet.forEach(({ name, value, options }) => cookieStore.set(name, value, options));
+          } catch {
+            // Server Components can read cookies but cannot always write refreshed cookies.
+          }
+        }
+      }
+    }
+  );
 }
 
 export function getSupabaseServiceClient() {
@@ -94,4 +123,42 @@ export async function verifySupabaseAccessToken(accessToken: string) {
   }
 
   return data.user;
+}
+
+export async function getAuthenticatedUser(request: Request) {
+  const bearerUser = await verifySupabaseAccessToken(readBearerToken(request));
+
+  if (bearerUser) {
+    return bearerUser;
+  }
+
+  if (!isSupabaseConfigured()) {
+    return null;
+  }
+
+  const cookieStore = await cookies();
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL as string,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string,
+    {
+      cookies: {
+        getAll() {
+          return cookieStore.getAll();
+        },
+        setAll() {
+          // Route Handlers that use this helper return their own responses.
+        }
+      }
+    }
+  );
+  const {
+    data: { user },
+    error
+  } = await supabase.auth.getUser();
+
+  if (error || !user) {
+    return null;
+  }
+
+  return user;
 }
