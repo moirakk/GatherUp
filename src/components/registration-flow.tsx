@@ -27,6 +27,17 @@ type RegistrationFlowProps = {
 
 type FlowStep = "role" | "survey" | "location" | "locked" | "profile" | "payment" | "waiting" | "seat";
 
+type CreatedOrder = {
+  ok?: boolean;
+  message?: string;
+  order_id?: string;
+  registration_id?: string;
+  order_number?: string;
+  payment_id?: string | null;
+  event_id?: string;
+  amount_due_cents?: number;
+};
+
 const flowSteps: Array<{ key: FlowStep; label: string }> = [
   { key: "role", label: "登录身份" },
   { key: "survey", label: "数调" },
@@ -59,11 +70,13 @@ export function RegistrationFlow({ event, initialStep, setup }: RegistrationFlow
   const [attendeeIds, setAttendeeIds] = useState(["GU-MIKI"]);
   const [formAnswers, setFormAnswers] = useState('{"notes":"希望和同行坐一起"}');
   const [screenshotName, setScreenshotName] = useState("");
+  const [paymentProofFile, setPaymentProofFile] = useState<File | null>(null);
+  const [createdOrderNumber, setCreatedOrderNumber] = useState("");
   const [selectedSchedules, setSelectedSchedules] = useState<string[]>([scheduleOptions[1]]);
   const [selectedLocation, setSelectedLocation] = useState(event.venue);
   const [message, setMessage] = useState("");
 
-  const orderNumber = `${event.orderPrefix}-0029`;
+  const orderNumber = createdOrderNumber || `${event.orderPrefix}-0029`;
   const amount = event.price * quantity;
   const isFreeEvent = amount === 0;
   const registrationOpen = setup.setupStatus === "报名已开放";
@@ -120,15 +133,26 @@ export function RegistrationFlow({ event, initialStep, setup }: RegistrationFlow
     });
   }
 
-  async function createPendingOrder(paymentScreenshotImg = "") {
+  function getSafeFileName(fileName: string) {
+    const fallback = "payment-proof";
+    const normalized = fileName.trim().replaceAll(/\s+/g, "-").replaceAll(/[^a-zA-Z0-9._-]/g, "");
+
+    return normalized || fallback;
+  }
+
+  async function getAccessToken() {
+    return isSupabaseConfigured()
+      ? (await getSupabaseBrowserClient().auth.getSession()).data.session?.access_token
+      : "";
+  }
+
+  async function createPendingOrder(): Promise<CreatedOrder | null> {
     try {
-      const accessToken = isSupabaseConfigured()
-        ? (await getSupabaseBrowserClient().auth.getSession()).data.session?.access_token
-        : "";
+      const accessToken = await getAccessToken();
 
       if (!accessToken) {
         setMessage("订单已进入本地原型流程；真实数据库报名需要先使用 Supabase 账号登录。");
-        return;
+        return null;
       }
 
       const response = await fetch("/api/orders", {
@@ -142,21 +166,74 @@ export function RegistrationFlow({ event, initialStep, setup }: RegistrationFlow
           nickname,
           contact,
           quantity,
-          form_answers: formAnswers,
-          payment_screenshot_img: paymentScreenshotImg
+          form_answers: formAnswers
         })
       });
-      const result = (await response.json()) as { ok?: boolean; message?: string; order_number?: string };
+      const result = (await response.json()) as CreatedOrder;
 
       if (!response.ok || !result.ok) {
         setMessage(`订单已进入本地原型流程；数据库写入未完成：${result.message ?? "接口返回失败"}`);
-        return;
+        return null;
       }
 
+      if (result.order_number) {
+        setCreatedOrderNumber(result.order_number);
+      }
       setMessage(`订单已提交，订单号：${result.order_number ?? "待生成"}`);
+      return result;
     } catch {
       setMessage("订单已进入本地原型流程；当前无法连接报名接口，稍后可重试同步。");
+      return null;
     }
+  }
+
+  async function submitPaymentProof(order: CreatedOrder, file: File) {
+    const accessToken = await getAccessToken();
+    const registrationId = order.registration_id || order.order_id || "";
+    const paymentId = order.payment_id || "";
+    const proofEventId = order.event_id || event.id;
+
+    if (!accessToken || !registrationId || !paymentId) {
+      setMessage("订单已生成，但缺少付款记录信息，暂时无法上传截图。");
+      return false;
+    }
+
+    const storagePath = `${proofEventId}/${registrationId}/${paymentId}/${Date.now()}-${getSafeFileName(file.name)}`;
+    const supabase = getSupabaseBrowserClient();
+    const { error: uploadError } = await supabase.storage
+      .from("payment-proofs")
+      .upload(storagePath, file, { contentType: file.type, upsert: false });
+
+    if (uploadError) {
+      setMessage(`订单已生成，但付款截图上传失败：${uploadError.message}`);
+      return false;
+    }
+
+    const response = await fetch("/api/orders/payment-proof", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`
+      },
+      body: JSON.stringify({
+        registration_id: registrationId,
+        payment_id: paymentId,
+        storage_path: storagePath,
+        amount_reported_cents: order.amount_due_cents ?? amount * 100
+      })
+    });
+    const result = (await response.json()) as { ok?: boolean; message?: string; order_number?: string };
+
+    if (!response.ok || !result.ok) {
+      setMessage(`截图已上传，但付款记录提交失败：${result.message ?? "接口返回失败"}`);
+      return false;
+    }
+
+    if (result.order_number) {
+      setCreatedOrderNumber(result.order_number);
+    }
+    setMessage(`付款截图已提交，订单号：${result.order_number ?? order.order_number ?? "待生成"}`);
+    return true;
   }
 
   function submitSurvey() {
@@ -197,8 +274,22 @@ export function RegistrationFlow({ event, initialStep, setup }: RegistrationFlow
       return;
     }
 
-    await createPendingOrder(`local-upload-preview/${screenshotName}`);
-    setStep("waiting");
+    if (!paymentProofFile) {
+      setMessage("请重新选择付款截图文件。");
+      return;
+    }
+
+    const order = await createPendingOrder();
+
+    if (!order) {
+      return;
+    }
+
+    const proofSubmitted = await submitPaymentProof(order, paymentProofFile);
+
+    if (proofSubmitted) {
+      setStep("waiting");
+    }
   }
 
   return (
@@ -431,9 +522,10 @@ export function RegistrationFlow({ event, initialStep, setup }: RegistrationFlow
                   type="file"
                   accept="image/*"
                   onChange={(event) => {
-                    const nextFileName = event.target.files?.[0]?.name ?? "";
-                    setScreenshotName(nextFileName);
-                    setMessage(nextFileName ? "已选择截图，可以提交给组织者确认。" : "");
+                    const nextFile = event.target.files?.[0] ?? null;
+                    setPaymentProofFile(nextFile);
+                    setScreenshotName(nextFile?.name ?? "");
+                    setMessage(nextFile ? "已选择截图，可以提交给组织者确认。" : "");
                   }}
                 />
               </label>

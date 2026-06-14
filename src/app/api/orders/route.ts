@@ -53,7 +53,6 @@ export async function POST(request: Request) {
     const userClient = getSupabaseUserClient(accessToken);
     const quantity = Math.max(1, getNumber(body, ["quantity"], 1));
     const formAnswers = normalizeJsonInput(body.form_answers ?? body.formAnswers);
-    const paymentScreenshotImg = getString(body, ["payment_screenshot_img", "paymentScreenshotImg"]);
 
     const { data, error } = await userClient.rpc("create_registration_atomic", {
       p_event_id: eventId,
@@ -92,41 +91,23 @@ export async function POST(request: Request) {
     const registrationId = typeof result.registration_id === "string" ? result.registration_id : "";
     const orderNumber = typeof result.order_number === "string" ? result.order_number : "";
     const status = typeof result.status === "string" ? result.status : "";
-
-    if (paymentScreenshotImg) {
-      const serviceClient = getSupabaseServiceClient();
-      const { data: appUser } = await serviceClient
-        .from("users")
-        .select("id")
-        .eq("auth_user_id", authUser.id)
-        .single();
-      const { data: payment } = await serviceClient.from("payments").select("id, amount_cents").eq("registration_id", registrationId).single();
-
-      if (appUser?.id && payment?.id) {
-        await serviceClient.from("payment_proofs").insert({
-          payment_id: payment.id,
-          registration_id: registrationId,
-          file_url: paymentScreenshotImg,
-          uploaded_by: appUser.id,
-          amount_reported_cents: Math.max(0, payment.amount_cents)
-        });
-        await serviceClient
-          .from("registrations")
-          .update({
-            status: "payment_submitted",
-            payment_screenshot_img: paymentScreenshotImg
-          })
-          .eq("id", registrationId)
-          .eq("status", "awaiting_payment");
-      }
-    }
+    const serviceClient = getSupabaseServiceClient();
+    const { data: payment } = await serviceClient
+      .from("payments")
+      .select("id, amount_cents, status")
+      .eq("registration_id", registrationId)
+      .maybeSingle();
 
     return NextResponse.json({
       ok: true,
       order_id: registrationId,
+      registration_id: registrationId,
       order_number: orderNumber,
-      status: toPublicOrderStatus(paymentScreenshotImg ? "payment_submitted" : status),
+      status: toPublicOrderStatus(status),
+      payment_id: payment?.id ?? null,
+      payment_status: payment?.status ?? result.payment_status ?? null,
       amount_due_cents: result.amount_due_cents,
+      event_id: eventId,
       quantity: result.quantity,
       check_in_status: "NOT_ARRIVED"
     });

@@ -8,7 +8,7 @@ GatherUp is designed as a general offline event platform, not a fandom-only tool
 
 ## Status
 
-Current status: **commercial v0.1 foundation with Supabase-backed public reads, guarded event operation APIs, JWT-gated organizer endpoints, and an atomic registration RPC contract in progress**.
+Current status: **commercial v0.1 foundation with Supabase-backed public reads, JWT-gated organizer endpoints, atomic registration order creation, and the first private Storage payment-proof upload path in progress**.
 
 Implemented prototype coverage:
 
@@ -26,14 +26,16 @@ Implemented prototype coverage:
 - Initial guarded server APIs for event creation, registration orders, payment review, check-in verification, and Excel exports.
 - Organizer-sensitive APIs now require verified Supabase Bearer tokens instead of trusting local prototype cookies.
 - Atomic registration RPC draft for real Supabase order creation: user identity is resolved in PostgreSQL through `current_app_user_id()`, event capacity is checked under an event-row lock, order numbers are generated through `event_order_counters`, attendee and payment stub rows are created in the same database transaction path.
+- Participant registration order creation now calls the atomic RPC through a user JWT client. Paid orders return the generated registration and payment identifiers needed for Storage-backed payment proof submission.
+- Payment proof submission has started moving to a real private Storage flow: the browser uploads to the `payment-proofs` bucket under the policy path `{event_id}/{registration_id}/{payment_id}/{filename}`, then a JWT-protected API records the proof and moves the order into payment review.
 - Middleware-level login redirect foundation and safe internal `next` path handling.
 - Real Supabase live project preflight, read-only coverage audit logs, and clean dev/staging schema, seed, and Storage execution notes.
 
 Not production-ready yet:
 
 - Most business workflows still use mock/local prototype data; public event listing and public/unlisted event detail now have an initial Supabase read path.
-- Real write APIs are still early integration endpoints. Registration creation has started moving into a database RPC for atomic order numbering and capacity protection, and organizer APIs now verify Supabase JWTs; Storage uploads, audit logs, payment review RPCs, seat locks, and full live RLS verification still need production-grade implementation.
-- Event creation, registration, payment proof, refund, seat selection, check-in, finance, and admin workflows are not yet backed by real database services.
+- Real write APIs are still early integration endpoints. Registration creation now uses the database RPC for atomic order numbering and capacity protection, organizer APIs verify Supabase JWTs, and payment proof upload has an initial Storage-backed path; audit logs, payment review RPCs, seat locks, and full live RLS verification still need production-grade implementation.
+- Event creation, payment review, refund, seat selection, check-in, finance, and admin workflows are not yet fully backed by production-grade database services.
 - Supabase schema, seed, and Storage policy drafts exist. The original live project has been restored and audited as partially initialized. A clean dev/staging project has been created, `schema.sql` and `seed.sql` have executed successfully, and `storage.sql` has been corrected after a real enum mismatch surfaced during execution.
 - Anonymous public-read grants for public event detail surfaces are now included in the schema draft and local contract tests. The follow-up grant patch and consolidated post-execution summary SQL still need to be run in the clean Supabase project after dashboard access/tooling is available.
 - Permission enforcement and RLS need continued real database testing beyond the first public read path.
@@ -178,10 +180,11 @@ Recommended order:
 2. Execute and validate `create_registration_atomic` against clean Supabase, then use it as the only registration creation path.
 3. Expand the real data service layer beyond public reads: event creation, draft/publish, organizer roles, visibility, capacity, and review gates.
 4. Auth foundation: replace prototype page cookies with a durable Supabase SSR/session strategy, then keep API authorization on verified Bearer JWTs.
-5. Organizer-collected payment proof workflow: collection-code versions, private Storage upload, review, top-up, overpayment/underpayment.
-6. Payment review RPC plus append-only audit logs.
-7. Seat locks, assignments, and lightweight check-in.
-8. Refund tracking, notifications, export jobs, complaints, and minimum admin backend.
+5. Validate the new private Storage payment-proof flow against the clean Supabase project with real user sessions.
+6. Organizer-collected payment proof workflow: collection-code versions, review, top-up, overpayment/underpayment.
+7. Payment review RPC plus append-only audit logs.
+8. Seat locks, assignments, and lightweight check-in.
+9. Refund tracking, notifications, export jobs, complaints, and minimum admin backend.
 
 ## Repository Notes
 
