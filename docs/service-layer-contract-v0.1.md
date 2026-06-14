@@ -1,6 +1,6 @@
 # GatherUp commercial v0.1 service-layer contract
 
-Last updated: 2026-06-02
+Last updated: 2026-06-14
 
 This document defines the service-layer operations that must exist before GatherUp commercial v0.1 can be considered reliable. UI code should not directly assemble these business transitions.
 
@@ -264,11 +264,14 @@ Implemented:
 - Seed draft.
 - Storage policy draft.
 - Auth/schema/storage static contract tests.
+- Atomic registration order creation through `create_registration_atomic`.
+- JWT-gated organizer APIs for event creation, payment review, check-in verification, and exports.
+- Initial private Storage payment-proof path: browser upload to `payment-proofs`, then `/api/orders/payment-proof` verifies user ownership, payment binding, object path, and Storage object existence before inserting `payment_proofs`.
 
 Not implemented yet:
 
 - Transactional service functions.
 - Server actions for commercial workflows.
-- Real Storage uploads from UI.
+- End-to-end real Supabase session/RLS validation for Storage uploads.
 - Real RLS role matrix execution in Supabase.
 - Audit log writes from service operations.

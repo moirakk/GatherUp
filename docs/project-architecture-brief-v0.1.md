@@ -20,6 +20,7 @@ GatherUp is currently at the **commercial v0.1 foundation stage**:
 - Organizer-sensitive APIs now require verified Supabase Bearer tokens.
 - Registration order creation now calls the atomic PostgreSQL RPC through a user JWT client.
 - The first private Storage-backed payment-proof path has been added: browser upload to `payment-proofs`, then JWT-protected proof metadata submission.
+- Payment review now has an audited PostgreSQL RPC draft wired through the organizer review API.
 - The app still uses mock/local data for most user-facing workflows, so real Supabase service-layer integration is the next major engineering phase.
 
 ```mermaid
@@ -30,7 +31,8 @@ flowchart LR
   D --> E["Clean Supabase validation"]
   E --> F["JWT APIs and atomic orders"]
   F --> H["Private payment-proof Storage"]
-  H --> I["Service layer and real data"]
+  H --> J["Audited payment review RPC"]
+  J --> I["Service layer and real data"]
   I --> G["Internal beta"]
 
   A:::done
@@ -40,6 +42,7 @@ flowchart LR
   E:::doing
   F:::done
   H:::doing
+  J:::doing
   I:::todo
   G:::todo
 
@@ -122,6 +125,7 @@ Implemented stack:
 - JWT-gated server APIs for sensitive organizer operations
 - Atomic registration RPC call path for order creation
 - Initial private Storage payment-proof upload and proof-record API
+- Initial audited payment-review RPC call path
 
 ## 5. Data architecture direction
 
@@ -215,15 +219,15 @@ The main remaining gaps are engineering depth, not product concept:
 - Payment review, refund, seat selection, and notification workflows still need service-layer implementation.
 - Seat selection needs atomic locking and realtime updates.
 - Notification publishing needs a real email provider such as Resend.
-- Minimum admin review and audit tooling still need implementation.
+- Minimum admin review and broader audit tooling still need implementation.
 
 ## 9. Recommended next steps
 
 ```mermaid
 flowchart LR
   A["Finish Supabase validation SQL"] --> B["Validate payment-proof Storage flow"]
-  B --> C["Expand real event services"]
-  C --> D["Harden payment review with RPC/audit"]
+  B --> C["Validate payment-review RPC"]
+  C --> D["Expand real event services"]
   D --> E["Implement seat locks"]
   E --> F["Add notifications and admin review"]
 ```
@@ -233,6 +237,6 @@ Immediate order:
 1. Commit and push the latest repository state.
 2. Finish clean Supabase post-execution validation queries.
 3. Validate private `payment-proofs` Storage upload with real Supabase users and RLS.
-4. Expand real Supabase-backed event and organizer services.
-5. Harden payment review into an RPC-backed audited operation.
+4. Validate the audited payment-review RPC with real Supabase users and RLS.
+5. Expand real Supabase-backed event and organizer services.
 6. Add seat locking and notification delivery after the payment flow is reliable.

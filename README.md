@@ -34,12 +34,12 @@ Implemented prototype coverage:
 Not production-ready yet:
 
 - Most business workflows still use mock/local prototype data; public event listing and public/unlisted event detail now have an initial Supabase read path.
-- Real write APIs are still early integration endpoints. Registration creation now uses the database RPC for atomic order numbering and capacity protection, organizer APIs verify Supabase JWTs, and payment proof upload has an initial Storage-backed path; audit logs, payment review RPCs, seat locks, and full live RLS verification still need production-grade implementation.
+- Real write APIs are still early integration endpoints. Registration creation now uses the database RPC for atomic order numbering and capacity protection, organizer APIs verify Supabase JWTs, payment proof upload has an initial Storage-backed path, and payment review has an audited RPC draft wired through the API; seat locks and full live RLS verification still need production-grade implementation.
 - Event creation, payment review, refund, seat selection, check-in, finance, and admin workflows are not yet fully backed by production-grade database services.
 - Supabase schema, seed, and Storage policy drafts exist. The original live project has been restored and audited as partially initialized. A clean dev/staging project has been created, `schema.sql` and `seed.sql` have executed successfully, and `storage.sql` has been corrected after a real enum mismatch surfaced during execution.
 - Anonymous public-read grants for public event detail surfaces are now included in the schema draft and local contract tests. The follow-up grant patch and consolidated post-execution summary SQL still need to be run in the clean Supabase project after dashboard access/tooling is available.
 - Permission enforcement and RLS need continued real database testing beyond the first public read path.
-- Transactional service functions, email business notifications, organizer verification UI, admin review UI, complaints, audit log writes, and data retention jobs are still planned.
+- Broader transactional service functions, email business notifications, organizer verification UI, admin review UI, complaints, and data retention jobs are still planned.
 
 ## Commercial v0.1 Direction
 
@@ -182,7 +182,7 @@ Recommended order:
 4. Auth foundation: replace prototype page cookies with a durable Supabase SSR/session strategy, then keep API authorization on verified Bearer JWTs.
 5. Validate the new private Storage payment-proof flow against the clean Supabase project with real user sessions.
 6. Organizer-collected payment proof workflow: collection-code versions, review, top-up, overpayment/underpayment.
-7. Payment review RPC plus append-only audit logs.
+7. Validate the audited payment review RPC against the clean Supabase project.
 8. Seat locks, assignments, and lightweight check-in.
 9. Refund tracking, notifications, export jobs, complaints, and minimum admin backend.
 

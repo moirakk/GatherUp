@@ -1169,6 +1169,165 @@ create trigger payment_proofs_mark_submitted
   after insert on public.payment_proofs
   for each row execute function public.mark_payment_submitted_from_proof();
 
+create or replace function public.review_payment_atomic(
+  p_registration_id uuid default null,
+  p_order_number text default null,
+  p_decision text default null,
+  p_review_note text default null
+)
+returns jsonb as $$
+declare
+  v_actor_id uuid;
+  v_order record;
+  v_now timestamptz := now();
+  v_registration_status registration_status;
+  v_payment_status payment_status;
+  v_proof_status payment_proof_status;
+begin
+  v_actor_id := public.current_app_user_id();
+
+  if v_actor_id is null then
+    return jsonb_build_object('success', false, 'error_code', 'UNAUTHORIZED', 'message', 'Please sign in before reviewing payments.');
+  end if;
+
+  if coalesce(p_decision, '') not in ('APPROVED', 'REJECTED') then
+    return jsonb_build_object('success', false, 'error_code', 'INVALID_DECISION', 'message', 'Decision must be APPROVED or REJECTED.');
+  end if;
+
+  select
+    r.id as registration_id,
+    r.event_id,
+    r.order_number,
+    r.status as registration_status,
+    r.amount_due_cents,
+    p.id as payment_id,
+    p.status as payment_status,
+    p.amount_cents,
+    p.amount_confirmed_cents
+  into v_order
+  from public.registrations r
+  join public.payments p on p.registration_id = r.id
+  where (p_registration_id is not null and r.id = p_registration_id)
+     or (p_registration_id is null and p_order_number is not null and r.order_number = p_order_number)
+  for update of r, p;
+
+  if not found then
+    return jsonb_build_object('success', false, 'error_code', 'ORDER_NOT_FOUND', 'message', 'Order not found.');
+  end if;
+
+  if not (public.can_manage_event_payments(v_order.event_id) or public.is_platform_admin()) then
+    return jsonb_build_object('success', false, 'error_code', 'FORBIDDEN', 'message', 'Only payment managers can review this order.');
+  end if;
+
+  if v_order.registration_status <> 'payment_submitted' then
+    return jsonb_build_object(
+      'success', false,
+      'error_code', 'INVALID_ORDER_STATUS',
+      'message', 'This order is not waiting for payment review.',
+      'current_status', v_order.registration_status
+    );
+  end if;
+
+  v_registration_status := case
+    when p_decision = 'APPROVED' then 'confirmed'::registration_status
+    else 'payment_rejected_resubmittable'::registration_status
+  end;
+  v_payment_status := case
+    when p_decision = 'APPROVED' then 'confirmed'::payment_status
+    else 'rejected'::payment_status
+  end;
+  v_proof_status := case
+    when p_decision = 'APPROVED' then 'confirmed'::payment_proof_status
+    else 'rejected'::payment_proof_status
+  end;
+
+  update public.registrations
+  set
+    status = v_registration_status,
+    confirmed_at = case when p_decision = 'APPROVED' then v_now else null end,
+    organizer_note = nullif(trim(p_review_note), ''),
+    updated_at = v_now
+  where id = v_order.registration_id;
+
+  update public.payments
+  set
+    status = v_payment_status,
+    amount_confirmed_cents = case when p_decision = 'APPROVED' then v_order.amount_due_cents else 0 end,
+    amount_difference_cents = case when p_decision = 'APPROVED' then 0 else v_order.amount_due_cents end,
+    confirmed_at = case when p_decision = 'APPROVED' then v_now else null end,
+    reviewed_by = v_actor_id,
+    organizer_note = nullif(trim(p_review_note), ''),
+    updated_at = v_now
+  where id = v_order.payment_id;
+
+  update public.payment_proofs
+  set
+    status = v_proof_status,
+    amount_confirmed_cents = case when p_decision = 'APPROVED' then v_order.amount_due_cents else 0 end,
+    reviewed_by = v_actor_id,
+    reviewed_at = v_now,
+    review_note = nullif(trim(p_review_note), ''),
+    rejection_reason = case when p_decision = 'REJECTED' then nullif(trim(p_review_note), '') else null end
+  where registration_id = v_order.registration_id
+    and status = 'submitted';
+
+  insert into public.audit_logs (
+    actor_id,
+    actor_role,
+    event_id,
+    target_type,
+    target_id,
+    action,
+    risk_level,
+    reason,
+    before_snapshot,
+    after_snapshot,
+    metadata
+  ) values (
+    v_actor_id,
+    case when public.is_platform_admin() then 'admin' else 'payment_manager' end,
+    v_order.event_id,
+    'payment',
+    v_order.payment_id,
+    case when p_decision = 'APPROVED' then 'payment.approved' else 'payment.rejected' end,
+    'medium',
+    nullif(trim(p_review_note), ''),
+    jsonb_build_object(
+      'registration_status', v_order.registration_status,
+      'payment_status', v_order.payment_status,
+      'amount_confirmed_cents', v_order.amount_confirmed_cents
+    ),
+    jsonb_build_object(
+      'registration_status', v_registration_status,
+      'payment_status', v_payment_status,
+      'amount_confirmed_cents', case when p_decision = 'APPROVED' then v_order.amount_due_cents else 0 end
+    ),
+    jsonb_build_object(
+      'registration_id', v_order.registration_id,
+      'order_number', v_order.order_number,
+      'decision', p_decision
+    )
+  );
+
+  return jsonb_build_object(
+    'success', true,
+    'registration_id', v_order.registration_id,
+    'order_number', v_order.order_number,
+    'status', v_registration_status,
+    'payment_status', v_payment_status
+  );
+exception
+  when deadlock_detected or serialization_failure then
+    return jsonb_build_object('success', false, 'error_code', 'CONCURRENT_CONFLICT', 'message', 'The payment review is busy. Please retry.');
+  when others then
+    raise warning '[GatherUp] review_payment_atomic: % | %', sqlstate, sqlerrm;
+    return jsonb_build_object('success', false, 'error_code', 'INTERNAL_ERROR', 'message', 'Payment review failed.');
+end;
+$$ language plpgsql security definer set search_path = public, auth, pg_temp;
+
+revoke all on function public.review_payment_atomic(uuid, text, text, text) from public;
+grant execute on function public.review_payment_atomic(uuid, text, text, text) to authenticated;
+
 create or replace function public.sync_seat_status_on_assignment()
 returns trigger as $$
 begin

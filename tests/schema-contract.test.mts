@@ -304,6 +304,22 @@ describe("commercial schema contract", () => {
     assert.doesNotMatch(schema, /registered_count|ticket_price_cents|current_value|pending_payment|awaiting_payment_proof/);
   });
 
+  it("keeps payment review atomic and audited", () => {
+    expectSql(schema, "create or replace function public.review_payment_atomic(");
+    expectSql(schema, "v_actor_id := public.current_app_user_id();");
+    expectSql(schema, "for update of r, p;");
+    expectSql(schema, "public.can_manage_event_payments(v_order.event_id)");
+    expectSql(schema, "v_order.registration_status <> 'payment_submitted'");
+    expectSql(schema, "update public.registrations");
+    expectSql(schema, "update public.payments");
+    expectSql(schema, "update public.payment_proofs");
+    expectSql(schema, "insert into public.audit_logs");
+    expectSql(schema, "'payment.approved'");
+    expectSql(schema, "'payment.rejected'");
+    expectSql(schema, "grant execute on function public.review_payment_atomic(uuid, text, text, text) to authenticated;");
+    assert.doesNotMatch(schema, /grant execute on function public\.review_payment_atomic\(uuid, text, text, text\) to anon/);
+  });
+
   it("defines helper and trigger functions before they are used", () => {
     const firstPolicyIndex = schema.indexOf("create policy");
     assert.notEqual(firstPolicyIndex, -1, "Missing RLS policies");
