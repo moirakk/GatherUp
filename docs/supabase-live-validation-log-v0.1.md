@@ -365,3 +365,40 @@ Local verification:
 - `npm run verify`: passed before this documentation update.
 - `npm run build`: passed before this documentation update.
 - `git diff --check`: passed before this documentation update.
+
+## 2026-06-14 Atomic Registration RPC Draft
+
+Reason:
+
+- The early `/api/orders` implementation generated order numbers in application code by counting registrations.
+- That approach is not safe under concurrent registration bursts because two users can observe the same count and attempt the same order number.
+- Capacity checks also need to happen inside the same database transaction path as registration creation.
+
+Local changes completed:
+
+1. Added `public.create_registration_atomic(...)` to `supabase/schema.sql`.
+2. The RPC uses the current GatherUp schema instead of external draft field names:
+   - `events.price_cents`
+   - `event_order_counters.current_number`
+   - `registrations.order_number`
+   - `registration_answers` and `form_answers`
+   - `registration_attendees.public_id` / `display_name`
+3. The RPC intentionally does not handle seat selection yet. Seat locking remains a separate future RPC because the confirmed product flow is payment confirmation before seat selection.
+4. Updated `/api/orders` to call the RPC with a user JWT client when Supabase Auth is available.
+5. Added `supabase/validation/08-create-registration-rpc-contract.sql` for live database contract verification.
+6. Updated coverage validation expected function lists to include `create_registration_atomic`.
+7. Added local schema contract coverage for the RPC.
+
+Local verification:
+
+- `npm run verify`: passed with `29` tests.
+- `npm run build`: passed after clearing stale `.next` build cache.
+- `git diff --check`: pending final pre-commit run.
+
+Real SQL execution status:
+
+- `create_registration_atomic` has not yet been applied to the clean Supabase project.
+- Required next SQL sequence on clean dev/staging:
+  1. Apply the updated `supabase/schema.sql` or an equivalent migration containing `create_registration_atomic`.
+  2. Run `supabase/validation/08-create-registration-rpc-contract.sql`.
+  3. Re-run `supabase/validation/07-clean-dev-post-execution-summary.sql`.

@@ -50,3 +50,48 @@ export function getSupabaseServiceClient() {
 
   return adminClient;
 }
+
+export function getSupabaseUserClient(accessToken: string) {
+  if (!isSupabaseConfigured()) {
+    throw new Error("Supabase is not configured. Add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.");
+  }
+
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL as string,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string,
+    {
+      global: {
+        headers: {
+          Authorization: `Bearer ${accessToken}`
+        }
+      },
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+        detectSessionInUrl: false
+      }
+    }
+  );
+}
+
+export function readBearerToken(request: Request) {
+  const authorization = request.headers.get("authorization") ?? "";
+  const match = authorization.match(/^Bearer\s+(.+)$/i);
+
+  return match?.[1]?.trim() ?? "";
+}
+
+export async function verifySupabaseAccessToken(accessToken: string) {
+  if (!accessToken) {
+    return null;
+  }
+
+  const admin = getSupabaseServiceClient();
+  const { data, error } = await admin.auth.getUser(accessToken);
+
+  if (error || !data.user) {
+    return null;
+  }
+
+  return data.user;
+}

@@ -2,25 +2,20 @@ import { NextResponse } from "next/server";
 
 import {
   asRecord,
-  checkInStatus,
-  findUserByPublicId,
-  generateCheckInCode,
   getNumber,
   getString,
-  isApiErrorResponse,
   jsonError,
   normalizeJsonInput,
-  orderStatus,
-  requireApiSession,
   toPublicOrderStatus
 } from "@/lib/server/api";
-import { getSupabaseServiceClient } from "@/lib/supabase/server";
+import {
+  getSupabaseServiceClient,
+  getSupabaseUserClient,
+  readBearerToken,
+  verifySupabaseAccessToken
+} from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
-
-function isUuid(value: string) {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
-}
 
 function contactTypeFromValue(value: string) {
   if (value.includes("@")) return "email";
@@ -28,19 +23,7 @@ function contactTypeFromValue(value: string) {
   return "wechat";
 }
 
-function getStringArray(value: unknown) {
-  return Array.isArray(value)
-    ? value.map((item) => (typeof item === "string" ? item.trim().toUpperCase() : "")).filter(Boolean)
-    : [];
-}
-
 export async function POST(request: Request) {
-  const session = requireApiSession(request);
-
-  if (isApiErrorResponse(session)) {
-    return session;
-  }
-
   let body: Record<string, unknown>;
 
   try {
@@ -50,15 +33,16 @@ export async function POST(request: Request) {
   }
 
   const eventId = getString(body, ["event_id", "eventId"]);
-  const publicId = getString(body, ["public_id", "publicId", "gatherUpId"]);
   const contactValue = getString(body, ["contact_value", "contactValue", "contact"]);
+  const accessToken = readBearerToken(request);
+  const authUser = await verifySupabaseAccessToken(accessToken);
 
   if (!eventId) {
     return jsonError("缺少 event_id。");
   }
 
-  if (publicId && publicId.toUpperCase() !== session.gatherUpId.toUpperCase()) {
-    return jsonError("只能为当前登录账号创建报名订单。", 403);
+  if (!authUser) {
+    return jsonError("请使用 Supabase 登录后再创建真实报名订单。", 401);
   }
 
   if (!contactValue) {
@@ -66,96 +50,84 @@ export async function POST(request: Request) {
   }
 
   try {
-    const supabase = getSupabaseServiceClient();
-    const eventQuery = supabase
-      .from("events")
-      .select("id, public_code, price_cents, order_number_prefix, max_people_per_registration")
-      .limit(1);
-    const { data: event, error: eventError } = await (isUuid(eventId)
-      ? eventQuery.eq("id", eventId).single()
-      : eventQuery.eq("public_code", eventId).single());
-
-    if (eventError || !event) {
-      return jsonError("找不到活动。", 404);
-    }
-
-    const user = await findUserByPublicId(supabase, session.gatherUpId);
-
-    if (!user?.id) {
-      return jsonError("找不到报名用户，请先登录或同步 GatherUp 账号。", 404);
-    }
-
-    const quantity = Math.max(1, Math.min(getNumber(body, ["quantity"], 1), event.max_people_per_registration ?? 1));
-    const { count } = await supabase
-      .from("registrations")
-      .select("id", { count: "exact", head: true })
-      .eq("event_id", event.id);
-    const sequence = String((count ?? 0) + 1).padStart(4, "0");
-    const orderPrefix = event.order_number_prefix || event.public_code.replace(/^GU-/, "").slice(0, 8);
-    const orderNumber = getString(body, ["order_number", "orderNumber"]) || `${orderPrefix}-${sequence}`;
+    const userClient = getSupabaseUserClient(accessToken);
+    const quantity = Math.max(1, getNumber(body, ["quantity"], 1));
     const formAnswers = normalizeJsonInput(body.form_answers ?? body.formAnswers);
     const paymentScreenshotImg = getString(body, ["payment_screenshot_img", "paymentScreenshotImg"]);
-    const checkInCode = generateCheckInCode();
-    const attendeePublicIds = Array.from(new Set([user.public_id, ...getStringArray(body.attendee_ids ?? body.attendeeIds)]));
 
-    const { data: registration, error: registrationError } = await supabase
-      .from("registrations")
-      .insert({
-        event_id: event.id,
-        user_id: user.id,
-        order_number: orderNumber,
-        nickname: getString(body, ["nickname", "name"]) || user.public_id,
-        contact_type: getString(body, ["contact_type", "contactType"]) || contactTypeFromValue(contactValue),
-        contact_value: contactValue,
-        quantity,
-        amount_due_cents: Math.max(0, event.price_cents * quantity),
-        status: orderStatus.pending,
-        registration_answers: formAnswers,
-        form_answers: formAnswers,
-        payment_screenshot_img: paymentScreenshotImg || null,
-        check_in_code: checkInCode,
-        check_in_status: checkInStatus.notArrived,
-        participant_note: getString(body, ["participant_note", "participantNote"]) || null,
-        accepted_terms_at: new Date().toISOString()
-      })
-      .select("id, event_id, order_number, status, check_in_code, check_in_status")
-      .single();
+    const { data, error } = await userClient.rpc("create_registration_atomic", {
+      p_event_id: eventId,
+      p_nickname: getString(body, ["nickname", "name"]) || authUser.email || "GatherUp 用户",
+      p_contact_type: getString(body, ["contact_type", "contactType"]) || contactTypeFromValue(contactValue),
+      p_contact_value: contactValue,
+      p_quantity: quantity,
+      p_form_answers: formAnswers,
+      p_participant_note: getString(body, ["participant_note", "participantNote"]) || null
+    });
 
-    if (registrationError || !registration) {
-      return jsonError(registrationError?.message ?? "报名订单创建失败。", 500);
+    if (error) {
+      return jsonError(error.message, 500);
     }
 
-    await supabase.from("registration_attendees").insert(
-      attendeePublicIds.slice(0, quantity).map((attendeePublicId, index) => ({
-        registration_id: registration.id,
-        user_id: attendeePublicId === user.public_id ? user.id : null,
-        public_id: attendeePublicId,
-        is_primary: index === 0,
-        is_temporary: false,
-        check_in_status: checkInStatus.notArrived
-      }))
-    );
+    const result = asRecord(data);
+
+    if (result.success !== true) {
+      const errorCode = typeof result.error_code === "string" ? result.error_code : "REGISTRATION_FAILED";
+      const statusMap: Record<string, number> = {
+        UNAUTHORIZED: 401,
+        EVENT_NOT_FOUND: 404,
+        REGISTRATION_CLOSED: 422,
+        CAPACITY_EXCEEDED: 409,
+        ALREADY_REGISTERED: 409,
+        CONCURRENT_CONFLICT: 409,
+        DUPLICATE_REGISTRATION: 409
+      };
+
+      return NextResponse.json(
+        { ok: false, message: typeof result.message === "string" ? result.message : "报名订单创建失败。", error_code: errorCode },
+        { status: statusMap[errorCode] ?? 500 }
+      );
+    }
+
+    const registrationId = typeof result.registration_id === "string" ? result.registration_id : "";
+    const orderNumber = typeof result.order_number === "string" ? result.order_number : "";
+    const status = typeof result.status === "string" ? result.status : "";
 
     if (paymentScreenshotImg) {
-      const { data: payment } = await supabase.from("payments").select("id").eq("registration_id", registration.id).single();
+      const serviceClient = getSupabaseServiceClient();
+      const { data: appUser } = await serviceClient
+        .from("users")
+        .select("id")
+        .eq("auth_user_id", authUser.id)
+        .single();
+      const { data: payment } = await serviceClient.from("payments").select("id, amount_cents").eq("registration_id", registrationId).single();
 
-      if (payment?.id) {
-        await supabase.from("payment_proofs").insert({
+      if (appUser?.id && payment?.id) {
+        await serviceClient.from("payment_proofs").insert({
           payment_id: payment.id,
-          registration_id: registration.id,
+          registration_id: registrationId,
           file_url: paymentScreenshotImg,
-          uploaded_by: user.id,
-          amount_reported_cents: Math.max(0, event.price_cents * quantity)
+          uploaded_by: appUser.id,
+          amount_reported_cents: Math.max(0, payment.amount_cents)
         });
+        await serviceClient
+          .from("registrations")
+          .update({
+            status: "payment_submitted",
+            payment_screenshot_img: paymentScreenshotImg
+          })
+          .eq("id", registrationId)
+          .eq("status", "awaiting_payment");
       }
     }
 
     return NextResponse.json({
       ok: true,
-      order_id: registration.id,
-      order_number: registration.order_number,
-      status: toPublicOrderStatus(registration.status),
-      check_in_code: registration.check_in_code,
+      order_id: registrationId,
+      order_number: orderNumber,
+      status: toPublicOrderStatus(paymentScreenshotImg ? "payment_submitted" : status),
+      amount_due_cents: result.amount_due_cents,
+      quantity: result.quantity,
       check_in_status: "NOT_ARRIVED"
     });
   } catch (error) {

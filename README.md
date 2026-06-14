@@ -23,14 +23,15 @@ Implemented prototype coverage:
 - Venue intelligence prototype.
 - Supabase client dependency, Auth adapter, user profile sync adapter, schema/seed/Storage SQL drafts, and contract tests.
 - Server-side Supabase read adapter for public event listing and public/unlisted event detail, with mock fallback when Supabase is not configured or unavailable.
-- Initial guarded server APIs for event creation, registration orders, payment review, check-in verification, and Excel exports. These require a logged-in session and use the Supabase service role only on the server.
+- Initial guarded server APIs for event creation, registration orders, payment review, check-in verification, and Excel exports.
+- Atomic registration RPC draft for real Supabase order creation: user identity is resolved in PostgreSQL through `current_app_user_id()`, event capacity is checked under an event-row lock, order numbers are generated through `event_order_counters`, attendee and payment stub rows are created in the same database transaction path.
 - Middleware-level login redirect foundation and safe internal `next` path handling.
 - Real Supabase live project preflight, read-only coverage audit logs, and clean dev/staging schema, seed, and Storage execution notes.
 
 Not production-ready yet:
 
 - Most business workflows still use mock/local prototype data; public event listing and public/unlisted event detail now have an initial Supabase read path.
-- Real write APIs are early integration endpoints, not final transaction services. Capacity locking, atomic order numbering, Storage uploads, and full Supabase Auth/RLS session enforcement still need production-grade implementation.
+- Real write APIs are still early integration endpoints. Registration creation has started moving into a database RPC for atomic order numbering and capacity protection, while Storage uploads, audit logs, payment review RPCs, seat locks, and complete Supabase Auth/RLS session enforcement still need production-grade implementation.
 - Event creation, registration, payment proof, refund, seat selection, check-in, finance, and admin workflows are not yet backed by real database services.
 - Supabase schema, seed, and Storage policy drafts exist. The original live project has been restored and audited as partially initialized. A clean dev/staging project has been created, `schema.sql` and `seed.sql` have executed successfully, and `storage.sql` has been corrected after a real enum mismatch surfaced during execution.
 - Anonymous public-read grants for public event detail surfaces are now included in the schema draft and local contract tests. The follow-up grant patch and consolidated post-execution summary SQL still need to be run in the clean Supabase project after dashboard access/tooling is available.
@@ -173,13 +174,13 @@ Every core feature should be implemented in this order:
 Recommended order:
 
 1. Run `supabase/validation/06-public-read-grants.sql` and `07-clean-dev-post-execution-summary.sql` in the clean Supabase project and record the results.
-2. Expand the real data service layer beyond public reads: event creation, draft/publish, organizer roles, visibility, capacity, and review gates.
-3. Auth foundation: real Supabase session strategy, route protection, user profile sync, and `/dev/status` reliability.
-4. Real registration and order service: capacity hold, order number generation, attendee records, waitlist.
-5. Organizer-collected payment proof workflow: collection-code versions, Storage upload, review, top-up, overpayment/underpayment.
-6. Refund tracking and finance.
+2. Execute and validate `create_registration_atomic` against clean Supabase, then use it as the only registration creation path.
+3. Expand the real data service layer beyond public reads: event creation, draft/publish, organizer roles, visibility, capacity, and review gates.
+4. Auth foundation: real Supabase session strategy, route protection, user profile sync, and `/dev/status` reliability.
+5. Organizer-collected payment proof workflow: collection-code versions, private Storage upload, review, top-up, overpayment/underpayment.
+6. Payment review RPC plus append-only audit logs.
 7. Seat locks, assignments, and lightweight check-in.
-8. Notifications, export, complaints, and minimum admin backend.
+8. Refund tracking, notifications, export jobs, complaints, and minimum admin backend.
 
 ## Repository Notes
 

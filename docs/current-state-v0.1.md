@@ -83,7 +83,9 @@ Supabase live 状态：
 - `/events/[eventId]` 活动详情已通过 `getPublicEventDetail()` 优先读取 Supabase，可用 UUID 或 `public_code` 查找；未公开但 link-only 的活动由数据库 RLS 控制直链可见。
 - 当前 Supabase 读取只覆盖公开展示面：活动基本信息和已发布通知。报名人数、付款数、选座数、组织者公开资料等仍需后续服务层和权限设计后再接入。
 - 已新增第一批受控写入/导出 API：活动创建、报名订单、付款审核、核销、名单导出、财务导出。它们要求登录会话；主办侧操作会检查当前 GatherUp ID 是否具备活动管理权限；没有 `SUPABASE_SERVICE_ROLE_KEY` 时会明确失败，不会伪装成真实写入。
-- 这些 API 仍是早期集成层：订单号并发、容量锁、Storage 上传、正式 Supabase Auth token 绑定、审计日志和事务封装仍需要继续补齐。
+- 已新增 `create_registration_atomic` 数据库 RPC 草案：通过 `public.current_app_user_id()` 获取真实用户，锁定活动行校验容量，用 `event_order_counters.current_number` 原子生成订单号，并在同一事务路径中写入 `registrations`、主参与人和 payment stub。
+- `/api/orders` 已开始改为用户 JWT client 调用 RPC；前端在 Supabase 登录态下会附带 access token，让数据库内的 `auth.uid()` 和 `current_app_user_id()` 可用。
+- 这些 API 仍是早期集成层：Storage 上传、付款审核 RPC、审计日志、正式 seat lock/assignment、waitlist 和完整 RLS 行为实测仍需要继续补齐。
 
 ## 3. 本地运行
 

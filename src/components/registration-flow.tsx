@@ -17,6 +17,7 @@ import {
 
 import type { EventSetup, GatherEvent } from "@/lib/mock-data";
 import { SeatMap } from "@/components/seat-map";
+import { getSupabaseBrowserClient, isSupabaseConfigured } from "@/lib/supabase/client";
 
 type RegistrationFlowProps = {
   event: GatherEvent;
@@ -121,28 +122,38 @@ export function RegistrationFlow({ event, initialStep, setup }: RegistrationFlow
 
   async function createPendingOrder(paymentScreenshotImg = "") {
     try {
+      const accessToken = isSupabaseConfigured()
+        ? (await getSupabaseBrowserClient().auth.getSession()).data.session?.access_token
+        : "";
+
+      if (!accessToken) {
+        setMessage("订单已进入本地原型流程；真实数据库报名需要先使用 Supabase 账号登录。");
+        return;
+      }
+
       const response = await fetch("/api/orders", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`
+        },
         body: JSON.stringify({
           event_id: event.id,
-          public_id: attendeeIds[0] || "GU-MIKI",
           nickname,
           contact,
           quantity,
-          order_number: orderNumber,
           form_answers: formAnswers,
           payment_screenshot_img: paymentScreenshotImg
         })
       });
-      const result = (await response.json()) as { ok?: boolean; message?: string; check_in_code?: string };
+      const result = (await response.json()) as { ok?: boolean; message?: string; order_number?: string };
 
       if (!response.ok || !result.ok) {
         setMessage(`订单已进入本地原型流程；数据库写入未完成：${result.message ?? "接口返回失败"}`);
         return;
       }
 
-      setMessage(`订单已提交待审核，核销码已生成：${result.check_in_code}`);
+      setMessage(`订单已提交，订单号：${result.order_number ?? "待生成"}`);
     } catch {
       setMessage("订单已进入本地原型流程；当前无法连接报名接口，稍后可重试同步。");
     }

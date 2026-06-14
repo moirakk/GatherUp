@@ -123,7 +123,7 @@ expected_functions(name) as (
   values
     ('set_updated_at'), ('prevent_public_id_over_limit'),
     ('create_payment_for_registration'), ('mark_payment_submitted_from_proof'),
-    ('sync_seat_status_on_assignment'), ('current_app_user_id'),
+    ('sync_seat_status_on_assignment'), ('create_registration_atomic'), ('current_app_user_id'),
     ('can_manage_event'), ('can_edit_event'), ('can_manage_event_finance'),
     ('can_manage_event_payments'), ('can_handle_event_refunds'), ('is_platform_admin')
 ),
