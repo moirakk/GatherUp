@@ -21,6 +21,7 @@ GatherUp is currently at the **commercial v0.1 foundation stage**:
 - Registration order creation now calls the atomic PostgreSQL RPC through a user JWT client.
 - The first private Storage-backed payment-proof path has been added: browser upload to `payment-proofs`, then JWT-protected proof metadata submission.
 - Payment review now has an audited PostgreSQL RPC draft wired through the organizer review API.
+- Seat locking now has PostgreSQL RPC drafts for expiring locks, creating locks, and confirming seat assignments.
 - The app still uses mock/local data for most user-facing workflows, so real Supabase service-layer integration is the next major engineering phase.
 
 ```mermaid
@@ -32,7 +33,8 @@ flowchart LR
   E --> F["JWT APIs and atomic orders"]
   F --> H["Private payment-proof Storage"]
   H --> J["Audited payment review RPC"]
-  J --> I["Service layer and real data"]
+  J --> K["Seat-lock RPCs"]
+  K --> I["Service layer and real data"]
   I --> G["Internal beta"]
 
   A:::done
@@ -43,6 +45,7 @@ flowchart LR
   F:::done
   H:::doing
   J:::doing
+  K:::doing
   I:::todo
   G:::todo
 
@@ -126,6 +129,7 @@ Implemented stack:
 - Atomic registration RPC call path for order creation
 - Initial private Storage payment-proof upload and proof-record API
 - Initial audited payment-review RPC call path
+- Initial seat-lock and assignment RPC drafts
 
 ## 5. Data architecture direction
 
@@ -227,8 +231,8 @@ The main remaining gaps are engineering depth, not product concept:
 flowchart LR
   A["Finish Supabase validation SQL"] --> B["Validate payment-proof Storage flow"]
   B --> C["Validate payment-review RPC"]
-  C --> D["Expand real event services"]
-  D --> E["Implement seat locks"]
+  C --> D["Validate seat-lock RPCs"]
+  D --> E["Expand real event services"]
   E --> F["Add notifications and admin review"]
 ```
 
@@ -238,5 +242,6 @@ Immediate order:
 2. Finish clean Supabase post-execution validation queries.
 3. Validate private `payment-proofs` Storage upload with real Supabase users and RLS.
 4. Validate the audited payment-review RPC with real Supabase users and RLS.
-5. Expand real Supabase-backed event and organizer services.
-6. Add seat locking and notification delivery after the payment flow is reliable.
+5. Validate seat-lock RPCs and wire them into participant seat selection.
+6. Expand real Supabase-backed event and organizer services.
+7. Add notification delivery after the payment and seating flows are reliable.

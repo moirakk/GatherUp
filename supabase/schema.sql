@@ -1328,6 +1328,276 @@ $$ language plpgsql security definer set search_path = public, auth, pg_temp;
 revoke all on function public.review_payment_atomic(uuid, text, text, text) from public;
 grant execute on function public.review_payment_atomic(uuid, text, text, text) to authenticated;
 
+create or replace function public.expire_seat_locks_for_event(
+  p_event_id uuid default null
+)
+returns integer as $$
+declare
+  v_expired_count integer := 0;
+begin
+  update public.seat_locks
+  set
+    status = 'expired',
+    released_at = now()
+  where status = 'active'
+    and expires_at <= now()
+    and (p_event_id is null or event_id = p_event_id);
+
+  get diagnostics v_expired_count = row_count;
+
+  update public.seats s
+  set status = 'available'
+  where s.status = 'held'
+    and (p_event_id is null or s.event_id = p_event_id)
+    and not exists (
+      select 1
+      from public.seat_locks sl
+      where sl.seat_id = s.id
+        and sl.status = 'active'
+    )
+    and not exists (
+      select 1
+      from public.seat_assignments sa
+      where sa.seat_id = s.id
+    );
+
+  return v_expired_count;
+end;
+$$ language plpgsql security definer set search_path = public, auth, pg_temp;
+
+revoke all on function public.expire_seat_locks_for_event(uuid) from public;
+grant execute on function public.expire_seat_locks_for_event(uuid) to authenticated;
+
+create or replace function public.create_seat_lock_atomic(
+  p_registration_id uuid,
+  p_seat_id uuid
+)
+returns jsonb as $$
+declare
+  v_user_id uuid;
+  v_registration record;
+  v_seat record;
+  v_lock_id uuid;
+  v_expires_at timestamptz;
+begin
+  v_user_id := public.current_app_user_id();
+
+  if v_user_id is null then
+    return jsonb_build_object('success', false, 'error_code', 'UNAUTHORIZED', 'message', 'Please sign in before selecting seats.');
+  end if;
+
+  select
+    r.id,
+    r.event_id,
+    r.user_id,
+    r.status as registration_status,
+    r.amount_due_cents,
+    e.status as event_status,
+    e.seat_selection_mode,
+    e.seat_lock_minutes,
+    p.status as payment_status
+  into v_registration
+  from public.registrations r
+  join public.events e on e.id = r.event_id
+  left join public.payments p on p.registration_id = r.id
+  where r.id = p_registration_id
+  for update of r;
+
+  if not found then
+    return jsonb_build_object('success', false, 'error_code', 'REGISTRATION_NOT_FOUND', 'message', 'Registration not found.');
+  end if;
+
+  if v_registration.user_id <> v_user_id then
+    return jsonb_build_object('success', false, 'error_code', 'FORBIDDEN', 'message', 'You can only select seats for your own order.');
+  end if;
+
+  if v_registration.registration_status <> 'confirmed' then
+    return jsonb_build_object('success', false, 'error_code', 'REGISTRATION_NOT_CONFIRMED', 'message', 'Payment must be confirmed before seat selection.');
+  end if;
+
+  if v_registration.amount_due_cents > 0 and v_registration.payment_status <> 'confirmed' then
+    return jsonb_build_object('success', false, 'error_code', 'PAYMENT_NOT_CONFIRMED', 'message', 'Payment must be confirmed before seat selection.');
+  end if;
+
+  if v_registration.seat_selection_mode in ('none', 'manual') then
+    return jsonb_build_object('success', false, 'error_code', 'SEAT_SELECTION_UNAVAILABLE', 'message', 'This event is not open for self-service seat selection.');
+  end if;
+
+  if v_registration.event_status not in ('seat_selection_open', 'ready') then
+    return jsonb_build_object('success', false, 'error_code', 'SEAT_SELECTION_CLOSED', 'message', 'Seat selection is not open.');
+  end if;
+
+  perform public.expire_seat_locks_for_event(v_registration.event_id);
+
+  select id, event_id, display_label, status
+  into v_seat
+  from public.seats
+  where id = p_seat_id
+    and event_id = v_registration.event_id
+  for update;
+
+  if not found then
+    return jsonb_build_object('success', false, 'error_code', 'SEAT_NOT_FOUND', 'message', 'Seat not found.');
+  end if;
+
+  if v_seat.status <> 'available' then
+    return jsonb_build_object('success', false, 'error_code', 'SEAT_UNAVAILABLE', 'message', 'This seat is no longer available.');
+  end if;
+
+  if exists (
+    select 1
+    from public.seat_assignments sa
+    where sa.seat_id = p_seat_id
+  ) then
+    return jsonb_build_object('success', false, 'error_code', 'SEAT_ALREADY_ASSIGNED', 'message', 'This seat is already assigned.');
+  end if;
+
+  v_lock_id := gen_random_uuid();
+  v_expires_at := now() + make_interval(mins => greatest(1, v_registration.seat_lock_minutes));
+
+  insert into public.seat_locks (
+    id,
+    event_id,
+    seat_id,
+    registration_id,
+    locked_by,
+    status,
+    expires_at
+  ) values (
+    v_lock_id,
+    v_registration.event_id,
+    p_seat_id,
+    p_registration_id,
+    v_user_id,
+    'active',
+    v_expires_at
+  );
+
+  update public.seats
+  set status = 'held'
+  where id = p_seat_id;
+
+  return jsonb_build_object(
+    'success', true,
+    'seat_lock_id', v_lock_id,
+    'seat_id', p_seat_id,
+    'seat_label', v_seat.display_label,
+    'expires_at', v_expires_at
+  );
+exception
+  when unique_violation then
+    return jsonb_build_object('success', false, 'error_code', 'SEAT_CONFLICT', 'message', 'This seat was just taken. Please choose another seat.');
+  when deadlock_detected or serialization_failure then
+    return jsonb_build_object('success', false, 'error_code', 'CONCURRENT_CONFLICT', 'message', 'Seat selection is busy. Please retry.');
+  when others then
+    raise warning '[GatherUp] create_seat_lock_atomic: % | %', sqlstate, sqlerrm;
+    return jsonb_build_object('success', false, 'error_code', 'INTERNAL_ERROR', 'message', 'Seat lock failed.');
+end;
+$$ language plpgsql security definer set search_path = public, auth, pg_temp;
+
+revoke all on function public.create_seat_lock_atomic(uuid, uuid) from public;
+grant execute on function public.create_seat_lock_atomic(uuid, uuid) to authenticated;
+
+create or replace function public.confirm_seat_assignment_atomic(
+  p_seat_lock_id uuid,
+  p_attendee_id uuid
+)
+returns jsonb as $$
+declare
+  v_user_id uuid;
+  v_lock record;
+  v_assignment_id uuid;
+begin
+  v_user_id := public.current_app_user_id();
+
+  if v_user_id is null then
+    return jsonb_build_object('success', false, 'error_code', 'UNAUTHORIZED', 'message', 'Please sign in before confirming seats.');
+  end if;
+
+  select
+    sl.id,
+    sl.event_id,
+    sl.seat_id,
+    sl.registration_id,
+    sl.locked_by,
+    sl.status as lock_status,
+    sl.expires_at,
+    r.order_number,
+    r.user_id as registration_user_id,
+    s.display_label
+  into v_lock
+  from public.seat_locks sl
+  join public.registrations r on r.id = sl.registration_id
+  join public.seats s on s.id = sl.seat_id
+  where sl.id = p_seat_lock_id
+  for update of sl;
+
+  if not found then
+    return jsonb_build_object('success', false, 'error_code', 'LOCK_NOT_FOUND', 'message', 'Seat lock not found.');
+  end if;
+
+  if v_lock.locked_by <> v_user_id or v_lock.registration_user_id <> v_user_id then
+    return jsonb_build_object('success', false, 'error_code', 'FORBIDDEN', 'message', 'You can only confirm your own seat locks.');
+  end if;
+
+  if v_lock.lock_status <> 'active' or v_lock.expires_at <= now() then
+    perform public.expire_seat_locks_for_event(v_lock.event_id);
+    return jsonb_build_object('success', false, 'error_code', 'LOCK_EXPIRED', 'message', 'Seat lock expired.');
+  end if;
+
+  if not exists (
+    select 1
+    from public.registration_attendees ra
+    where ra.id = p_attendee_id
+      and ra.registration_id = v_lock.registration_id
+  ) then
+    return jsonb_build_object('success', false, 'error_code', 'ATTENDEE_NOT_FOUND', 'message', 'Attendee not found for this order.');
+  end if;
+
+  v_assignment_id := gen_random_uuid();
+
+  insert into public.seat_assignments (
+    id,
+    event_id,
+    registration_id,
+    attendee_id,
+    order_number,
+    seat_id
+  ) values (
+    v_assignment_id,
+    v_lock.event_id,
+    v_lock.registration_id,
+    p_attendee_id,
+    v_lock.order_number,
+    v_lock.seat_id
+  );
+
+  update public.seat_locks
+  set
+    status = 'confirmed',
+    confirmed_at = now()
+  where id = p_seat_lock_id;
+
+  return jsonb_build_object(
+    'success', true,
+    'seat_assignment_id', v_assignment_id,
+    'seat_id', v_lock.seat_id,
+    'seat_label', v_lock.display_label
+  );
+exception
+  when unique_violation then
+    return jsonb_build_object('success', false, 'error_code', 'SEAT_ASSIGNMENT_CONFLICT', 'message', 'This seat or attendee already has an assignment.');
+  when deadlock_detected or serialization_failure then
+    return jsonb_build_object('success', false, 'error_code', 'CONCURRENT_CONFLICT', 'message', 'Seat confirmation is busy. Please retry.');
+  when others then
+    raise warning '[GatherUp] confirm_seat_assignment_atomic: % | %', sqlstate, sqlerrm;
+    return jsonb_build_object('success', false, 'error_code', 'INTERNAL_ERROR', 'message', 'Seat confirmation failed.');
+end;
+$$ language plpgsql security definer set search_path = public, auth, pg_temp;
+
+revoke all on function public.confirm_seat_assignment_atomic(uuid, uuid) from public;
+grant execute on function public.confirm_seat_assignment_atomic(uuid, uuid) to authenticated;
+
 create or replace function public.sync_seat_status_on_assignment()
 returns trigger as $$
 begin

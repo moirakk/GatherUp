@@ -267,11 +267,13 @@ Implemented:
 - Atomic registration order creation through `create_registration_atomic`.
 - JWT-gated organizer APIs for event creation, payment review, check-in verification, and exports.
 - Initial private Storage payment-proof path: browser upload to `payment-proofs`, then `/api/orders/payment-proof` verifies user ownership, payment binding, object path, and Storage object existence before inserting `payment_proofs`.
+- Initial seat-lock RPC drafts for expiring stale locks, creating active locks, and confirming seat assignments under database constraints.
 
 Not implemented yet:
 
 - Transactional service functions.
 - Server actions for commercial workflows.
 - End-to-end real Supabase session/RLS validation for Storage uploads.
+- UI wiring for seat-lock RPCs and end-to-end seating validation.
 - Real RLS role matrix execution in Supabase.
 - Audit log writes from service operations.

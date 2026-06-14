@@ -320,6 +320,28 @@ describe("commercial schema contract", () => {
     assert.doesNotMatch(schema, /grant execute on function public\.review_payment_atomic\(uuid, text, text, text\) to anon/);
   });
 
+  it("keeps seat locking and assignment atomic", () => {
+    expectSql(schema, "create unique index seat_locks_one_active_per_seat");
+    expectSql(schema, "create table public.seat_assignments");
+    expectSql(schema, "unique (event_id, seat_id)");
+    expectSql(schema, "unique (attendee_id)");
+    expectSql(schema, "create or replace function public.expire_seat_locks_for_event(");
+    expectSql(schema, "create or replace function public.create_seat_lock_atomic(");
+    expectSql(schema, "create or replace function public.confirm_seat_assignment_atomic(");
+    expectSql(schema, "perform public.expire_seat_locks_for_event(v_registration.event_id);");
+    expectSql(schema, "for update;");
+    expectSql(schema, "v_seat.status <> 'available'");
+    expectSql(schema, "insert into public.seat_locks");
+    expectSql(schema, "update public.seats");
+    expectSql(schema, "set status = 'held'");
+    expectSql(schema, "insert into public.seat_assignments");
+    expectSql(schema, "status = 'confirmed'");
+    expectSql(schema, "grant execute on function public.create_seat_lock_atomic(uuid, uuid) to authenticated;");
+    expectSql(schema, "grant execute on function public.confirm_seat_assignment_atomic(uuid, uuid) to authenticated;");
+    assert.doesNotMatch(schema, /grant execute on function public\.create_seat_lock_atomic\(uuid, uuid\) to anon/);
+    assert.doesNotMatch(schema, /grant execute on function public\.confirm_seat_assignment_atomic\(uuid, uuid\) to anon/);
+  });
+
   it("defines helper and trigger functions before they are used", () => {
     const firstPolicyIndex = schema.indexOf("create policy");
     assert.notEqual(firstPolicyIndex, -1, "Missing RLS policies");
