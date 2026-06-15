@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { asRecord, findUserByAuthUserId, getNumber, getString, jsonError, orderStatus } from "@/lib/server/api";
-import { getSupabaseServiceClient, readBearerToken, verifySupabaseAccessToken } from "@/lib/supabase/server";
+import { getAuthenticatedUser, getSupabaseServiceClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
 
@@ -22,8 +22,7 @@ function pathMatchesProof(path: string, eventId: string, registrationId: string,
 }
 
 export async function POST(request: Request) {
-  const accessToken = readBearerToken(request);
-  const authUser = await verifySupabaseAccessToken(accessToken);
+  const authUser = await getAuthenticatedUser(request);
 
   if (!authUser) {
     return jsonError("请使用 Supabase 登录后再提交付款截图。", 401);

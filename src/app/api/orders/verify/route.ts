@@ -6,15 +6,14 @@ import {
   toPublicCheckInStatus,
   toPublicOrderStatus
 } from "@/lib/server/api";
-import { getSupabaseUserClient, readBearerToken, verifySupabaseAccessToken } from "@/lib/supabase/server";
+import { getAuthenticatedSupabaseClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
-  const accessToken = readBearerToken(request);
-  const authUser = await verifySupabaseAccessToken(accessToken);
+  const authContext = await getAuthenticatedSupabaseClient(request);
 
-  if (!authUser) {
+  if (!authContext) {
     return jsonError("请使用 Supabase 登录后再核销订单。", 401);
   }
 
@@ -33,8 +32,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const supabase = getSupabaseUserClient(accessToken);
-    const { data, error } = await supabase.rpc("check_in_order_atomic", {
+    const { data, error } = await authContext.supabase.rpc("check_in_order_atomic", {
       p_check_in_code: checkInCode,
       p_note: typeof body.note === "string" ? body.note : null
     });

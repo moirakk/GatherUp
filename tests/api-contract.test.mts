@@ -27,12 +27,20 @@ describe("registration and payment proof API contracts", () => {
   const orderSeatSelectionPanel = readSource("src/components/order-seat-selection-panel.tsx");
   const orderPage = readSource("src/app/me/orders/[orderNumber]/page.tsx");
   const registrationFlow = readSource("src/components/registration-flow.tsx");
+  const supabaseServer = readSource("src/lib/supabase/server.ts");
 
-  it("keeps order creation on the user JWT atomic registration RPC path", () => {
-    expectSource(orderRoute, "readBearerToken(request)");
-    expectSource(orderRoute, "verifySupabaseAccessToken(accessToken)");
-    expectSource(orderRoute, "getSupabaseUserClient(accessToken)");
-    expectSource(orderRoute, 'userClient.rpc("create_registration_atomic"');
+  it("keeps route authentication unified across Bearer and Supabase SSR cookie sessions", () => {
+    expectSource(supabaseServer, "export async function getAuthenticatedUser(request: Request)");
+    expectSource(supabaseServer, "export async function getAuthenticatedSupabaseClient(request: Request)");
+    expectSource(supabaseServer, "verifySupabaseAccessToken(accessToken)");
+    expectSource(supabaseServer, "getSupabaseUserClient(accessToken)");
+    expectSource(supabaseServer, "createSupabaseServerClient()");
+    expectSource(supabaseServer, "supabase.auth.getUser()");
+  });
+
+  it("keeps order creation on the authenticated Supabase atomic registration RPC path", () => {
+    expectSource(orderRoute, "getAuthenticatedSupabaseClient(request)");
+    expectSource(orderRoute, 'authContext.supabase.rpc("create_registration_atomic"');
     expectSource(orderRoute, 'payment_id: payment?.id ?? null');
 
     assert.doesNotMatch(orderRoute, /payment_screenshot_img:\s*paymentScreenshotImg/);
@@ -40,19 +48,16 @@ describe("registration and payment proof API contracts", () => {
   });
 
   it("keeps participant payment proof submission gated by identity and order ownership", () => {
-    expectSource(paymentProofRoute, "readBearerToken(request)");
-    expectSource(paymentProofRoute, "verifySupabaseAccessToken(accessToken)");
+    expectSource(paymentProofRoute, "getAuthenticatedUser(request)");
     expectSource(paymentProofRoute, "findUserByAuthUserId(supabase, authUser.id)");
     expectSource(paymentProofRoute, "registration.user_id !== appUser.id");
     expectSource(paymentProofRoute, '.eq("registration_id", registration.id)');
     expectSource(paymentProofRoute, 'from("payment_proofs").insert');
   });
 
-  it("keeps organizer payment review on the user JWT RPC path", () => {
-    expectSource(paymentReviewRoute, "readBearerToken(request)");
-    expectSource(paymentReviewRoute, "verifySupabaseAccessToken(accessToken)");
-    expectSource(paymentReviewRoute, "getSupabaseUserClient(accessToken)");
-    expectSource(paymentReviewRoute, 'supabase.rpc("review_payment_atomic"');
+  it("keeps organizer payment review on the authenticated Supabase RPC path", () => {
+    expectSource(paymentReviewRoute, "getAuthenticatedSupabaseClient(request)");
+    expectSource(paymentReviewRoute, 'authContext.supabase.rpc("review_payment_atomic"');
     expectSource(paymentReviewRoute, "p_registration_id: isUuid(orderId) ? orderId : null");
     expectSource(paymentReviewRoute, "p_order_number: isUuid(orderId) ? null : orderId");
 
@@ -62,11 +67,9 @@ describe("registration and payment proof API contracts", () => {
     assert.doesNotMatch(paymentReviewRoute, /\.from\("payment_proofs"\)\s*\n\s*\.update/);
   });
 
-  it("keeps order check-in on the user JWT RPC path", () => {
-    expectSource(orderVerifyRoute, "readBearerToken(request)");
-    expectSource(orderVerifyRoute, "verifySupabaseAccessToken(accessToken)");
-    expectSource(orderVerifyRoute, "getSupabaseUserClient(accessToken)");
-    expectSource(orderVerifyRoute, 'supabase.rpc("check_in_order_atomic"');
+  it("keeps order check-in on the authenticated Supabase RPC path", () => {
+    expectSource(orderVerifyRoute, "getAuthenticatedSupabaseClient(request)");
+    expectSource(orderVerifyRoute, 'authContext.supabase.rpc("check_in_order_atomic"');
     expectSource(orderVerifyRoute, "p_check_in_code: checkInCode");
 
     assert.doesNotMatch(orderVerifyRoute, /getSupabaseServiceClient/);
@@ -74,11 +77,9 @@ describe("registration and payment proof API contracts", () => {
     assert.doesNotMatch(orderVerifyRoute, /\.from\("registration_attendees"\)\s*\n\s*\.update/);
   });
 
-  it("keeps participant refund requests on the user JWT RPC path", () => {
-    expectSource(orderRefundRoute, "readBearerToken(request)");
-    expectSource(orderRefundRoute, "verifySupabaseAccessToken(accessToken)");
-    expectSource(orderRefundRoute, "getSupabaseUserClient(accessToken)");
-    expectSource(orderRefundRoute, 'supabase.rpc("request_refund_atomic"');
+  it("keeps participant refund requests on the authenticated Supabase RPC path", () => {
+    expectSource(orderRefundRoute, "getAuthenticatedSupabaseClient(request)");
+    expectSource(orderRefundRoute, 'authContext.supabase.rpc("request_refund_atomic"');
     expectSource(orderRefundRoute, "p_registration_id: registrationId");
     expectSource(orderRefundRoute, "p_reason: reason");
 
@@ -88,11 +89,9 @@ describe("registration and payment proof API contracts", () => {
     assert.doesNotMatch(orderRefundRoute, /\.from\("payments"\)\s*\n\s*\.update/);
   });
 
-  it("keeps organizer refund review on the user JWT RPC path", () => {
-    expectSource(orderRefundReviewRoute, "readBearerToken(request)");
-    expectSource(orderRefundReviewRoute, "verifySupabaseAccessToken(accessToken)");
-    expectSource(orderRefundReviewRoute, "getSupabaseUserClient(accessToken)");
-    expectSource(orderRefundReviewRoute, 'supabase.rpc("review_refund_request_atomic"');
+  it("keeps organizer refund review on the authenticated Supabase RPC path", () => {
+    expectSource(orderRefundReviewRoute, "getAuthenticatedSupabaseClient(request)");
+    expectSource(orderRefundReviewRoute, 'authContext.supabase.rpc("review_refund_request_atomic"');
     expectSource(orderRefundReviewRoute, "p_refund_request_id: refundRequestId");
     expectSource(orderRefundReviewRoute, "p_decision: decision");
 
@@ -103,16 +102,14 @@ describe("registration and payment proof API contracts", () => {
   });
 
   it("keeps organizer refund proof upload bound to the private Storage path and RPC", () => {
-    expectSource(orderRefundProofRoute, "readBearerToken(request)");
-    expectSource(orderRefundProofRoute, "verifySupabaseAccessToken(accessToken)");
-    expectSource(orderRefundProofRoute, "getSupabaseUserClient(accessToken)");
+    expectSource(orderRefundProofRoute, "getAuthenticatedSupabaseClient(request)");
     expectSource(orderRefundProofRoute, 'replace(/^refund-proofs\\//, "")');
     expectSource(orderRefundProofRoute, "pathMatchesRefundProof(storagePath, eventId, refundRequest.id)");
     expectSource(orderRefundProofRoute, '.schema("storage")');
     expectSource(orderRefundProofRoute, '.from("objects")');
     expectSource(orderRefundProofRoute, '.eq("bucket_id", "refund-proofs")');
     expectSource(orderRefundProofRoute, '.eq("name", storagePath)');
-    expectSource(orderRefundProofRoute, 'supabase.rpc("record_refund_proof_atomic"');
+    expectSource(orderRefundProofRoute, 'authContext.supabase.rpc("record_refund_proof_atomic"');
     expectSource(orderRefundProofRoute, "p_refund_request_id: refundRequestId");
     expectSource(orderRefundProofRoute, "p_file_url: storagePath");
 
@@ -141,18 +138,14 @@ describe("registration and payment proof API contracts", () => {
     expectSource(registrationFlow, "Authorization: `Bearer ${accessToken}`");
   });
 
-  it("keeps seat locking and confirmation on user JWT RPC paths", () => {
-    expectSource(seatLockRoute, "readBearerToken(request)");
-    expectSource(seatLockRoute, "verifySupabaseAccessToken(accessToken)");
-    expectSource(seatLockRoute, "getSupabaseUserClient(accessToken)");
-    expectSource(seatLockRoute, 'supabase.rpc("create_seat_lock_atomic"');
+  it("keeps seat locking and confirmation on authenticated Supabase RPC paths", () => {
+    expectSource(seatLockRoute, "getAuthenticatedSupabaseClient(request)");
+    expectSource(seatLockRoute, 'authContext.supabase.rpc("create_seat_lock_atomic"');
     expectSource(seatLockRoute, "p_registration_id: registrationId");
     expectSource(seatLockRoute, "p_seat_id: seatId");
 
-    expectSource(seatConfirmRoute, "readBearerToken(request)");
-    expectSource(seatConfirmRoute, "verifySupabaseAccessToken(accessToken)");
-    expectSource(seatConfirmRoute, "getSupabaseUserClient(accessToken)");
-    expectSource(seatConfirmRoute, 'supabase.rpc("confirm_seat_assignment_atomic"');
+    expectSource(seatConfirmRoute, "getAuthenticatedSupabaseClient(request)");
+    expectSource(seatConfirmRoute, 'authContext.supabase.rpc("confirm_seat_assignment_atomic"');
     expectSource(seatConfirmRoute, "p_seat_lock_id: seatLockId");
     expectSource(seatConfirmRoute, "p_attendee_id: attendeeId");
 

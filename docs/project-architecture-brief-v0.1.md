@@ -17,8 +17,8 @@ GatherUp is currently at the **commercial v0.1 foundation stage**:
 - The Supabase schema, seed, Storage buckets, and RLS policy drafts exist.
 - Static contract tests verify important SQL, Storage, auth, and documentation assumptions.
 - A clean Supabase dev/staging project has run `schema.sql`, `seed.sql`, and corrected `storage.sql`.
-- Organizer-sensitive APIs now require verified Supabase Bearer tokens, and page route protection has started moving to Supabase SSR middleware with `getUser()` session verification and cookie refresh.
-- Registration order creation now calls the atomic PostgreSQL RPC through a user JWT client.
+- Organizer-sensitive APIs now use shared Supabase auth helpers that accept verified Bearer tokens and same-origin SSR session cookies, while page route protection uses Supabase SSR middleware with `getUser()` session verification and cookie refresh.
+- Registration order creation now calls the atomic PostgreSQL RPC through an authenticated Supabase client.
 - The first private Storage-backed payment-proof path has been added: browser upload to `payment-proofs`, then JWT-protected proof metadata submission.
 - Payment review now has an audited PostgreSQL RPC draft wired through the organizer review API.
 - Participant refund requests, organizer refund review, and refund proof upload now have audited PostgreSQL RPC drafts wired through JWT APIs.

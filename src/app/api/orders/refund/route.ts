@@ -1,15 +1,14 @@
 import { NextResponse } from "next/server";
 
 import { asRecord, getNumber, getString, jsonError } from "@/lib/server/api";
-import { getSupabaseUserClient, readBearerToken, verifySupabaseAccessToken } from "@/lib/supabase/server";
+import { getAuthenticatedSupabaseClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
-  const accessToken = readBearerToken(request);
-  const authUser = await verifySupabaseAccessToken(accessToken);
+  const authContext = await getAuthenticatedSupabaseClient(request);
 
-  if (!authUser) {
+  if (!authContext) {
     return jsonError("请使用 Supabase 登录后再申请退款。", 401);
   }
 
@@ -33,9 +32,8 @@ export async function POST(request: Request) {
   }
 
   try {
-    const supabase = getSupabaseUserClient(accessToken);
     const requestedAmountCents = getNumber(body, ["requested_amount_cents", "requestedAmountCents"], 0);
-    const { data, error } = await supabase.rpc("request_refund_atomic", {
+    const { data, error } = await authContext.supabase.rpc("request_refund_atomic", {
       p_registration_id: registrationId,
       p_requested_amount_cents: requestedAmountCents > 0 ? requestedAmountCents : null,
       p_reason: reason

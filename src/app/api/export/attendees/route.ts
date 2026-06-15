@@ -1,6 +1,6 @@
 import { canManageEventByAuthUserId, jsonError } from "@/lib/server/api";
 import { buildWorkbookBuffer, excelResponse } from "@/lib/server/excel";
-import { getSupabaseServiceClient, readBearerToken, verifySupabaseAccessToken } from "@/lib/supabase/server";
+import { getAuthenticatedUser, getSupabaseServiceClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
 
@@ -9,8 +9,7 @@ function isUuid(value: string) {
 }
 
 export async function GET(request: Request) {
-  const accessToken = readBearerToken(request);
-  const authUser = await verifySupabaseAccessToken(accessToken);
+  const authUser = await getAuthenticatedUser(request);
 
   if (!authUser) {
     return jsonError("请使用 Supabase 登录后再导出名单。", 401);

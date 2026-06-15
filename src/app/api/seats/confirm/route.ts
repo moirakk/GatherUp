@@ -1,15 +1,14 @@
 import { NextResponse } from "next/server";
 
 import { asRecord, getString, jsonError } from "@/lib/server/api";
-import { getSupabaseUserClient, readBearerToken, verifySupabaseAccessToken } from "@/lib/supabase/server";
+import { getAuthenticatedSupabaseClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
-  const accessToken = readBearerToken(request);
-  const authUser = await verifySupabaseAccessToken(accessToken);
+  const authContext = await getAuthenticatedSupabaseClient(request);
 
-  if (!authUser) {
+  if (!authContext) {
     return jsonError("请使用 Supabase 登录后再确认座位。", 401);
   }
 
@@ -33,8 +32,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const supabase = getSupabaseUserClient(accessToken);
-    const { data, error } = await supabase.rpc("confirm_seat_assignment_atomic", {
+    const { data, error } = await authContext.supabase.rpc("confirm_seat_assignment_atomic", {
       p_seat_lock_id: seatLockId,
       p_attendee_id: attendeeId
     });

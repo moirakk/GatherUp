@@ -9,10 +9,8 @@ import {
   toPublicOrderStatus
 } from "@/lib/server/api";
 import {
+  getAuthenticatedSupabaseClient,
   getSupabaseServiceClient,
-  getSupabaseUserClient,
-  readBearerToken,
-  verifySupabaseAccessToken
 } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
@@ -34,14 +32,13 @@ export async function POST(request: Request) {
 
   const eventId = getString(body, ["event_id", "eventId"]);
   const contactValue = getString(body, ["contact_value", "contactValue", "contact"]);
-  const accessToken = readBearerToken(request);
-  const authUser = await verifySupabaseAccessToken(accessToken);
+  const authContext = await getAuthenticatedSupabaseClient(request);
 
   if (!eventId) {
     return jsonError("缺少 event_id。");
   }
 
-  if (!authUser) {
+  if (!authContext) {
     return jsonError("请使用 Supabase 登录后再创建真实报名订单。", 401);
   }
 
@@ -50,13 +47,12 @@ export async function POST(request: Request) {
   }
 
   try {
-    const userClient = getSupabaseUserClient(accessToken);
     const quantity = Math.max(1, getNumber(body, ["quantity"], 1));
     const formAnswers = normalizeJsonInput(body.form_answers ?? body.formAnswers);
 
-    const { data, error } = await userClient.rpc("create_registration_atomic", {
+    const { data, error } = await authContext.supabase.rpc("create_registration_atomic", {
       p_event_id: eventId,
-      p_nickname: getString(body, ["nickname", "name"]) || authUser.email || "GatherUp 用户",
+      p_nickname: getString(body, ["nickname", "name"]) || authContext.user.email || "GatherUp 用户",
       p_contact_type: getString(body, ["contact_type", "contactType"]) || contactTypeFromValue(contactValue),
       p_contact_value: contactValue,
       p_quantity: quantity,

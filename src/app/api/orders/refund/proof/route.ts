@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { asRecord, getNumber, getString, jsonError } from "@/lib/server/api";
-import { getSupabaseUserClient, readBearerToken, verifySupabaseAccessToken } from "@/lib/supabase/server";
+import { getAuthenticatedSupabaseClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
 
@@ -24,10 +24,9 @@ function getRelationRecord(value: unknown) {
 }
 
 export async function POST(request: Request) {
-  const accessToken = readBearerToken(request);
-  const authUser = await verifySupabaseAccessToken(accessToken);
+  const authContext = await getAuthenticatedSupabaseClient(request);
 
-  if (!authUser) {
+  if (!authContext) {
     return jsonError("请使用 Supabase 登录后再上传退款凭证。", 401);
   }
 
@@ -51,8 +50,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const supabase = getSupabaseUserClient(accessToken);
-    const { data: refundRequest, error: refundRequestError } = await supabase
+    const { data: refundRequest, error: refundRequestError } = await authContext.supabase
       .from("refund_requests")
       .select("id, registrations!inner(event_id, order_number)")
       .eq("id", refundRequestId)
@@ -70,7 +68,7 @@ export async function POST(request: Request) {
       return jsonError("退款凭证路径与退款申请不匹配。", 400);
     }
 
-    const { data: storedObject, error: storedObjectError } = await supabase
+    const { data: storedObject, error: storedObjectError } = await authContext.supabase
       .schema("storage")
       .from("objects")
       .select("id")
@@ -83,7 +81,7 @@ export async function POST(request: Request) {
     }
 
     const amountCents = getNumber(body, ["amount_cents", "amountCents"], 0);
-    const { data, error } = await supabase.rpc("record_refund_proof_atomic", {
+    const { data, error } = await authContext.supabase.rpc("record_refund_proof_atomic", {
       p_refund_request_id: refundRequestId,
       p_file_url: storagePath,
       p_amount_cents: amountCents > 0 ? amountCents : null

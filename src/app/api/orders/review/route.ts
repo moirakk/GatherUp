@@ -6,7 +6,7 @@ import {
   normalizeReviewDecision,
   toPublicOrderStatus
 } from "@/lib/server/api";
-import { getSupabaseUserClient, readBearerToken, verifySupabaseAccessToken } from "@/lib/supabase/server";
+import { getAuthenticatedSupabaseClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
 
@@ -15,10 +15,9 @@ function isUuid(value: string) {
 }
 
 export async function POST(request: Request) {
-  const accessToken = readBearerToken(request);
-  const authUser = await verifySupabaseAccessToken(accessToken);
+  const authContext = await getAuthenticatedSupabaseClient(request);
 
-  if (!authUser) {
+  if (!authContext) {
     return jsonError("请使用 Supabase 登录后再审核付款。", 401);
   }
 
@@ -42,8 +41,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const supabase = getSupabaseUserClient(accessToken);
-    const { data, error } = await supabase.rpc("review_payment_atomic", {
+    const { data, error } = await authContext.supabase.rpc("review_payment_atomic", {
       p_registration_id: isUuid(orderId) ? orderId : null,
       p_order_number: isUuid(orderId) ? null : orderId,
       p_decision: decision,

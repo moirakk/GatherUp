@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { asRecord, findUserByAuthUserId, getNumber, getString, jsonError, normalizeJsonInput } from "@/lib/server/api";
-import { getSupabaseServiceClient, readBearerToken, verifySupabaseAccessToken } from "@/lib/supabase/server";
+import { getAuthenticatedUser, getSupabaseServiceClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
 
@@ -47,8 +47,7 @@ function mapEnum(value: string, values: Record<string, string>, fallback: string
 }
 
 export async function POST(request: Request) {
-  const accessToken = readBearerToken(request);
-  const authUser = await verifySupabaseAccessToken(accessToken);
+  const authUser = await getAuthenticatedUser(request);
 
   if (!authUser) {
     return jsonError("请使用 Supabase 登录后再创建真实活动。", 401);

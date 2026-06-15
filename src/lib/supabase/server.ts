@@ -162,3 +162,36 @@ export async function getAuthenticatedUser(request: Request) {
 
   return user;
 }
+
+export async function getAuthenticatedSupabaseClient(request: Request) {
+  const accessToken = readBearerToken(request);
+  const bearerUser = await verifySupabaseAccessToken(accessToken);
+
+  if (bearerUser) {
+    return {
+      accessToken,
+      user: bearerUser,
+      supabase: getSupabaseUserClient(accessToken)
+    };
+  }
+
+  if (!isSupabaseConfigured()) {
+    return null;
+  }
+
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+    error
+  } = await supabase.auth.getUser();
+
+  if (error || !user) {
+    return null;
+  }
+
+  return {
+    accessToken: "",
+    user,
+    supabase
+  };
+}
