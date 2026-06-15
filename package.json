@@ -9,6 +9,7 @@
     "build": "next build",
     "test": "node --test tests/*.test.mts",
     "test:auth": "node --test tests/auth-rules.test.mts",
+    "test:integration:rpc": "node --test tests/integration/rpc/*.test.mts",
     "test:schema": "node --test tests/schema-contract.test.mts",
     "verify": "npm test && npm run typecheck",
     "start": "next start",

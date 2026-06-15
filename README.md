@@ -111,9 +111,18 @@ Recommended checks:
 
 ```bash
 npm test
+npm run verify
 npm run typecheck
 npm run build
 ```
+
+Real Supabase RPC integration checks are opt-in:
+
+```bash
+GATHERUP_RUN_RPC_INTEGRATION=1 npm run test:integration:rpc
+```
+
+This requires `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, and `SUPABASE_SERVICE_ROLE_KEY`. The test creates isolated temporary Supabase Auth users and events, validates `create_registration_atomic`, then cleans up.
 
 The project currently recommends `dev:webpack` for local preview because it has been more stable than Turbopack dev mode in this workspace.
 
@@ -181,7 +190,7 @@ Every core feature should be implemented in this order:
 Recommended order:
 
 1. Run `supabase/validation/06-public-read-grants.sql` and `07-clean-dev-post-execution-summary.sql` in the clean Supabase project and record the results.
-2. Execute and validate `create_registration_atomic` against clean Supabase, then use it as the only registration creation path.
+2. Execute `GATHERUP_RUN_RPC_INTEGRATION=1 npm run test:integration:rpc` against clean Supabase to validate `create_registration_atomic` normal, duplicate, unauthenticated, and concurrent capacity behavior.
 3. Expand the real data service layer beyond public reads: event creation, draft/publish, organizer roles, visibility, capacity, and review gates.
 4. Auth foundation: continue replacing prototype page cookies with durable Supabase SSR/session handling while preserving Bearer token support for API clients.
 5. Validate the new private Storage payment-proof flow against the clean Supabase project with real user sessions.
