@@ -6,6 +6,63 @@ The first priority scenario is fandom/community activity operations: offline scr
 
 GatherUp is designed as a general offline event platform, not a fandom-only tool. The model keeps activity scene, workflow template, visibility, payment, registration, seating, check-in, finance, and venue intelligence separate so the product can later support campus events, workshops, small conferences, private gatherings, and markets.
 
+## Repository
+
+- GitHub: [github.com/moirahoumiki/GatherUp](https://github.com/moirahoumiki/GatherUp)
+- Current branch: `main`
+- Current stage: commercial v0.1 foundation, moving from prototype flows into Supabase-backed transactional workflows.
+
+## Product Architecture Snapshot
+
+```mermaid
+flowchart LR
+  Visitor["Visitor / Participant"] --> PublicEvent["Public or link-only event page"]
+  PublicEvent --> Auth["Supabase Auth"]
+  Auth --> Registration["Atomic registration RPC"]
+  Registration --> Payment["Organizer-collected payment proof"]
+  Payment --> Review["Organizer payment review RPC"]
+  Review --> Seat["Seat lock and assignment RPC"]
+  Review --> CheckIn["Check-in RPC"]
+  Review --> Refund["Refund request / review / proof RPCs"]
+
+  Organizer["Organizer workspace"] --> EventOps["Event setup and operations"]
+  EventOps --> Review
+  EventOps --> Seat
+  EventOps --> CheckIn
+  EventOps --> Finance["Finance and export"]
+
+  Supabase["Supabase PostgreSQL + RLS + Storage"] --> Registration
+  Supabase --> Payment
+  Supabase --> Review
+  Supabase --> Seat
+  Supabase --> CheckIn
+  Supabase --> Refund
+```
+
+## Directory Snapshot
+
+```text
+GatherUp/
+├── src/
+│   ├── app/                         Next.js App Router pages and API routes
+│   │   ├── api/                     Authenticated workflow endpoints
+│   │   ├── events/                  Public event detail and registration flows
+│   │   ├── me/                      Participant profile and order detail
+│   │   ├── organizer/               Organizer workspace and event console
+│   │   └── venues/                  Venue intelligence prototype
+│   ├── components/                  Shared UI and workflow components
+│   └── lib/                         Auth, data access, Supabase, and server helpers
+├── supabase/
+│   ├── schema.sql                   Commercial v0.1 database schema and RPCs
+│   ├── seed.sql                     Demo seed data
+│   ├── storage.sql                  Private Storage buckets and policies
+│   └── validation/                  Copy-ready SQL validation scripts
+├── tests/
+│   └── integration/rpc/             Opt-in real Supabase RPC integration tests
+├── docs/                            Product, architecture, runbooks, and status docs
+└── prototype/                       Earlier reference/prototype artifacts
+```
+
 ## Status
 
 Current status: **commercial v0.1 foundation with Supabase-backed public reads, Supabase SSR/Bearer-gated endpoints, atomic registration order creation, and the first private Storage proof-upload paths in progress**.
