@@ -158,10 +158,12 @@ describe("create_registration_atomic RPC integration", { skip: !shouldRun || !re
   let owner: TestAuthUser;
   let participantOne: TestAuthUser;
   let participantTwo: TestAuthUser;
+  let ownerClient: SupabaseClient;
   let participantOneClient: SupabaseClient;
   let participantTwoClient: SupabaseClient;
   let normalEventId: string;
   let capacityEventId: string;
+  let reviewEventId: string;
   const suffix = randomUUID().replaceAll("-", "").slice(0, 10);
   const createdAuthUserIds: string[] = [];
   const createdAppUserIds: string[] = [];
@@ -179,8 +181,10 @@ describe("create_registration_atomic RPC integration", { skip: !shouldRun || !re
 
     normalEventId = await createEvent(admin, owner, suffix, "normal", 2);
     capacityEventId = await createEvent(admin, owner, suffix, "cap", 1);
-    createdEventIds.push(normalEventId, capacityEventId);
+    reviewEventId = await createEvent(admin, owner, suffix, "review", 2);
+    createdEventIds.push(normalEventId, capacityEventId, reviewEventId);
 
+    ownerClient = await makeSignedInClient(owner.email, owner.password);
     participantOneClient = await makeSignedInClient(participantOne.email, participantOne.password);
     participantTwoClient = await makeSignedInClient(participantTwo.email, participantTwo.password);
   });
@@ -243,5 +247,70 @@ describe("create_registration_atomic RPC integration", { skip: !shouldRun || !re
 
     assert.equal(successCount, 1);
     assert.equal(capacityRejectionCount, 1);
+  });
+
+  it("reviews a submitted payment through the audited payment RPC", async () => {
+    const createResult = await participantTwoClient.rpc(
+      "create_registration_atomic",
+      rpcPayload(reviewEventId, "payment-review-user")
+    );
+
+    assert.ifError(createResult.error);
+    assert.equal(createResult.data?.success, true);
+
+    const registrationId = createResult.data.registration_id as string;
+    const orderNumber = createResult.data.order_number as string;
+    const { data: payment, error: paymentError } = await admin
+      .from("payments")
+      .select("id, amount_cents, status")
+      .eq("registration_id", registrationId)
+      .single();
+
+    assert.ifError(paymentError);
+    assert.ok(payment?.id);
+    assert.equal(payment.status, "unpaid");
+
+    const { error: proofError } = await admin.from("payment_proofs").insert({
+      payment_id: payment.id,
+      registration_id: registrationId,
+      file_url: `${reviewEventId}/${registrationId}/${payment.id}/integration-proof.png`,
+      amount_reported_cents: payment.amount_cents,
+      uploaded_by: participantTwo.appUserId
+    });
+
+    assert.ifError(proofError);
+
+    const { data: submittedOrder, error: submittedOrderError } = await admin
+      .from("registrations")
+      .select("status")
+      .eq("id", registrationId)
+      .single();
+
+    assert.ifError(submittedOrderError);
+    assert.equal(submittedOrder?.status, "payment_submitted");
+
+    const { data, error } = await ownerClient.rpc("review_payment_atomic", {
+      p_registration_id: registrationId,
+      p_order_number: null,
+      p_decision: "APPROVED",
+      p_review_note: "approved by integration test"
+    });
+
+    assert.ifError(error);
+    assert.equal(data?.success, true);
+    assert.equal(data.order_number, orderNumber);
+    assert.equal(data.status, "confirmed");
+    assert.equal(data.payment_status, "confirmed");
+
+    const { data: reviewedPayment, error: reviewedPaymentError } = await admin
+      .from("payments")
+      .select("status, amount_confirmed_cents, reviewed_by")
+      .eq("id", payment.id)
+      .single();
+
+    assert.ifError(reviewedPaymentError);
+    assert.equal(reviewedPayment?.status, "confirmed");
+    assert.equal(reviewedPayment?.amount_confirmed_cents, payment.amount_cents);
+    assert.equal(reviewedPayment?.reviewed_by, owner.appUserId);
   });
 });
