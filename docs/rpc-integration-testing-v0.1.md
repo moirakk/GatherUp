@@ -30,6 +30,14 @@ It also validates `public.review_payment_atomic` after creating a registration:
 - the registration and payment move to `confirmed`;
 - the payment reviewer is recorded as the owner app user.
 
+It also validates `public.check_in_order_atomic` after payment confirmation:
+
+- a confirmed registration exposes a check-in code;
+- an event owner can check in the order through the RPC;
+- the registration and attendee move to `arrived`;
+- a `check_ins` record is created;
+- duplicate check-in is rejected with `ALREADY_CHECKED_IN`.
+
 ## Required Environment
 
 Use a clean dev/staging Supabase project, not production.
@@ -94,6 +102,7 @@ create_registration_atomic RPC integration
   ✔ rejects duplicate active registrations for the same user and event
   ✔ prevents oversell when two users compete for the last capacity slot
   ✔ reviews a submitted payment through the audited payment RPC
+  ✔ checks in a confirmed order through the audited check-in RPC
 ```
 
 Expected database side effects after cleanup:
@@ -119,17 +128,16 @@ Database cleanup needed: yes/no
 Follow-up commit:
 ```
 
-Do not continue to refund, check-in, or seat RPC validation until registration and payment review pass. Those workflows depend on confirmed registrations and payments.
+Do not continue to refund or seat RPC validation until registration, payment review, and check-in pass. Those workflows depend on confirmed registrations and payments.
 
 ## Next RPCs To Add
 
 Recommended order:
 
-1. `check_in_order_atomic`
-2. `request_refund_atomic`
-3. `review_refund_request_atomic`
-4. `record_refund_proof_atomic`
-5. `create_seat_lock_atomic`
-6. `confirm_seat_assignment_atomic`
+1. `request_refund_atomic`
+2. `review_refund_request_atomic`
+3. `record_refund_proof_atomic`
+4. `create_seat_lock_atomic`
+5. `confirm_seat_assignment_atomic`
 
 Keep each integration test isolated, self-cleaning, and opt-in.

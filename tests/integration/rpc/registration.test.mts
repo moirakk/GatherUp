@@ -164,6 +164,7 @@ describe("create_registration_atomic RPC integration", { skip: !shouldRun || !re
   let normalEventId: string;
   let capacityEventId: string;
   let reviewEventId: string;
+  let checkInEventId: string;
   const suffix = randomUUID().replaceAll("-", "").slice(0, 10);
   const createdAuthUserIds: string[] = [];
   const createdAppUserIds: string[] = [];
@@ -182,7 +183,8 @@ describe("create_registration_atomic RPC integration", { skip: !shouldRun || !re
     normalEventId = await createEvent(admin, owner, suffix, "normal", 2);
     capacityEventId = await createEvent(admin, owner, suffix, "cap", 1);
     reviewEventId = await createEvent(admin, owner, suffix, "review", 2);
-    createdEventIds.push(normalEventId, capacityEventId, reviewEventId);
+    checkInEventId = await createEvent(admin, owner, suffix, "checkin", 2);
+    createdEventIds.push(normalEventId, capacityEventId, reviewEventId, checkInEventId);
 
     ownerClient = await makeSignedInClient(owner.email, owner.password);
     participantOneClient = await makeSignedInClient(participantOne.email, participantOne.password);
@@ -312,5 +314,94 @@ describe("create_registration_atomic RPC integration", { skip: !shouldRun || !re
     assert.equal(reviewedPayment?.status, "confirmed");
     assert.equal(reviewedPayment?.amount_confirmed_cents, payment.amount_cents);
     assert.equal(reviewedPayment?.reviewed_by, owner.appUserId);
+  });
+
+  it("checks in a confirmed order through the audited check-in RPC", async () => {
+    const createResult = await participantOneClient.rpc(
+      "create_registration_atomic",
+      rpcPayload(checkInEventId, "check-in-user")
+    );
+
+    assert.ifError(createResult.error);
+    assert.equal(createResult.data?.success, true);
+
+    const registrationId = createResult.data.registration_id as string;
+    const orderNumber = createResult.data.order_number as string;
+    const { data: payment, error: paymentError } = await admin
+      .from("payments")
+      .select("id, amount_cents")
+      .eq("registration_id", registrationId)
+      .single();
+
+    assert.ifError(paymentError);
+    assert.ok(payment?.id);
+
+    const { error: proofError } = await admin.from("payment_proofs").insert({
+      payment_id: payment.id,
+      registration_id: registrationId,
+      file_url: `${checkInEventId}/${registrationId}/${payment.id}/check-in-proof.png`,
+      amount_reported_cents: payment.amount_cents,
+      uploaded_by: participantOne.appUserId
+    });
+
+    assert.ifError(proofError);
+
+    const reviewResult = await ownerClient.rpc("review_payment_atomic", {
+      p_registration_id: registrationId,
+      p_order_number: null,
+      p_decision: "APPROVED",
+      p_review_note: "approved before check-in integration test"
+    });
+
+    assert.ifError(reviewResult.error);
+    assert.equal(reviewResult.data?.success, true);
+
+    const { data: order, error: orderError } = await admin
+      .from("registrations")
+      .select("status, check_in_code, check_in_status")
+      .eq("id", registrationId)
+      .single();
+
+    assert.ifError(orderError);
+    assert.equal(order?.status, "confirmed");
+    assert.equal(order?.check_in_status, "not_arrived");
+    assert.ok(order?.check_in_code);
+
+    const checkInResult = await ownerClient.rpc("check_in_order_atomic", {
+      p_check_in_code: order.check_in_code,
+      p_note: "checked in by integration test"
+    });
+
+    assert.ifError(checkInResult.error);
+    assert.equal(checkInResult.data?.success, true);
+    assert.equal(checkInResult.data.order_number, orderNumber);
+    assert.equal(checkInResult.data.check_in_status, "arrived");
+    assert.equal(checkInResult.data.attendee_count, 1);
+
+    const { data: checkedOrder, error: checkedOrderError } = await admin
+      .from("registrations")
+      .select("check_in_status")
+      .eq("id", registrationId)
+      .single();
+
+    assert.ifError(checkedOrderError);
+    assert.equal(checkedOrder?.check_in_status, "arrived");
+
+    const { count: checkInCount, error: checkInCountError } = await admin
+      .from("check_ins")
+      .select("id", { count: "exact", head: true })
+      .eq("registration_id", registrationId);
+
+    assert.ifError(checkInCountError);
+    assert.equal(checkInCount, 1);
+
+    const duplicateResult = await ownerClient.rpc("check_in_order_atomic", {
+      p_check_in_code: order.check_in_code,
+      p_note: "duplicate check-in should fail"
+    });
+
+    assert.ifError(duplicateResult.error);
+    assert.equal(duplicateResult.data?.success, false);
+    assert.equal(duplicateResult.data.error_code, "ALREADY_CHECKED_IN");
   });
 });
