@@ -122,7 +122,7 @@ Real Supabase RPC integration checks are opt-in:
 GATHERUP_RUN_RPC_INTEGRATION=1 npm run test:integration:rpc
 ```
 
-This requires `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, and `SUPABASE_SERVICE_ROLE_KEY`. The test creates isolated temporary Supabase Auth users and events, validates `create_registration_atomic`, `review_payment_atomic`, and `check_in_order_atomic`, then cleans up.
+This requires `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, and `SUPABASE_SERVICE_ROLE_KEY`. The test creates isolated temporary Supabase Auth users and events, validates `create_registration_atomic`, `review_payment_atomic`, `check_in_order_atomic`, and the refund request/review/proof-upload RPC chain, then cleans up.
 
 The project currently recommends `dev:webpack` for local preview because it has been more stable than Turbopack dev mode in this workspace.
 
@@ -198,7 +198,7 @@ Recommended order:
 6. Organizer-collected payment proof workflow: collection-code versions, review, top-up, overpayment/underpayment.
 7. Validate the audited payment review RPC against the clean Supabase project.
 8. Validate the order-detail seat selection flow against real Supabase users and concurrency behavior.
-9. Validate refund request/review/proof upload, lightweight check-in, and seating against real Supabase users, then continue refund confirmation, disputes, notifications, export jobs, complaints, and minimum admin backend.
+9. Validate seating against real Supabase users, then continue refund confirmation, disputes, notifications, export jobs, complaints, and minimum admin backend.
 
 ## Repository Notes
 

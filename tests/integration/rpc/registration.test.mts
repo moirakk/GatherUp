@@ -152,7 +152,7 @@ async function createEvent(admin: SupabaseClient, owner: TestAuthUser, suffix: s
   return eventId;
 }
 
-describe("create_registration_atomic RPC integration", { skip: !shouldRun || !requiredEnvConfigured }, () => {
+describe("GatherUp RPC integration", { skip: !shouldRun || !requiredEnvConfigured }, () => {
   let admin: SupabaseClient;
   let anon: SupabaseClient;
   let owner: TestAuthUser;
@@ -165,6 +165,7 @@ describe("create_registration_atomic RPC integration", { skip: !shouldRun || !re
   let capacityEventId: string;
   let reviewEventId: string;
   let checkInEventId: string;
+  let refundEventId: string;
   const suffix = randomUUID().replaceAll("-", "").slice(0, 10);
   const createdAuthUserIds: string[] = [];
   const createdAppUserIds: string[] = [];
@@ -184,7 +185,8 @@ describe("create_registration_atomic RPC integration", { skip: !shouldRun || !re
     capacityEventId = await createEvent(admin, owner, suffix, "cap", 1);
     reviewEventId = await createEvent(admin, owner, suffix, "review", 2);
     checkInEventId = await createEvent(admin, owner, suffix, "checkin", 2);
-    createdEventIds.push(normalEventId, capacityEventId, reviewEventId, checkInEventId);
+    refundEventId = await createEvent(admin, owner, suffix, "refund", 2);
+    createdEventIds.push(normalEventId, capacityEventId, reviewEventId, checkInEventId, refundEventId);
 
     ownerClient = await makeSignedInClient(owner.email, owner.password);
     participantOneClient = await makeSignedInClient(participantOne.email, participantOne.password);
@@ -403,5 +405,133 @@ describe("create_registration_atomic RPC integration", { skip: !shouldRun || !re
     assert.ifError(duplicateResult.error);
     assert.equal(duplicateResult.data?.success, false);
     assert.equal(duplicateResult.data.error_code, "ALREADY_CHECKED_IN");
+  });
+
+  it("requests, reviews, and records proof for a refund through audited refund RPCs", async () => {
+    const createResult = await participantTwoClient.rpc(
+      "create_registration_atomic",
+      rpcPayload(refundEventId, "refund-user")
+    );
+
+    assert.ifError(createResult.error);
+    assert.equal(createResult.data?.success, true);
+
+    const registrationId = createResult.data.registration_id as string;
+    const orderNumber = createResult.data.order_number as string;
+    const { data: payment, error: paymentError } = await admin
+      .from("payments")
+      .select("id, amount_cents")
+      .eq("registration_id", registrationId)
+      .single();
+
+    assert.ifError(paymentError);
+    assert.ok(payment?.id);
+
+    const { error: proofError } = await admin.from("payment_proofs").insert({
+      payment_id: payment.id,
+      registration_id: registrationId,
+      file_url: `${refundEventId}/${registrationId}/${payment.id}/refund-source-proof.png`,
+      amount_reported_cents: payment.amount_cents,
+      uploaded_by: participantTwo.appUserId
+    });
+
+    assert.ifError(proofError);
+
+    const paymentReviewResult = await ownerClient.rpc("review_payment_atomic", {
+      p_registration_id: registrationId,
+      p_order_number: null,
+      p_decision: "APPROVED",
+      p_review_note: "approved before refund integration test"
+    });
+
+    assert.ifError(paymentReviewResult.error);
+    assert.equal(paymentReviewResult.data?.success, true);
+    assert.equal(paymentReviewResult.data.status, "confirmed");
+    assert.equal(paymentReviewResult.data.payment_status, "confirmed");
+
+    const refundRequestResult = await participantTwoClient.rpc("request_refund_atomic", {
+      p_registration_id: registrationId,
+      p_requested_amount_cents: payment.amount_cents,
+      p_reason: "integration refund request"
+    });
+
+    assert.ifError(refundRequestResult.error);
+    assert.equal(refundRequestResult.data?.success, true);
+    assert.equal(refundRequestResult.data.order_number, orderNumber);
+    assert.equal(refundRequestResult.data.status, "requested");
+    assert.equal(refundRequestResult.data.requested_amount_cents, payment.amount_cents);
+
+    const refundRequestId = refundRequestResult.data.refund_request_id as string;
+    const reviewRefundResult = await ownerClient.rpc("review_refund_request_atomic", {
+      p_refund_request_id: refundRequestId,
+      p_decision: "APPROVED",
+      p_approved_amount_cents: payment.amount_cents,
+      p_organizer_note: "approved by integration test"
+    });
+
+    assert.ifError(reviewRefundResult.error);
+    assert.equal(reviewRefundResult.data?.success, true);
+    assert.equal(reviewRefundResult.data.status, "approved");
+    assert.equal(reviewRefundResult.data.approved_amount_cents, payment.amount_cents);
+
+    const proofPath = `${refundEventId}/${refundRequestId}/refund-transfer-proof.png`;
+    const recordProofResult = await ownerClient.rpc("record_refund_proof_atomic", {
+      p_refund_request_id: refundRequestId,
+      p_file_url: proofPath,
+      p_amount_cents: payment.amount_cents
+    });
+
+    assert.ifError(recordProofResult.error);
+    assert.equal(recordProofResult.data?.success, true);
+    assert.equal(recordProofResult.data.status, "proof_uploaded");
+    assert.equal(recordProofResult.data.amount_cents, payment.amount_cents);
+    assert.equal(recordProofResult.data.file_url, proofPath);
+
+    const { data: refundRequest, error: refundRequestError } = await admin
+      .from("refund_requests")
+      .select("status, approved_amount_cents, paid_at")
+      .eq("id", refundRequestId)
+      .single();
+
+    assert.ifError(refundRequestError);
+    assert.equal(refundRequest?.status, "proof_uploaded");
+    assert.equal(refundRequest?.approved_amount_cents, payment.amount_cents);
+    assert.ok(refundRequest?.paid_at);
+
+    const { data: refundedOrder, error: refundedOrderError } = await admin
+      .from("registrations")
+      .select("status")
+      .eq("id", registrationId)
+      .single();
+
+    assert.ifError(refundedOrderError);
+    assert.equal(refundedOrder?.status, "refunding");
+
+    const { data: refundingPayment, error: refundingPaymentError } = await admin
+      .from("payments")
+      .select("status")
+      .eq("id", payment.id)
+      .single();
+
+    assert.ifError(refundingPaymentError);
+    assert.equal(refundingPayment?.status, "refunding");
+
+    const { count: refundProofCount, error: refundProofCountError } = await admin
+      .from("refund_proofs")
+      .select("id", { count: "exact", head: true })
+      .eq("refund_request_id", refundRequestId);
+
+    assert.ifError(refundProofCountError);
+    assert.equal(refundProofCount, 1);
+
+    const duplicateProofResult = await ownerClient.rpc("record_refund_proof_atomic", {
+      p_refund_request_id: refundRequestId,
+      p_file_url: `${refundEventId}/${refundRequestId}/duplicate-refund-transfer-proof.png`,
+      p_amount_cents: payment.amount_cents
+    });
+
+    assert.ifError(duplicateProofResult.error);
+    assert.equal(duplicateProofResult.data?.success, false);
+    assert.equal(duplicateProofResult.data.error_code, "INVALID_REFUND_STATUS");
   });
 });

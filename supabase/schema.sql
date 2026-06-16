@@ -1745,6 +1745,7 @@ returns jsonb as $$
 declare
   v_user_id uuid;
   v_order record;
+  v_payment record;
   v_refund_id uuid;
   v_requested_amount_cents integer;
 begin
@@ -1764,18 +1765,27 @@ begin
     r.user_id,
     r.order_number,
     r.status as registration_status,
-    r.amount_due_cents,
-    p.id as payment_id,
-    p.status as payment_status,
-    p.amount_confirmed_cents
+    r.amount_due_cents
   into v_order
   from public.registrations r
-  left join public.payments p on p.registration_id = r.id
   where r.id = p_registration_id
-  for update of r, p;
+  for update;
 
   if not found then
     return jsonb_build_object('success', false, 'error_code', 'REGISTRATION_NOT_FOUND', 'message', 'Registration not found.');
+  end if;
+
+  select
+    p.id as payment_id,
+    p.status as payment_status,
+    p.amount_confirmed_cents
+  into v_payment
+  from public.payments p
+  where p.registration_id = v_order.registration_id
+  for update;
+
+  if not found then
+    return jsonb_build_object('success', false, 'error_code', 'PAYMENT_NOT_FOUND', 'message', 'Payment record not found.');
   end if;
 
   if v_order.user_id <> v_user_id then
@@ -1790,7 +1800,7 @@ begin
     return jsonb_build_object('success', false, 'error_code', 'FREE_ORDER', 'message', 'Free orders do not need a refund request.');
   end if;
 
-  if coalesce(v_order.amount_confirmed_cents, 0) <= 0 then
+  if coalesce(v_payment.amount_confirmed_cents, 0) <= 0 then
     return jsonb_build_object('success', false, 'error_code', 'NO_CONFIRMED_PAYMENT', 'message', 'This order has no confirmed payment.');
   end if;
 
@@ -1804,8 +1814,8 @@ begin
   end if;
 
   v_requested_amount_cents := least(
-    greatest(0, coalesce(p_requested_amount_cents, v_order.amount_confirmed_cents)),
-    v_order.amount_confirmed_cents
+    greatest(0, coalesce(p_requested_amount_cents, v_payment.amount_confirmed_cents)),
+    v_payment.amount_confirmed_cents
   );
 
   if v_requested_amount_cents <= 0 then
@@ -1825,7 +1835,7 @@ begin
   ) values (
     v_refund_id,
     v_order.registration_id,
-    v_order.payment_id,
+    v_payment.payment_id,
     v_user_id,
     'requested',
     v_requested_amount_cents,
@@ -1842,7 +1852,7 @@ begin
   set
     status = 'refunding',
     updated_at = now()
-  where id = v_order.payment_id;
+  where id = v_payment.payment_id;
 
   insert into public.audit_logs (
     actor_id,
@@ -1867,7 +1877,7 @@ begin
     trim(p_reason),
     jsonb_build_object(
       'registration_status', v_order.registration_status,
-      'payment_status', v_order.payment_status
+      'payment_status', v_payment.payment_status
     ),
     jsonb_build_object(
       'registration_status', 'refunding',
@@ -1876,7 +1886,7 @@ begin
     ),
     jsonb_build_object(
       'registration_id', v_order.registration_id,
-      'payment_id', v_order.payment_id,
+      'payment_id', v_payment.payment_id,
       'order_number', v_order.order_number,
       'requested_amount_cents', v_requested_amount_cents
     )

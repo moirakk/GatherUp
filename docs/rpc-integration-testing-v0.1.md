@@ -38,6 +38,16 @@ It also validates `public.check_in_order_atomic` after payment confirmation:
 - a `check_ins` record is created;
 - duplicate check-in is rejected with `ALREADY_CHECKED_IN`.
 
+It also validates the audited refund RPC chain after payment confirmation:
+
+- a participant can request a refund with `public.request_refund_atomic`;
+- an event owner can approve the request with `public.review_refund_request_atomic`;
+- an event owner can record transfer proof with `public.record_refund_proof_atomic`;
+- the refund request moves from `requested` to `approved` to `proof_uploaded`;
+- the registration and payment stay in `refunding`;
+- a `refund_proofs` record is created;
+- duplicate refund proof upload is rejected with `INVALID_REFUND_STATUS`.
+
 ## Required Environment
 
 Use a clean dev/staging Supabase project, not production.
@@ -96,13 +106,14 @@ If `GATHERUP_RUN_RPC_INTEGRATION` is not set to `1`, the test suite skips withou
 Expected local output:
 
 ```text
-create_registration_atomic RPC integration
+GatherUp RPC integration
   ✔ rejects unauthenticated calls
   ✔ creates an order with the event-scoped number format
   ✔ rejects duplicate active registrations for the same user and event
   ✔ prevents oversell when two users compete for the last capacity slot
   ✔ reviews a submitted payment through the audited payment RPC
   ✔ checks in a confirmed order through the audited check-in RPC
+  ✔ requests, reviews, and records proof for a refund through audited refund RPCs
 ```
 
 Expected database side effects after cleanup:
@@ -128,16 +139,14 @@ Database cleanup needed: yes/no
 Follow-up commit:
 ```
 
-Do not continue to refund or seat RPC validation until registration, payment review, and check-in pass. Those workflows depend on confirmed registrations and payments.
+Do not continue to seat RPC validation until registration, payment review, check-in, and refund proof upload pass. Seating workflows depend on confirmed registrations and payments, and refund workflows exercise the same payment state machine from the reversal side.
 
 ## Next RPCs To Add
 
 Recommended order:
 
-1. `request_refund_atomic`
-2. `review_refund_request_atomic`
-3. `record_refund_proof_atomic`
-4. `create_seat_lock_atomic`
-5. `confirm_seat_assignment_atomic`
+1. `create_seat_lock_atomic`
+2. `confirm_seat_assignment_atomic`
+3. refund participant confirmation and dispute RPCs, once implemented
 
 Keep each integration test isolated, self-cleaning, and opt-in.
