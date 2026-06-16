@@ -170,6 +170,7 @@ Supabase:
 - [Supabase SQL execution runbook](./docs/supabase-sql-execution-runbook-v0.1.md)
 - [Clean Supabase validation checklist](./docs/supabase-clean-project-validation-v0.1.md)
 - [Supabase live validation log](./docs/supabase-live-validation-log-v0.1.md)
+- [RPC integration testing guide](./docs/rpc-integration-testing-v0.1.md)
 
 ## Engineering Principles
 
