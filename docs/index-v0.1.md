@@ -18,6 +18,9 @@ This index organizes the GatherUp documents by how they should be used. The comm
 - [Supabase live validation log](./supabase-live-validation-log-v0.1.md): real Supabase project checks and findings.
 - [Service-layer contract](./service-layer-contract-v0.1.md): required server-side operations and invariants.
 - [GitHub repository profile copy](./github-repository-profile-v0.1.md): suggested GitHub About, description, topics, and public-facing intro.
+- [Contributing guide](../CONTRIBUTING.md): collaboration rules, verification expectations, and PR standards.
+- [Security policy](../SECURITY.md): security reporting process and current security boundaries.
+- [License](../LICENSE.md): current proprietary license boundary.
 
 ## Product
 
@@ -50,6 +53,12 @@ This index organizes the GatherUp documents by how they should be used. The comm
 - [Web app source](../src): Next.js App Router application.
 - [Supabase drafts](../supabase): schema, seed, and Storage policy SQL.
 - [Tests](../tests): auth and SQL/Storage contract tests.
+
+## Repository Governance
+
+- [Contributing guide](../CONTRIBUTING.md): how to coordinate changes and verify them.
+- [Security policy](../SECURITY.md): how to report vulnerabilities privately.
+- [License](../LICENSE.md): current repository license terms.
 
 ## How To Use These Docs
 

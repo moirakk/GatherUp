@@ -24,6 +24,7 @@ GatherUp is designed as a general offline event platform, not a fandom-only tool
 - GitHub: [github.com/moirahoumiki/GatherUp](https://github.com/moirahoumiki/GatherUp)
 - Current branch: `main`
 - Current stage: commercial v0.1 foundation, moving from prototype flows into Supabase-backed transactional workflows.
+- License: proprietary / all rights reserved during pre-commercial development.
 
 ## Product Preview
 
@@ -255,6 +256,9 @@ Start here:
 - [Schema validation checklist](./docs/schema-validation-checklist-v0.1.md)
 - [Current project state](./docs/current-state-v0.1.md)
 - [GitHub repository profile copy](./docs/github-repository-profile-v0.1.md)
+- [Contributing guide](./CONTRIBUTING.md)
+- [Security policy](./SECURITY.md)
+- [License](./LICENSE.md)
 
 Product and architecture:
 
@@ -309,3 +313,9 @@ Recommended order:
 Suggested GitHub description, topics, and About copy are documented in:
 
 - [GitHub repository profile copy](./docs/github-repository-profile-v0.1.md)
+
+Repository governance:
+
+- [Contributing guide](./CONTRIBUTING.md)
+- [Security policy](./SECURITY.md)
+- [License](./LICENSE.md)

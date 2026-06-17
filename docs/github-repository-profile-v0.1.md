@@ -91,5 +91,7 @@ Before making the repository public, confirm:
 - No secrets are committed.
 - `.env.local` is ignored.
 - Prototype limitations are clearly stated.
-- License decision is made.
+- License decision is made and reflected in `LICENSE.md`.
+- Security reporting expectations are reflected in `SECURITY.md`.
+- Contribution expectations are reflected in `CONTRIBUTING.md`.
 - Public issue/PR expectations are clear.
