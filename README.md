@@ -1,16 +1,37 @@
 # GatherUp
 
+[![Next.js](https://img.shields.io/badge/Next.js-App%20Router-black?logo=nextdotjs)](https://nextjs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-strict%20frontend-3178c6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Supabase](https://img.shields.io/badge/Supabase-Auth%20%2B%20Postgres%20%2B%20Storage-3ecf8e?logo=supabase&logoColor=white)](https://supabase.com/)
+[![Tests](https://img.shields.io/badge/tests-contract%20%2B%20opt--in%20RPC%20integration-6f8f78)](#quality-bar)
+
 GatherUp is a commercial v0.1 event operations platform for small offline community activities.
 
 The first priority scenario is fandom/community activity operations: offline screenings, birthday cafes, small fan gatherings, and similar events where organizers need to manage registration, organizer-collected payment proofs, seat selection, notifications, check-in, finance, and exports in one place.
 
 GatherUp is designed as a general offline event platform, not a fandom-only tool. The model keeps activity scene, workflow template, visibility, payment, registration, seating, check-in, finance, and venue intelligence separate so the product can later support campus events, workshops, small conferences, private gatherings, and markets.
 
+## At A Glance
+
+- Product: offline community event operations, starting with fandom/community activities.
+- Core users: organizers, participants, event staff, finance/refund reviewers, and future platform admins.
+- Core workflows: event setup, registration, organizer-collected payment proof, review, seating, check-in, refund tracking, finance, and export.
+- Current engineering stage: prototype UI plus commercial v0.1 Supabase transaction foundation.
+- Reliability direction: PostgreSQL RPCs for atomic state changes, Supabase RLS/Storage for access boundaries, and contract tests to prevent accidental regression.
+
 ## Repository
 
 - GitHub: [github.com/moirahoumiki/GatherUp](https://github.com/moirahoumiki/GatherUp)
 - Current branch: `main`
 - Current stage: commercial v0.1 foundation, moving from prototype flows into Supabase-backed transactional workflows.
+
+## Product Preview
+
+The screenshots below are generated from the local Next.js app and committed as repository assets.
+
+| Account and Auth Foundation | Public Event Detail |
+| --- | --- |
+| ![GatherUp account and auth screen](./docs/assets/gatherup-home.png) | ![GatherUp public event detail screen](./docs/assets/gatherup-event-detail.png) |
 
 ## Product Architecture Snapshot
 
@@ -143,6 +164,32 @@ Important confirmed decisions:
 - Supabase Auth, PostgreSQL, and Storage as planned backend foundation
 - lucide-react icons
 - Global CSS design tokens
+
+## Quality Bar
+
+GatherUp is intentionally being moved from a prototype into a reliable product foundation. Current quality gates include:
+
+- Static contract tests for auth rules, route protection, schema structure, seed data, Storage policy shape, and API/RPC wiring.
+- Opt-in real Supabase RPC integration tests for registration creation, duplicate protection, capacity contention, payment review, check-in, and refund request/review/proof upload.
+- Database-first transactional design for sensitive workflows: registration, payment review, seat locking, check-in, and refunds are represented as PostgreSQL RPC paths rather than loose client-side state changes.
+- Supabase SSR middleware and Bearer-token API support so browser sessions and external API calls share the same verified identity model.
+- Private Storage path contracts for sensitive proof files, including payment proofs and refund proofs.
+- Documentation-first runbooks for clean Supabase project execution, validation logging, and future service-layer expansion.
+
+Current local verification:
+
+```bash
+npm test
+npm run verify
+npm run typecheck
+npm run build
+```
+
+Opt-in live Supabase verification:
+
+```bash
+GATHERUP_RUN_RPC_INTEGRATION=1 npm run test:integration:rpc
+```
 
 ## Local Development
 
