@@ -89,6 +89,7 @@ Supabase live 状态：
 - `/api/orders` 已改为 authenticated Supabase client 调用 RPC；前端可附带 access token，同源浏览器请求也可走 SSR session cookie，让数据库内的 `auth.uid()` 和 `current_app_user_id()` 可用。
 - 已新增 opt-in 真实 Supabase RPC 集成测试入口：`GATHERUP_RUN_RPC_INTEGRATION=1 npm run test:integration:rpc` 会创建隔离临时 Auth 用户和活动，验证 `create_registration_atomic` 的匿名拒绝、正常创建、重复报名拒绝和并发防超卖行为，并验证 `review_payment_atomic` 可审核已提交付款的订单、`check_in_order_atomic` 可核销已确认订单、退款申请/审核/凭证上传三段 RPC 可完成状态推进，最后清理测试数据。
 - 已新增 `src/domain/status-machine.ts` 作为第一版统一状态机底座：覆盖报名、付款、退款和签到工作流，并用测试反查 `supabase/schema.sql` 的 enum，防止应用层状态规则和数据库契约分叉。
+- 已新增 `src/domain/workflow-events.ts` 作为状态变化事件契约：合法状态跳转可统一派生 `auditAction`、`notificationType`、目标受众和风险级别，为后续通知中心、审计事件和 Dashboard 聚合打底。
 - 付费报名现在拆成三步真实链路：先用 RPC 创建报名订单和 payment stub；再由浏览器使用用户 Supabase session 上传付款截图到私有 `payment-proofs` bucket；最后调用 `/api/orders/payment-proof` 写入 `payment_proofs` 并把订单推进到待审核。
 - 新增 `/api/orders/payment-proof`：要求通过统一 Supabase 认证 helper 识别当前用户，验证当前用户拥有该 registration，验证 payment 属于该 registration，并校验 Storage path 必须匹配 `{event_id}/{registration_id}/{payment_id}/{filename}`。
 - 付款审核已新增 `review_payment_atomic` RPC 草案：在数据库函数内校验当前用户具备活动付款管理权限，锁定 registration/payment，更新 registration、payment 和 payment_proofs，并写入 `audit_logs`。`/api/orders/review` 已改为 authenticated Supabase client 调用该 RPC。
