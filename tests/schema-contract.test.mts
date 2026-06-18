@@ -386,6 +386,9 @@ describe("commercial schema contract", () => {
     expectSql(schema, "update public.registration_attendees");
     expectSql(schema, "insert into public.check_ins");
     expectSql(schema, "insert into public.audit_logs");
+    expectSql(schema, "insert into public.notification_deliveries");
+    expectSql(schema, "'workflow', 'check_in'");
+    expectSql(schema, "'check_in_confirmed'");
     expectSql(schema, "'order.checked_in'");
     expectSql(schema, "grant execute on function public.check_in_order_atomic(text, text) to authenticated;");
     assert.doesNotMatch(schema, /grant execute on function public\.check_in_order_atomic\(text, text\) to anon/);

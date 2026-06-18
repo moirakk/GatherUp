@@ -123,6 +123,10 @@ const notificationTemplates: Record<string, NotificationTemplate> = {
   check_in_exception: {
     title: "Check-in exception",
     body: "Order {orderNumber} for {eventName} needs staff review at check-in."
+  },
+  check_in_confirmed: {
+    title: "Check-in confirmed",
+    body: "Order {orderNumber} has been checked in."
   }
 };
 

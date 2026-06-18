@@ -1747,6 +1747,7 @@ begin
   select
     r.id,
     r.event_id,
+    r.user_id,
     r.order_number,
     r.status as registration_status,
     r.check_in_status
@@ -1838,6 +1839,35 @@ begin
       'order_number', v_order.order_number,
       'attendee_count', v_attendee_count
     )
+  );
+
+  insert into public.notification_deliveries (
+    event_id,
+    recipient_id,
+    channel,
+    status,
+    template_key,
+    title,
+    body,
+    metadata,
+    sent_at
+  ) values (
+    v_order.event_id,
+    v_order.user_id,
+    'in_app',
+    'sent',
+    'check_in_confirmed',
+    'Check-in confirmed',
+    'Order ' || v_order.order_number || ' has been checked in.',
+    jsonb_build_object(
+      'workflow', 'check_in',
+      'eventId', v_order.event_id,
+      'registrationId', v_order.id,
+      'orderNumber', v_order.order_number,
+      'attendeeCount', v_attendee_count,
+      'checkedInAt', v_checked_in_at
+    ),
+    v_checked_in_at
   );
 
   return jsonb_build_object(

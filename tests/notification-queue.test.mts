@@ -76,6 +76,7 @@ describe("notification queue contract", () => {
     assert.ok(keys.includes("seat_confirmed"));
     assert.ok(keys.includes("payment_proof_submitted"));
     assert.ok(keys.includes("refund_disputed"));
+    assert.ok(keys.includes("check_in_confirmed"));
     assert.ok(keys.includes("check_in_exception"));
   });
 
