@@ -175,6 +175,7 @@ GatherUp is intentionally being moved from a prototype into a reliable product f
 - GitHub Actions CI for push and pull request verification.
 - Domain status-machine tests for registration, payment, refund, and check-in workflows, aligned with Supabase enum values.
 - Workflow event contract tests that derive audit actions, notification types, audiences, and risk levels from valid status transitions.
+- Notification queue contract tests that turn workflow events into channel-aware notification items without sending external messages yet.
 - Opt-in real Supabase RPC integration tests for registration creation, duplicate protection, capacity contention, payment review, check-in, and refund request/review/proof upload.
 - Database-first transactional design for sensitive workflows: registration, payment review, seat locking, check-in, and refunds are represented as PostgreSQL RPC paths rather than loose client-side state changes.
 - Supabase SSR middleware and Bearer-token API support so browser sessions and external API calls share the same verified identity model.
