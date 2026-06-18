@@ -25,6 +25,8 @@ describe("registration and payment proof API contracts", () => {
   const seatLockRoute = readSource("src/app/api/seats/lock/route.ts");
   const seatConfirmRoute = readSource("src/app/api/seats/confirm/route.ts");
   const notificationRoute = readSource("src/app/api/notifications/route.ts");
+  const appShell = readSource("src/components/app-shell.tsx");
+  const notificationBell = readSource("src/components/notification-bell.tsx");
   const orderSeatSelectionPanel = readSource("src/components/order-seat-selection-panel.tsx");
   const orderPage = readSource("src/app/me/orders/[orderNumber]/page.tsx");
   const registrationFlow = readSource("src/components/registration-flow.tsx");
@@ -183,5 +185,18 @@ describe("registration and payment proof API contracts", () => {
 
     assert.doesNotMatch(notificationRoute, /getSupabaseServiceClient/);
     assert.doesNotMatch(notificationRoute, /\.from\("notification_deliveries"\)\s*\n\s*\.update/);
+  });
+
+  it("keeps the notification bell wired through the shared app shell", () => {
+    expectSource(appShell, "NotificationBell");
+    expectSource(appShell, 'enabled={session.sessionType === "supabase"}');
+    expectSource(notificationBell, 'fetch("/api/notifications?limit=10"');
+    expectSource(notificationBell, 'fetch("/api/notifications"');
+    expectSource(notificationBell, "Authorization: `Bearer ${accessToken}`");
+    expectSource(notificationBell, "setUnreadCount(result.unread_count ?? 0)");
+    expectSource(notificationBell, "setNotifications(result.notifications ?? [])");
+    expectSource(notificationBell, "JSON.stringify({ all: true })");
+
+    assert.doesNotMatch(notificationBell, /\.from\("notification_deliveries"\)/);
   });
 });

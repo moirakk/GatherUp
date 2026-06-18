@@ -219,6 +219,10 @@ h3 {
   gap: 10px;
 }
 
+.notification-menu {
+  position: relative;
+}
+
 .icon-button,
 .avatar-button,
 .account-pill {
@@ -229,6 +233,135 @@ h3 {
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--surface);
+}
+
+.icon-button.small {
+  width: 32px;
+  height: 32px;
+}
+
+.notification-trigger {
+  position: relative;
+}
+
+.notification-trigger.has-unread {
+  border-color: rgba(76, 109, 91, 0.42);
+  color: var(--sage-deep);
+}
+
+.notification-badge {
+  position: absolute;
+  top: -6px;
+  right: -7px;
+  display: grid;
+  min-width: 19px;
+  height: 19px;
+  place-items: center;
+  padding: 0 5px;
+  border: 2px solid var(--paper);
+  border-radius: 999px;
+  background: #b24a3b;
+  color: #fffdf9;
+  font-size: 10px;
+  font-weight: 760;
+  line-height: 1;
+}
+
+.notification-popover {
+  position: absolute;
+  top: calc(100% + 12px);
+  right: 0;
+  z-index: 40;
+  width: min(360px, calc(100vw - 28px));
+  overflow: hidden;
+  border: 1px solid rgba(221, 216, 206, 0.94);
+  border-radius: 8px;
+  background: rgba(255, 253, 249, 0.98);
+  box-shadow: var(--shadow);
+}
+
+.notification-popover-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 14px 12px;
+  border-bottom: 1px solid rgba(221, 216, 206, 0.74);
+}
+
+.notification-popover-header strong,
+.notification-popover-header span {
+  display: block;
+}
+
+.notification-popover-header strong {
+  font-size: 14px;
+}
+
+.notification-popover-header span,
+.notification-item time,
+.notification-message,
+.notification-empty {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.notification-list {
+  max-height: min(420px, calc(100vh - 180px));
+  overflow: auto;
+}
+
+.notification-item {
+  padding: 13px 14px;
+  border-bottom: 1px solid rgba(221, 216, 206, 0.58);
+  background: var(--surface);
+}
+
+.notification-item:last-child {
+  border-bottom: 0;
+}
+
+.notification-item.unread {
+  background: #f7f4ed;
+}
+
+.notification-item div {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.notification-item strong {
+  font-size: 13px;
+}
+
+.notification-item p {
+  margin-top: 5px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.notification-message,
+.notification-empty {
+  padding: 18px 14px;
+}
+
+.notification-empty {
+  display: grid;
+  min-height: 72px;
+  place-items: center;
+}
+
+.spin {
+  animation: spin 0.85s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .avatar-button {

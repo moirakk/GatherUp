@@ -15,6 +15,7 @@ import {
   isPublicRoutePath,
   type AuthSession
 } from "@/lib/auth";
+import { NotificationBell } from "@/components/notification-bell";
 import { getSupabaseBrowserClient, isSupabaseConfigured } from "@/lib/supabase/client";
 import { getCurrentSupabaseProfile } from "@/lib/supabase/profile";
 
@@ -173,6 +174,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <Link className="icon-button" href="/organizer/events/new" aria-label="创建活动">
             <Plus size={19} />
           </Link>
+          <NotificationBell enabled={session.sessionType === "supabase"} />
           <span className="account-pill" title={`${session.email} · ${session.gatherUpId}`}>
             已登录
           </span>
