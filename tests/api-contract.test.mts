@@ -24,6 +24,7 @@ describe("registration and payment proof API contracts", () => {
   const orderVerifyRoute = readSource("src/app/api/orders/verify/route.ts");
   const seatLockRoute = readSource("src/app/api/seats/lock/route.ts");
   const seatConfirmRoute = readSource("src/app/api/seats/confirm/route.ts");
+  const notificationRoute = readSource("src/app/api/notifications/route.ts");
   const orderSeatSelectionPanel = readSource("src/components/order-seat-selection-panel.tsx");
   const orderPage = readSource("src/app/me/orders/[orderNumber]/page.tsx");
   const registrationFlow = readSource("src/components/registration-flow.tsx");
@@ -168,5 +169,19 @@ describe("registration and payment proof API contracts", () => {
     expectSource(orderSeatSelectionPanel, "setLocalAttendees");
     expectSource(orderSeatSelectionPanel, "setLocalSeats");
     expectSource(orderSeatSelectionPanel, 'status: "assigned"');
+  });
+
+  it("keeps in-app notifications on authenticated RLS reads and read-state RPC updates", () => {
+    expectSource(notificationRoute, "getAuthenticatedSupabaseClient(request)");
+    expectSource(notificationRoute, "findUserByAuthUserId(authContext.supabase, authContext.user.id)");
+    expectSource(notificationRoute, '.from("notification_deliveries")');
+    expectSource(notificationRoute, '.eq("recipient_id", appUser.id)');
+    expectSource(notificationRoute, '.eq("channel", "in_app")');
+    expectSource(notificationRoute, '.is("read_at", null)');
+    expectSource(notificationRoute, 'authContext.supabase.rpc("mark_notification_deliveries_read"');
+    expectSource(notificationRoute, "p_mark_all: markAll");
+
+    assert.doesNotMatch(notificationRoute, /getSupabaseServiceClient/);
+    assert.doesNotMatch(notificationRoute, /\.from\("notification_deliveries"\)\s*\n\s*\.update/);
   });
 });

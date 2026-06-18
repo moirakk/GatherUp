@@ -704,6 +704,7 @@ create table public.notification_deliveries (
   provider_message_id text,
   error_message text,
   sent_at timestamptz,
+  read_at timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -823,6 +824,7 @@ create index seat_assignments_registration_id_idx on public.seat_assignments(reg
 create index check_ins_event_registration_idx on public.check_ins(event_id, registration_id);
 create index announcements_event_id_status_idx on public.announcements(event_id, status);
 create index notification_deliveries_recipient_status_idx on public.notification_deliveries(recipient_id, status);
+create index notification_deliveries_recipient_read_idx on public.notification_deliveries(recipient_id, read_at);
 create index activity_materials_event_visibility_idx on public.activity_materials(event_id, visibility);
 create index export_jobs_event_status_idx on public.export_jobs(event_id, status);
 create index complaints_status_idx on public.complaints(status);
@@ -2371,6 +2373,49 @@ returns boolean as $$
       and au.status = 'active'
   );
 $$ language sql stable security definer set search_path = public;
+
+create or replace function public.mark_notification_deliveries_read(
+  p_notification_id uuid default null,
+  p_mark_all boolean default false
+)
+returns jsonb as $$
+declare
+  v_actor_id uuid;
+  v_updated_count integer := 0;
+begin
+  v_actor_id := public.current_app_user_id();
+
+  if v_actor_id is null then
+    return jsonb_build_object('success', false, 'error_code', 'UNAUTHORIZED', 'message', 'Please sign in first.');
+  end if;
+
+  if p_mark_all then
+    update public.notification_deliveries
+    set read_at = now(), updated_at = now()
+    where recipient_id = v_actor_id
+      and channel = 'in_app'
+      and read_at is null;
+  else
+    if p_notification_id is null then
+      return jsonb_build_object('success', false, 'error_code', 'MISSING_NOTIFICATION_ID', 'message', 'Missing notification id.');
+    end if;
+
+    update public.notification_deliveries
+    set read_at = now(), updated_at = now()
+    where id = p_notification_id
+      and recipient_id = v_actor_id
+      and channel = 'in_app'
+      and read_at is null;
+  end if;
+
+  get diagnostics v_updated_count = row_count;
+
+  return jsonb_build_object('success', true, 'updated_count', v_updated_count);
+end;
+$$ language plpgsql security definer set search_path = public, auth, pg_temp;
+
+revoke all on function public.mark_notification_deliveries_read(uuid, boolean) from public;
+grant execute on function public.mark_notification_deliveries_read(uuid, boolean) to authenticated;
 
 alter table public.users enable row level security;
 alter table public.user_public_id_history enable row level security;

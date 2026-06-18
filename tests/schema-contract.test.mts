@@ -283,6 +283,13 @@ describe("commercial schema contract", () => {
     assert.match(block, /title text not null default ''/);
     assert.match(block, /body text not null default ''/);
     assert.match(block, /metadata jsonb not null default '\{\}'::jsonb/);
+    assert.match(block, /read_at timestamptz/);
+    expectSql(schema, "create index notification_deliveries_recipient_read_idx on public.notification_deliveries(recipient_id, read_at);");
+    expectSql(schema, "create or replace function public.mark_notification_deliveries_read(");
+    expectSql(schema, "where id = p_notification_id");
+    expectSql(schema, "and recipient_id = v_actor_id");
+    expectSql(schema, "set read_at = now(), updated_at = now()");
+    expectSql(schema, "grant execute on function public.mark_notification_deliveries_read(uuid, boolean) to authenticated;");
   });
 
   it("grants anonymous read access only to public event detail surfaces", () => {
