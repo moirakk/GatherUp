@@ -96,6 +96,7 @@ Supabase live 状态：
 - 新增 `NotificationBell` 并接入全局 `AppShell`：Supabase session 用户可在顶栏查看未读角标、打开通知列表并一键全部已读；demo session 下安静隐藏该入口。
 - `payment_proofs_mark_submitted` 触发器现在会在参与者提交付款截图时通知活动主办和具备付款管理权限的协作者，让待审核付款不再只依赖手动刷新发现。
 - `review_payment_atomic` 现在会在付款审核通过/驳回的同一事务里写入参与者站内通知，避免订单状态和通知状态分裂。
+- `confirm_seat_assignment_atomic` 现在会在参与者确认座位后写入站内通知，保留座位确认结果。
 - `request_refund_atomic` 现在会在参与者发起退款申请后通知活动主办和具备退款处理权限的协作者，让退款待审核不再依赖手动刷新发现。
 - `review_refund_request_atomic` 现在会在退款审核通过/驳回的同一事务里写入参与者站内通知，补齐退款纠纷高发链路的结果告知。
 - `record_refund_proof_atomic` 现在会在主办上传退款打款凭证后写入参与者站内通知，提醒用户查看凭证并继续确认收款。

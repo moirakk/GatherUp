@@ -76,6 +76,10 @@ const notificationTemplates: Record<string, NotificationTemplate> = {
     title: "Registration expired",
     body: "Order {orderNumber} for {eventName} expired before completion."
   },
+  seat_confirmed: {
+    title: "Seat confirmed",
+    body: "Your seat for order {orderNumber} has been confirmed."
+  },
   refund_started: {
     title: "Refund started",
     body: "A refund workflow has started for order {orderNumber}."

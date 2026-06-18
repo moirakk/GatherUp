@@ -1673,6 +1673,36 @@ begin
     confirmed_at = now()
   where id = p_seat_lock_id;
 
+  insert into public.notification_deliveries (
+    event_id,
+    recipient_id,
+    channel,
+    status,
+    template_key,
+    title,
+    body,
+    metadata,
+    sent_at
+  ) values (
+    v_lock.event_id,
+    v_user_id,
+    'in_app',
+    'sent',
+    'seat_confirmed',
+    'Seat confirmed',
+    'Seat ' || v_lock.display_label || ' has been confirmed for order ' || v_lock.order_number || '.',
+    jsonb_build_object(
+      'workflow', 'seat_assignment',
+      'eventId', v_lock.event_id,
+      'registrationId', v_lock.registration_id,
+      'attendeeId', p_attendee_id,
+      'seatId', v_lock.seat_id,
+      'seatLabel', v_lock.display_label,
+      'orderNumber', v_lock.order_number
+    ),
+    now()
+  );
+
   return jsonb_build_object(
     'success', true,
     'seat_assignment_id', v_assignment_id,

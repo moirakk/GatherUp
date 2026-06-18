@@ -365,6 +365,9 @@ describe("commercial schema contract", () => {
     expectSql(schema, "set status = 'held'");
     expectSql(schema, "insert into public.seat_assignments");
     expectSql(schema, "status = 'confirmed'");
+    expectSql(schema, "insert into public.notification_deliveries");
+    expectSql(schema, "'workflow', 'seat_assignment'");
+    expectSql(schema, "'seat_confirmed'");
     expectSql(schema, "grant execute on function public.create_seat_lock_atomic(uuid, uuid) to authenticated;");
     expectSql(schema, "grant execute on function public.confirm_seat_assignment_atomic(uuid, uuid) to authenticated;");
     assert.doesNotMatch(schema, /grant execute on function public\.create_seat_lock_atomic\(uuid, uuid\) to anon/);
