@@ -330,6 +330,10 @@ describe("commercial schema contract", () => {
     expectSql(schema, "update public.payments");
     expectSql(schema, "update public.payment_proofs");
     expectSql(schema, "insert into public.audit_logs");
+    expectSql(schema, "insert into public.notification_deliveries");
+    expectSql(schema, "'workflow', 'payment_review'");
+    expectSql(schema, "case when p_decision = 'APPROVED' then 'Registration confirmed' else 'Payment proof needs resubmission' end");
+    expectSql(schema, "case when p_decision = 'APPROVED' then 'registration_confirmed' else 'payment_rejected' end");
     expectSql(schema, "'payment.approved'");
     expectSql(schema, "'payment.rejected'");
     expectSql(schema, "grant execute on function public.review_payment_atomic(uuid, text, text, text) to authenticated;");

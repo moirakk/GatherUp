@@ -1203,15 +1203,18 @@ begin
   select
     r.id as registration_id,
     r.event_id,
+    r.user_id,
     r.order_number,
     r.status as registration_status,
     r.amount_due_cents,
+    e.name as event_name,
     p.id as payment_id,
     p.status as payment_status,
     p.amount_cents,
     p.amount_confirmed_cents
   into v_order
   from public.registrations r
+  join public.events e on e.id = r.event_id
   join public.payments p on p.registration_id = r.id
   where (p_registration_id is not null and r.id = p_registration_id)
      or (p_registration_id is null and p_order_number is not null and r.order_number = p_order_number)
@@ -1313,6 +1316,40 @@ begin
       'order_number', v_order.order_number,
       'decision', p_decision
     )
+  );
+
+  insert into public.notification_deliveries (
+    event_id,
+    recipient_id,
+    channel,
+    status,
+    template_key,
+    title,
+    body,
+    metadata,
+    sent_at
+  ) values (
+    v_order.event_id,
+    v_order.user_id,
+    'in_app',
+    'sent',
+    case when p_decision = 'APPROVED' then 'registration_confirmed' else 'payment_rejected' end,
+    case when p_decision = 'APPROVED' then 'Registration confirmed' else 'Payment proof needs resubmission' end,
+    case
+      when p_decision = 'APPROVED' then 'Your registration for ' || v_order.event_name || ' is confirmed. Order ' || v_order.order_number || ' is ready for the next step.'
+      else 'Your payment proof for ' || v_order.event_name || ' was rejected. Please update order ' || v_order.order_number || '.'
+    end,
+    jsonb_build_object(
+      'workflow', 'payment_review',
+      'decision', p_decision,
+      'eventId', v_order.event_id,
+      'registrationId', v_order.registration_id,
+      'paymentId', v_order.payment_id,
+      'orderNumber', v_order.order_number,
+      'from', v_order.registration_status,
+      'to', v_registration_status
+    ),
+    v_now
   );
 
   return jsonb_build_object(
