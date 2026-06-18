@@ -181,6 +181,7 @@ GatherUp is intentionally being moved from a prototype into a reliable product f
 - Shared notification bell UI for Supabase sessions, backed by the in-app notification API.
 - Payment proof submission trigger writes in-app review notifications for event payment managers.
 - Payment review RPC writes participant in-app notifications in the same transaction as approval/rejection state changes.
+- Refund review RPC writes participant in-app notifications when refund requests are approved or rejected.
 - Opt-in real Supabase RPC integration tests for registration creation, duplicate protection, capacity contention, payment review, check-in, and refund request/review/proof upload.
 - Database-first transactional design for sensitive workflows: registration, payment review, seat locking, check-in, and refunds are represented as PostgreSQL RPC paths rather than loose client-side state changes.
 - Supabase SSR middleware and Bearer-token API support so browser sessions and external API calls share the same verified identity model.

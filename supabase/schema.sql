@@ -2165,6 +2165,43 @@ begin
     )
   );
 
+  insert into public.notification_deliveries (
+    event_id,
+    recipient_id,
+    channel,
+    status,
+    template_key,
+    title,
+    body,
+    metadata,
+    sent_at
+  ) values (
+    v_refund.event_id,
+    v_refund.requested_by,
+    'in_app',
+    'sent',
+    case when p_decision = 'APPROVED' then 'refund_approved' else 'refund_rejected' end,
+    case when p_decision = 'APPROVED' then 'Refund approved' else 'Refund rejected' end,
+    case
+      when p_decision = 'APPROVED' then 'Your refund request for order ' || v_refund.order_number || ' has been approved.'
+      else 'Your refund request for order ' || v_refund.order_number || ' was rejected. Check the organizer note for details.'
+    end,
+    jsonb_build_object(
+      'workflow', 'refund_review',
+      'decision', p_decision,
+      'eventId', v_refund.event_id,
+      'registrationId', v_refund.registration_id,
+      'paymentId', v_refund.payment_id,
+      'refundRequestId', v_refund.refund_request_id,
+      'orderNumber', v_refund.order_number,
+      'from', v_refund.refund_status,
+      'to', v_next_refund_status,
+      'requestedAmountCents', v_refund.requested_amount_cents,
+      'approvedAmountCents', case when p_decision = 'APPROVED' then v_approved_amount_cents else null end
+    ),
+    v_now
+  );
+
   return jsonb_build_object(
     'success', true,
     'refund_request_id', v_refund.refund_request_id,

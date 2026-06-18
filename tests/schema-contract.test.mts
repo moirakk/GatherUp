@@ -422,6 +422,10 @@ describe("commercial schema contract", () => {
     expectSql(schema, "update public.registrations");
     expectSql(schema, "update public.payments");
     expectSql(schema, "insert into public.audit_logs");
+    expectSql(schema, "insert into public.notification_deliveries");
+    expectSql(schema, "'workflow', 'refund_review'");
+    expectSql(schema, "case when p_decision = 'APPROVED' then 'refund_approved' else 'refund_rejected' end");
+    expectSql(schema, "case when p_decision = 'APPROVED' then 'Refund approved' else 'Refund rejected' end");
     expectSql(schema, "'refund.approved'");
     expectSql(schema, "'refund.rejected'");
     expectSql(schema, "grant execute on function public.review_refund_request_atomic(uuid, text, integer, text) to authenticated;");
