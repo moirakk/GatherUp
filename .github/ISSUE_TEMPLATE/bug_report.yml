@@ -1,0 +1,65 @@
+name: Bug report
+description: Report a reproducible product or engineering defect.
+title: "[Bug] "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a GatherUp issue. Please remove any private user data, credentials, payment proof images, or production Supabase details before submitting.
+  - type: input
+    id: area
+    attributes:
+      label: Area
+      description: Which workflow or module is affected?
+      placeholder: "registration, payment review, seating, check-in, Supabase RLS, README..."
+    validations:
+      required: true
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What went wrong?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: List exact steps, test users, routes, commands, or SQL files where relevant.
+      placeholder: |
+        1. Go to ...
+        2. Run ...
+        3. Observe ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence
+      description: Add logs, screenshots, failing test output, or SQL errors with secrets removed.
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      placeholder: "local dev, clean Supabase staging, browser, commit hash..."
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Safety check
+      options:
+        - label: I removed secrets, private user data, payment proofs, and production credentials.
+          required: true

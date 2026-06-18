@@ -1,0 +1,45 @@
+name: Feature request
+description: Propose a product capability or workflow improvement.
+title: "[Feature] "
+labels:
+  - enhancement
+body:
+  - type: input
+    id: persona
+    attributes:
+      label: Primary user
+      placeholder: "participant, organizer, finance reviewer, event staff, admin"
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What user or business problem does this solve?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: Describe the ideal behavior, including states and edge cases if known.
+    validations:
+      required: true
+  - type: textarea
+    id: workflow
+    attributes:
+      label: Workflow impact
+      description: Which product workflow changes?
+      placeholder: "event setup, registration, payment proof, refund, seating, check-in, export..."
+  - type: textarea
+    id: data_permissions
+    attributes:
+      label: Data and permission considerations
+      description: Mention tables, RLS, Storage paths, RPCs, audit logs, or privacy concerns if relevant.
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      placeholder: |
+        - [ ] ...
+        - [ ] ...

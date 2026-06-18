@@ -52,6 +52,11 @@ GATHERUP_RUN_RPC_INTEGRATION=1 npm run test:integration:rpc
 - Update README/docs when behavior, architecture, environment variables, or verification steps change.
 - Include test evidence in the PR description.
 - Do not commit secrets, screenshots containing private user data, or production Supabase credentials.
+- Use the repository PR template and fill in risk level, workflow area, verification, and security notes.
+
+## Issues
+
+Use the GitHub issue templates for bug reports, feature requests, and engineering tasks. Security reports should follow [SECURITY.md](./SECURITY.md) instead of public issues.
 
 ## Documentation
 

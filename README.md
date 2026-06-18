@@ -319,3 +319,5 @@ Repository governance:
 - [Contributing guide](./CONTRIBUTING.md)
 - [Security policy](./SECURITY.md)
 - [License](./LICENSE.md)
+- GitHub issue templates for bugs, feature requests, and engineering tasks.
+- GitHub pull request template with risk, workflow, verification, and security sections.

@@ -1,0 +1,43 @@
+name: Engineering task
+description: Track implementation, validation, refactoring, or infrastructure work.
+title: "[Engineering] "
+labels:
+  - engineering
+body:
+  - type: dropdown
+    id: risk
+    attributes:
+      label: Risk level
+      options:
+        - Low
+        - Medium
+        - High
+        - Critical
+    validations:
+      required: true
+  - type: textarea
+    id: goal
+    attributes:
+      label: Goal
+      description: What should be true when this task is done?
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope
+      description: Files, workflows, SQL objects, routes, or tests expected to change.
+  - type: textarea
+    id: invariants
+    attributes:
+      label: Required invariants
+      description: State, permission, transaction, RLS, Storage, or audit rules that must remain true.
+  - type: textarea
+    id: verification
+    attributes:
+      label: Verification plan
+      placeholder: |
+        - [ ] npm test
+        - [ ] npm run typecheck
+        - [ ] npm run build
+        - [ ] GATHERUP_RUN_RPC_INTEGRATION=1 npm run test:integration:rpc
