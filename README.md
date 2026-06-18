@@ -3,6 +3,7 @@
 [![Next.js](https://img.shields.io/badge/Next.js-App%20Router-black?logo=nextdotjs)](https://nextjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-strict%20frontend-3178c6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Supabase](https://img.shields.io/badge/Supabase-Auth%20%2B%20Postgres%20%2B%20Storage-3ecf8e?logo=supabase&logoColor=white)](https://supabase.com/)
+[![CI](https://github.com/moirahoumiki/GatherUp/actions/workflows/ci.yml/badge.svg)](https://github.com/moirahoumiki/GatherUp/actions/workflows/ci.yml)
 [![Tests](https://img.shields.io/badge/tests-contract%20%2B%20opt--in%20RPC%20integration-6f8f78)](#quality-bar)
 
 GatherUp is a commercial v0.1 event operations platform for small offline community activities.
@@ -171,6 +172,7 @@ Important confirmed decisions:
 GatherUp is intentionally being moved from a prototype into a reliable product foundation. Current quality gates include:
 
 - Static contract tests for auth rules, route protection, schema structure, seed data, Storage policy shape, and API/RPC wiring.
+- GitHub Actions CI for push and pull request verification.
 - Opt-in real Supabase RPC integration tests for registration creation, duplicate protection, capacity contention, payment review, check-in, and refund request/review/proof upload.
 - Database-first transactional design for sensitive workflows: registration, payment review, seat locking, check-in, and refunds are represented as PostgreSQL RPC paths rather than loose client-side state changes.
 - Supabase SSR middleware and Bearer-token API support so browser sessions and external API calls share the same verified identity model.
