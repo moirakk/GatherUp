@@ -179,6 +179,7 @@ GatherUp is intentionally being moved from a prototype into a reliable product f
 - Notification delivery schema contract that keeps queued message content, template keys, and metadata persistable in Supabase.
 - In-app notification API contract for authenticated reads and RPC-scoped read-state updates.
 - Shared notification bell UI for Supabase sessions, backed by the in-app notification API.
+- Payment proof submission trigger writes in-app review notifications for event payment managers.
 - Payment review RPC writes participant in-app notifications in the same transaction as approval/rejection state changes.
 - Opt-in real Supabase RPC integration tests for registration creation, duplicate protection, capacity contention, payment review, check-in, and refund request/review/proof upload.
 - Database-first transactional design for sensitive workflows: registration, payment review, seat locking, check-in, and refunds are represented as PostgreSQL RPC paths rather than loose client-side state changes.

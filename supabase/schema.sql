@@ -1167,6 +1167,58 @@ begin
     submitted_at = now()
   where id = new.payment_id;
 
+  with payment_context as (
+    select
+      r.event_id,
+      r.order_number,
+      e.name as event_name,
+      e.organizer_id
+    from public.registrations r
+    join public.events e on e.id = r.event_id
+    where r.id = new.registration_id
+  ),
+  recipients as (
+    select organizer_id as user_id
+    from payment_context
+    union
+    select eo.user_id
+    from public.event_organizers eo
+    join payment_context pc on pc.event_id = eo.event_id
+    where eo.role in ('owner', 'finance')
+       or (eo.role = 'cohost' and coalesce((eo.permissions ->> 'can_manage_payments')::boolean, false))
+  )
+  insert into public.notification_deliveries (
+    event_id,
+    recipient_id,
+    channel,
+    status,
+    template_key,
+    title,
+    body,
+    metadata,
+    sent_at
+  )
+  select
+    pc.event_id,
+    recipients.user_id,
+    'in_app',
+    'sent',
+    'payment_proof_submitted',
+    'New payment proof needs review',
+    'A participant submitted payment proof for ' || pc.event_name || '. Please review order ' || pc.order_number || '.',
+    jsonb_build_object(
+      'workflow', 'payment_proof_submission',
+      'eventId', pc.event_id,
+      'registrationId', new.registration_id,
+      'paymentId', new.payment_id,
+      'paymentProofId', new.id,
+      'orderNumber', pc.order_number
+    ),
+    now()
+  from payment_context pc
+  join recipients on true
+  where recipients.user_id is not null;
+
   return new;
 end;
 $$ language plpgsql;

@@ -340,6 +340,15 @@ describe("commercial schema contract", () => {
     assert.doesNotMatch(schema, /grant execute on function public\.review_payment_atomic\(uuid, text, text, text\) to anon/);
   });
 
+  it("keeps payment proof submission notifying event payment managers", () => {
+    expectSql(schema, "create or replace function public.mark_payment_submitted_from_proof()");
+    expectSql(schema, "insert into public.notification_deliveries");
+    expectSql(schema, "'workflow', 'payment_proof_submission'");
+    expectSql(schema, "'payment_proof_submitted'");
+    expectSql(schema, "eo.role in ('owner', 'finance')");
+    expectSql(schema, "coalesce((eo.permissions ->> 'can_manage_payments')::boolean, false)");
+  });
+
   it("keeps seat locking and assignment atomic", () => {
     expectSql(schema, "create unique index seat_locks_one_active_per_seat");
     expectSql(schema, "create table public.seat_assignments");
