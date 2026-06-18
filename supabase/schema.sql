@@ -1987,6 +1987,56 @@ begin
     )
   );
 
+  with refund_context as (
+    select
+      e.id as event_id,
+      e.name as event_name,
+      e.organizer_id
+    from public.events e
+    where e.id = v_order.event_id
+  ),
+  recipients as (
+    select organizer_id as user_id
+    from refund_context
+    union
+    select eo.user_id
+    from public.event_organizers eo
+    join refund_context rc on rc.event_id = eo.event_id
+    where eo.role in ('owner', 'finance')
+  )
+  insert into public.notification_deliveries (
+    event_id,
+    recipient_id,
+    channel,
+    status,
+    template_key,
+    title,
+    body,
+    metadata,
+    sent_at
+  )
+  select
+    rc.event_id,
+    recipients.user_id,
+    'in_app',
+    'sent',
+    'refund_started',
+    'Refund request needs review',
+    'A participant requested a refund for order ' || v_order.order_number || ' in ' || rc.event_name || '.',
+    jsonb_build_object(
+      'workflow', 'refund_request',
+      'eventId', rc.event_id,
+      'registrationId', v_order.registration_id,
+      'paymentId', v_payment.payment_id,
+      'refundRequestId', v_refund_id,
+      'orderNumber', v_order.order_number,
+      'requestedAmountCents', v_requested_amount_cents
+    ),
+    now()
+  from refund_context rc
+  join recipients on true
+  where recipients.user_id is not null;
+
   return jsonb_build_object(
     'success', true,
     'refund_request_id', v_refund_id,

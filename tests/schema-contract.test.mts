@@ -401,6 +401,10 @@ describe("commercial schema contract", () => {
     expectSql(schema, "status = 'refunding'");
     expectSql(schema, "update public.payments");
     expectSql(schema, "insert into public.audit_logs");
+    expectSql(schema, "insert into public.notification_deliveries");
+    expectSql(schema, "'workflow', 'refund_request'");
+    expectSql(schema, "'refund_started'");
+    expectSql(schema, "'Refund request needs review'");
     expectSql(schema, "'refund.requested'");
     expectSql(schema, "grant execute on function public.request_refund_atomic(uuid, integer, text) to authenticated;");
     assert.doesNotMatch(schema, /grant execute on function public\.request_refund_atomic\(uuid, integer, text\) to anon/);
