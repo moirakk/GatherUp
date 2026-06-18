@@ -2358,6 +2358,39 @@ begin
     )
   );
 
+  insert into public.notification_deliveries (
+    event_id,
+    recipient_id,
+    channel,
+    status,
+    template_key,
+    title,
+    body,
+    metadata,
+    sent_at
+  ) values (
+    v_refund.event_id,
+    v_refund.requested_by,
+    'in_app',
+    'sent',
+    'refund_proof_uploaded',
+    'Refund proof uploaded',
+    'Refund transfer proof has been uploaded for order ' || v_refund.order_number || '.',
+    jsonb_build_object(
+      'workflow', 'refund_proof_upload',
+      'eventId', v_refund.event_id,
+      'registrationId', v_refund.registration_id,
+      'paymentId', v_refund.payment_id,
+      'refundRequestId', v_refund.refund_request_id,
+      'orderNumber', v_refund.order_number,
+      'from', v_refund.refund_status,
+      'to', 'proof_uploaded',
+      'amountCents', v_amount_cents,
+      'fileUrl', trim(p_file_url)
+    ),
+    v_now
+  );
+
   return jsonb_build_object(
     'success', true,
     'refund_request_id', v_refund.refund_request_id,

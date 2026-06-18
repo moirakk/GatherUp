@@ -447,6 +447,10 @@ describe("commercial schema contract", () => {
     expectSql(schema, "update public.registrations");
     expectSql(schema, "update public.payments");
     expectSql(schema, "insert into public.audit_logs");
+    expectSql(schema, "insert into public.notification_deliveries");
+    expectSql(schema, "'workflow', 'refund_proof_upload'");
+    expectSql(schema, "'refund_proof_uploaded'");
+    expectSql(schema, "'Refund proof uploaded'");
     expectSql(schema, "'refund.proof_uploaded'");
     expectSql(schema, "grant execute on function public.record_refund_proof_atomic(uuid, text, integer) to authenticated;");
     assert.doesNotMatch(schema, /grant execute on function public\.record_refund_proof_atomic\(uuid, text, integer\) to anon/);
