@@ -276,6 +276,15 @@ describe("commercial schema contract", () => {
     }
   });
 
+  it("keeps notification deliveries able to store queued message content", () => {
+    const block = extractTableBlock("notification_deliveries");
+
+    assert.match(block, /template_key text/);
+    assert.match(block, /title text not null default ''/);
+    assert.match(block, /body text not null default ''/);
+    assert.match(block, /metadata jsonb not null default '\{\}'::jsonb/);
+  });
+
   it("grants anonymous read access only to public event detail surfaces", () => {
     expectSql(schema, "grant usage on schema public to anon, authenticated;");
     expectSql(schema, "grant select on public.events to anon;");

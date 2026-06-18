@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { createNotificationQueueItems, listNotificationTemplateKeys } from "../src/domain/notification-queue.ts";
+import {
+  createNotificationQueueItems,
+  listNotificationTemplateKeys,
+  toNotificationDeliveryInsert
+} from "../src/domain/notification-queue.ts";
 import { createWorkflowTransitionEvent } from "../src/domain/workflow-events.ts";
 
 describe("notification queue contract", () => {
@@ -72,5 +76,26 @@ describe("notification queue contract", () => {
     assert.ok(keys.includes("payment_proof_submitted"));
     assert.ok(keys.includes("refund_disputed"));
     assert.ok(keys.includes("check_in_exception"));
+  });
+
+  it("maps queue items to notification_deliveries insert payloads", () => {
+    const event = createWorkflowTransitionEvent("registration", "payment_submitted", "confirmed");
+    const [item] = createNotificationQueueItems(event, {
+      eventId: "event-1",
+      eventName: "Sakamoto Screening",
+      orderNumber: "RYU-0001",
+      participantUserIds: ["user-1"]
+    });
+
+    const insert = toNotificationDeliveryInsert(item);
+
+    assert.equal(insert.event_id, "event-1");
+    assert.equal(insert.recipient_id, "user-1");
+    assert.equal(insert.channel, "in_app");
+    assert.equal(insert.status, "pending");
+    assert.equal(insert.template_key, "registration_confirmed");
+    assert.equal(insert.title, item.title);
+    assert.equal(insert.body, item.body);
+    assert.equal(insert.metadata.orderNumber, "RYU-0001");
   });
 });

@@ -27,6 +27,17 @@ export type NotificationQueueItem = {
   metadata: Record<string, string>;
 };
 
+export type NotificationDeliveryInsert = {
+  event_id?: string;
+  recipient_id: string;
+  channel: NotificationChannel;
+  status: "pending";
+  template_key: string;
+  title: string;
+  body: string;
+  metadata: Record<string, string>;
+};
+
 type NotificationTemplate = {
   title: string;
   body: string;
@@ -183,4 +194,17 @@ export function createNotificationQueueItems(
 
 export function listNotificationTemplateKeys() {
   return Object.keys(notificationTemplates).sort();
+}
+
+export function toNotificationDeliveryInsert(item: NotificationQueueItem): NotificationDeliveryInsert {
+  return {
+    event_id: item.eventId,
+    recipient_id: item.recipientId,
+    channel: item.channel,
+    status: "pending",
+    template_key: item.templateKey,
+    title: item.title,
+    body: item.body,
+    metadata: item.metadata
+  };
 }
