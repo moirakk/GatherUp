@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { enforceRateLimit } from "../src/lib/server/rate-limit.ts";
+import {
+  enforceRateLimit,
+  getRateLimitBucketCount,
+  pruneExpiredRateLimitBuckets
+} from "../src/lib/server/rate-limit.ts";
 
 function requestFrom(ip: string) {
   return new Request("https://gatherup.local/api/orders", {
@@ -46,5 +50,22 @@ describe("server rate limiting", () => {
     assert.equal(enforceRateLimit(requestFrom("203.0.113.11"), options), null);
     assert.equal(enforceRateLimit(requestFrom("203.0.113.12"), options), null);
     assert.equal(enforceRateLimit(requestFrom("203.0.113.11"), options)?.status, 429);
+  });
+
+  it("prunes expired buckets to avoid unbounded memory growth", () => {
+    const options = {
+      keyPrefix: "test:prune",
+      limit: 1,
+      windowMs: 10
+    };
+    const before = getRateLimitBucketCount();
+
+    assert.equal(enforceRateLimit(requestFrom("203.0.113.13"), options), null);
+    assert.equal(getRateLimitBucketCount(), before + 1);
+
+    pruneExpiredRateLimitBuckets(Date.now() + 11);
+
+    assert.equal(getRateLimitBucketCount(), before);
+    assert.equal(enforceRateLimit(requestFrom("203.0.113.13"), options), null);
   });
 });

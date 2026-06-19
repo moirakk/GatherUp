@@ -11,6 +11,18 @@ type RateLimitBucket = {
 
 const buckets = new Map<string, RateLimitBucket>();
 
+export function pruneExpiredRateLimitBuckets(now = Date.now()) {
+  for (const [key, bucket] of buckets.entries()) {
+    if (bucket.resetAt <= now) {
+      buckets.delete(key);
+    }
+  }
+}
+
+export function getRateLimitBucketCount() {
+  return buckets.size;
+}
+
 function getClientKey(request: Request) {
   const forwardedFor = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
   const realIp = request.headers.get("x-real-ip")?.trim();
@@ -21,6 +33,9 @@ function getClientKey(request: Request) {
 
 export function enforceRateLimit(request: Request, options: RateLimitOptions) {
   const now = Date.now();
+
+  pruneExpiredRateLimitBuckets(now);
+
   const key = `${options.keyPrefix}:${getClientKey(request)}`;
   const current = buckets.get(key);
   const bucket = current && current.resetAt > now
