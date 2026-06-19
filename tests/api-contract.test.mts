@@ -24,6 +24,8 @@ describe("registration and payment proof API contracts", () => {
   const orderVerifyRoute = readSource("src/app/api/orders/verify/route.ts");
   const seatLockRoute = readSource("src/app/api/seats/lock/route.ts");
   const seatConfirmRoute = readSource("src/app/api/seats/confirm/route.ts");
+  const waitlistRoute = readSource("src/app/api/waitlist/route.ts");
+  const waitlistInviteRoute = readSource("src/app/api/waitlist/invite/route.ts");
   const notificationRoute = readSource("src/app/api/notifications/route.ts");
   const appShell = readSource("src/components/app-shell.tsx");
   const notificationBell = readSource("src/components/notification-bell.tsx");
@@ -171,6 +173,24 @@ describe("registration and payment proof API contracts", () => {
     expectSource(orderSeatSelectionPanel, "setLocalAttendees");
     expectSource(orderSeatSelectionPanel, "setLocalSeats");
     expectSource(orderSeatSelectionPanel, 'status: "assigned"');
+  });
+
+  it("keeps waitlist actions on authenticated Supabase RPC paths", () => {
+    expectSource(waitlistRoute, "getAuthenticatedSupabaseClient(request)");
+    expectSource(waitlistRoute, 'authContext.supabase.rpc("join_waitlist_atomic"');
+    expectSource(waitlistRoute, "p_event_id: eventId");
+    expectSource(waitlistRoute, "p_desired_quantity:");
+    expectSource(waitlistRoute, "CAPACITY_AVAILABLE");
+
+    expectSource(waitlistInviteRoute, "getAuthenticatedSupabaseClient(request)");
+    expectSource(waitlistInviteRoute, 'authContext.supabase.rpc("invite_waitlist_entry_atomic"');
+    expectSource(waitlistInviteRoute, "p_waitlist_entry_id: waitlistEntryId");
+    expectSource(waitlistInviteRoute, "INVALID_WAITLIST_STATUS");
+
+    assert.doesNotMatch(waitlistRoute, /getSupabaseServiceClient/);
+    assert.doesNotMatch(waitlistInviteRoute, /getSupabaseServiceClient/);
+    assert.doesNotMatch(waitlistRoute, /\.from\("waitlist_entries"\)\s*\n\s*\.insert/);
+    assert.doesNotMatch(waitlistInviteRoute, /\.from\("waitlist_entries"\)\s*\n\s*\.update/);
   });
 
   it("keeps in-app notifications on authenticated RLS reads and read-state RPC updates", () => {
