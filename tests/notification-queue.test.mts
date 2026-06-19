@@ -16,9 +16,8 @@ const schema = readFileSync(join(repoRoot, "supabase", "schema.sql"), "utf8");
 
 function extractSchemaNotificationTemplateKeys() {
   const keys = new Set<string>();
-  const blocks = schema.match(/insert into public\.notification_deliveries \([\s\S]*?\n  \);/g) ?? [];
 
-  for (const block of blocks) {
+  for (const block of extractSchemaNotificationInsertBlocks()) {
     for (const match of block.matchAll(/\n\s+'([a-z]+_[a-z_]+)',\n\s+'[A-Z]/g)) {
       keys.add(match[1]);
     }
@@ -30,6 +29,10 @@ function extractSchemaNotificationTemplateKeys() {
   }
 
   return Array.from(keys).sort();
+}
+
+function extractSchemaNotificationInsertBlocks() {
+  return schema.match(/insert into public\.notification_deliveries \([\s\S]*?\n  \);/g) ?? [];
 }
 
 describe("notification queue contract", () => {
@@ -110,6 +113,18 @@ describe("notification queue contract", () => {
 
     for (const key of extractSchemaNotificationTemplateKeys()) {
       assert.equal(registeredKeys.has(key), true, `Missing notification template ${key}`);
+    }
+  });
+
+  it("keeps Supabase in-app notifications immediately visible", () => {
+    const blocks = extractSchemaNotificationInsertBlocks();
+
+    assert.ok(blocks.length > 0, "Expected Supabase notification inserts");
+
+    for (const block of blocks) {
+      assert.match(block, /'in_app'/);
+      assert.match(block, /'sent'/);
+      assert.match(block, /sent_at/);
     }
   });
 
