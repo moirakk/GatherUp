@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { describe, it } from "node:test";
 import { fileURLToPath } from "node:url";
@@ -16,6 +16,27 @@ import {
 
 const repoRoot = dirname(dirname(fileURLToPath(import.meta.url)));
 const middlewareSource = readFileSync(join(repoRoot, "middleware.ts"), "utf8");
+const appRoot = join(repoRoot, "src", "app");
+
+function listPageRoutes(dir = appRoot, segments: string[] = []): string[] {
+  return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+    const entryPath = join(dir, entry.name);
+
+    if (entry.isDirectory()) {
+      return listPageRoutes(entryPath, [...segments, entry.name]);
+    }
+
+    if (entry.name !== "page.tsx") {
+      return [];
+    }
+
+    return [`/${segments.join("/")}`.replace(/\/$/, "") || "/"];
+  });
+}
+
+function samplePathForRoute(route: string) {
+  return route.replace(/\[[^\]]+\]/g, "sample-id");
+}
 
 describe("auth normalization rules", () => {
   it("normalizes emails and public GatherUp IDs", () => {
@@ -59,6 +80,33 @@ describe("route auth rules", () => {
     assert.equal(isPublicRoutePath("/events/event-1/register"), false);
     assert.equal(isPublicRoutePath("/organizer"), false);
     assert.equal(isPublicRoutePath("/me/orders/ORD-1"), false);
+  });
+
+  it("requires every app page route to be explicitly classified", () => {
+    const publicRoutes = new Set([
+      "/events/[eventId]",
+      "/login"
+    ]);
+    const protectedRoutes = new Set([
+      "/",
+      "/dev/status",
+      "/events/[eventId]/register",
+      "/me",
+      "/me/orders/[orderNumber]",
+      "/onboarding",
+      "/organizer",
+      "/organizer/events/[eventId]",
+      "/organizer/events/[eventId]/finance",
+      "/organizer/events/new",
+      "/venues",
+      "/venues/[venueId]"
+    ]);
+    const knownRoutes = new Set([...publicRoutes, ...protectedRoutes]);
+
+    for (const route of listPageRoutes().sort()) {
+      assert.equal(knownRoutes.has(route), true, `${route} must be classified as public or protected`);
+      assert.equal(isPublicRoutePath(samplePathForRoute(route)), publicRoutes.has(route), `${route} public classification mismatch`);
+    }
   });
 
   it("uses Supabase SSR middleware auth instead of prototype session cookies", () => {
