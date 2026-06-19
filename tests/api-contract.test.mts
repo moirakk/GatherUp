@@ -50,6 +50,8 @@ describe("registration and payment proof API contracts", () => {
 
   it("keeps order creation on the authenticated Supabase atomic registration RPC path", () => {
     expectSource(orderRoute, "getAuthenticatedSupabaseClient(request)");
+    expectSource(orderRoute, "enforceRateLimit(request");
+    expectSource(orderRoute, 'keyPrefix: "orders:create"');
     expectSource(orderRoute, 'authContext.supabase.rpc("create_registration_atomic"');
     expectSource(orderRoute, 'payment_id: payment?.id ?? null');
 
@@ -79,6 +81,8 @@ describe("registration and payment proof API contracts", () => {
 
   it("keeps order check-in on the authenticated Supabase RPC path", () => {
     expectSource(orderVerifyRoute, "getAuthenticatedSupabaseClient(request)");
+    expectSource(orderVerifyRoute, "enforceRateLimit(request");
+    expectSource(orderVerifyRoute, 'keyPrefix: "orders:verify"');
     expectSource(orderVerifyRoute, 'authContext.supabase.rpc("check_in_order_atomic"');
     expectSource(orderVerifyRoute, "p_check_in_code: checkInCode");
 

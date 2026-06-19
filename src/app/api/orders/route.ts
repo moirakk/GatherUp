@@ -8,6 +8,7 @@ import {
   normalizeJsonInput,
   toPublicOrderStatus
 } from "@/lib/server/api";
+import { enforceRateLimit } from "@/lib/server/rate-limit";
 import {
   getAuthenticatedSupabaseClient,
   getSupabaseServiceClient,
@@ -22,6 +23,16 @@ function contactTypeFromValue(value: string) {
 }
 
 export async function POST(request: Request) {
+  const rateLimitResponse = enforceRateLimit(request, {
+    keyPrefix: "orders:create",
+    limit: 30,
+    windowMs: 60_000
+  });
+
+  if (rateLimitResponse) {
+    return rateLimitResponse;
+  }
+
   let body: Record<string, unknown>;
 
   try {

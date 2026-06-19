@@ -6,11 +6,22 @@ import {
   toPublicCheckInStatus,
   toPublicOrderStatus
 } from "@/lib/server/api";
+import { enforceRateLimit } from "@/lib/server/rate-limit";
 import { getAuthenticatedSupabaseClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
+  const rateLimitResponse = enforceRateLimit(request, {
+    keyPrefix: "orders:verify",
+    limit: 60,
+    windowMs: 60_000
+  });
+
+  if (rateLimitResponse) {
+    return rateLimitResponse;
+  }
+
   const authContext = await getAuthenticatedSupabaseClient(request);
 
   if (!authContext) {
