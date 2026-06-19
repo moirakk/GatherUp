@@ -22,6 +22,8 @@ describe("registration and payment proof API contracts", () => {
   const orderRefundReviewRoute = readSource("src/app/api/orders/refund/review/route.ts");
   const orderRefundProofRoute = readSource("src/app/api/orders/refund/proof/route.ts");
   const orderVerifyRoute = readSource("src/app/api/orders/verify/route.ts");
+  const exportAttendeesRoute = readSource("src/app/api/export/attendees/route.ts");
+  const exportFinanceRoute = readSource("src/app/api/export/finance/route.ts");
   const seatLockRoute = readSource("src/app/api/seats/lock/route.ts");
   const seatConfirmRoute = readSource("src/app/api/seats/confirm/route.ts");
   const waitlistRoute = readSource("src/app/api/waitlist/route.ts");
@@ -32,6 +34,7 @@ describe("registration and payment proof API contracts", () => {
   const orderSeatSelectionPanel = readSource("src/components/order-seat-selection-panel.tsx");
   const orderPage = readSource("src/app/me/orders/[orderNumber]/page.tsx");
   const registrationFlow = readSource("src/components/registration-flow.tsx");
+  const serverApi = readSource("src/lib/server/api.ts");
   const supabaseServer = readSource("src/lib/supabase/server.ts");
 
   it("keeps route authentication unified across Bearer and Supabase SSR cookie sessions", () => {
@@ -80,6 +83,20 @@ describe("registration and payment proof API contracts", () => {
     assert.doesNotMatch(orderVerifyRoute, /getSupabaseServiceClient/);
     assert.doesNotMatch(orderVerifyRoute, /\.from\("registrations"\)\s*\n\s*\.update/);
     assert.doesNotMatch(orderVerifyRoute, /\.from\("registration_attendees"\)\s*\n\s*\.update/);
+  });
+
+  it("keeps export authorization on the database permission helper", () => {
+    expectSource(serverApi, "export async function canManageEvent(supabase: SupabaseClient, eventId: string)");
+    expectSource(serverApi, 'supabase.rpc("can_manage_event"');
+    expectSource(serverApi, "target_event_id: eventId");
+    assert.doesNotMatch(serverApi, /export async function canManageEvent[\s\S]*?\.from\("event_organizers"\)/);
+
+    for (const route of [exportAttendeesRoute, exportFinanceRoute]) {
+      expectSource(route, "getAuthenticatedSupabaseClient(request)");
+      expectSource(route, "getSupabaseServiceClient()");
+      expectSource(route, "canManageEvent(authContext.supabase, event.id)");
+      assert.doesNotMatch(route, /canManageEventByAuthUserId/);
+    }
   });
 
   it("keeps participant refund requests on the authenticated Supabase RPC path", () => {

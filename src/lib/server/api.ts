@@ -85,32 +85,16 @@ export async function findUserByAuthUserId(supabase: SupabaseClient, authUserId:
   return data as { id: string; public_id: string };
 }
 
-export async function canManageEventByAuthUserId(supabase: SupabaseClient, eventId: string, authUserId: string) {
-  const user = await findUserByAuthUserId(supabase, authUserId);
+export async function canManageEvent(supabase: SupabaseClient, eventId: string) {
+  const { data, error } = await supabase.rpc("can_manage_event", {
+    target_event_id: eventId
+  });
 
-  if (!user) {
+  if (error) {
     return false;
   }
 
-  const { data: event } = await supabase
-    .from("events")
-    .select("id, organizer_id")
-    .eq("id", eventId)
-    .single();
-
-  if (event?.organizer_id === user.id) {
-    return true;
-  }
-
-  const { data: organizer } = await supabase
-    .from("event_organizers")
-    .select("id")
-    .eq("event_id", eventId)
-    .eq("user_id", user.id)
-    .in("role", ["owner", "cohost", "finance", "staff"])
-    .maybeSingle();
-
-  return Boolean(organizer?.id);
+  return data === true;
 }
 
 export function generateCheckInCode() {

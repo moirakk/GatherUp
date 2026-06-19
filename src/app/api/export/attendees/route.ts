@@ -1,6 +1,6 @@
-import { canManageEventByAuthUserId, jsonError } from "@/lib/server/api";
+import { canManageEvent, jsonError } from "@/lib/server/api";
 import { buildWorkbookBuffer, excelResponse } from "@/lib/server/excel";
-import { getAuthenticatedUser, getSupabaseServiceClient } from "@/lib/supabase/server";
+import { getAuthenticatedSupabaseClient, getSupabaseServiceClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
 
@@ -9,9 +9,9 @@ function isUuid(value: string) {
 }
 
 export async function GET(request: Request) {
-  const authUser = await getAuthenticatedUser(request);
+  const authContext = await getAuthenticatedSupabaseClient(request);
 
-  if (!authUser) {
+  if (!authContext) {
     return jsonError("请使用 Supabase 登录后再导出名单。", 401);
   }
 
@@ -36,7 +36,7 @@ export async function GET(request: Request) {
       return jsonError("找不到活动。", 404);
     }
 
-    const canManage = await canManageEventByAuthUserId(supabase, event.id, authUser.id);
+    const canManage = await canManageEvent(authContext.supabase, event.id);
 
     if (!canManage) {
       return jsonError("只有活动主办或协作者可以导出名单。", 403);
