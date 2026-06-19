@@ -1133,6 +1133,39 @@ begin
     'not_arrived'
   );
 
+  insert into public.notification_deliveries (
+    event_id,
+    recipient_id,
+    channel,
+    status,
+    template_key,
+    title,
+    body,
+    metadata,
+    sent_at
+  ) values (
+    p_event_id,
+    v_app_user_id,
+    'in_app',
+    'sent',
+    case when v_event.price_cents > 0 then 'registration_awaiting_payment' else 'registration_confirmed' end,
+    case when v_event.price_cents > 0 then 'Registration created' else 'Registration confirmed' end,
+    case
+      when v_event.price_cents > 0 then 'Order ' || v_order_number || ' for ' || v_event.name || ' is ready. Please submit payment proof.'
+      else 'Your registration for ' || v_event.name || ' is confirmed. Order ' || v_order_number || ' is ready.'
+    end,
+    jsonb_build_object(
+      'workflow', 'registration_created',
+      'eventId', p_event_id,
+      'registrationId', v_registration_id,
+      'orderNumber', v_order_number,
+      'status', v_status,
+      'amountDueCents', v_event.price_cents * v_effective_quantity,
+      'quantity', v_effective_quantity
+    ),
+    now()
+  );
+
   return jsonb_build_object(
     'success', true,
     'registration_id', v_registration_id,

@@ -313,6 +313,9 @@ describe("commercial schema contract", () => {
     expectSql(schema, "current_number = public.event_order_counters.current_number + 1");
     expectSql(schema, "insert into public.registrations");
     expectSql(schema, "insert into public.registration_attendees");
+    expectSql(schema, "insert into public.notification_deliveries");
+    expectSql(schema, "'workflow', 'registration_created'");
+    expectSql(schema, "case when v_event.price_cents > 0 then 'registration_awaiting_payment' else 'registration_confirmed' end");
     expectSql(schema, "'awaiting_payment'::registration_status");
     expectSql(schema, "'confirmed'::registration_status");
     expectSql(schema, "grant execute on function public.create_registration_atomic(uuid, text, contact_type, text, integer, jsonb, text) to authenticated;");

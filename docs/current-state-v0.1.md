@@ -94,6 +94,7 @@ Supabase live 状态：
 - `notification_deliveries` 已补齐 `template_key`、`title`、`body`、`metadata`、`read_at` 字段，通知队列内容可以持久化到数据库并支持站内已读状态；当前仍不实际发送外部邮件/微信消息。
 - 新增 `/api/notifications`：通过统一 Supabase 认证读取当前用户站内通知和未读数，并通过 `mark_notification_deliveries_read` RPC 标记单条或全部已读，避免给普通用户开放通知正文 update 权限。
 - 新增 `NotificationBell` 并接入全局 `AppShell`：Supabase session 用户可在顶栏查看未读角标、打开通知列表并一键全部已读；demo session 下安静隐藏该入口。
+- `create_registration_atomic` 现在会在报名创建后写入参与者站内通知：付费订单提示提交付款凭证，免费订单提示报名已确认。
 - `payment_proofs_mark_submitted` 触发器现在会在参与者提交付款截图时通知活动主办和具备付款管理权限的协作者，让待审核付款不再只依赖手动刷新发现。
 - `review_payment_atomic` 现在会在付款审核通过/驳回的同一事务里写入参与者站内通知，避免订单状态和通知状态分裂。
 - `confirm_seat_assignment_atomic` 现在会在参与者确认座位后写入站内通知，保留座位确认结果。

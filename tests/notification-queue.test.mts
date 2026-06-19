@@ -73,6 +73,7 @@ describe("notification queue contract", () => {
     const keys = listNotificationTemplateKeys();
 
     assert.ok(keys.includes("registration_confirmed"));
+    assert.ok(keys.includes("registration_awaiting_payment"));
     assert.ok(keys.includes("seat_confirmed"));
     assert.ok(keys.includes("payment_proof_submitted"));
     assert.ok(keys.includes("refund_disputed"));

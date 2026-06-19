@@ -64,6 +64,10 @@ const notificationTemplates: Record<string, NotificationTemplate> = {
     title: "Registration confirmed",
     body: "Your registration for {eventName} is confirmed. Order {orderNumber} is ready for the next step."
   },
+  registration_awaiting_payment: {
+    title: "Registration created",
+    body: "Order {orderNumber} for {eventName} is ready. Please submit payment proof."
+  },
   registration_waitlisted: {
     title: "You are on the waitlist",
     body: "You have joined the waitlist for {eventName}. We will notify you if a spot opens."
