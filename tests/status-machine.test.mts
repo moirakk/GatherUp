@@ -14,6 +14,7 @@ import {
   paymentStatuses,
   refundStatuses,
   registrationStatuses,
+  waitlistStatuses,
   statusMachines,
   type WorkflowName
 } from "../src/domain/status-machine.ts";
@@ -36,6 +37,7 @@ describe("domain status machines", () => {
     assertSameMembers(registrationStatuses, extractEnumValues("registration_status"), "registration_status");
     assertSameMembers(paymentStatuses, extractEnumValues("payment_status"), "payment_status");
     assertSameMembers(refundStatuses, extractEnumValues("refund_status"), "refund_status");
+    assertSameMembers(waitlistStatuses, extractEnumValues("waitlist_status"), "waitlist_status");
     assertSameMembers(checkInStatuses, extractEnumValues("check_in_status"), "check_in_status");
   });
 
@@ -44,6 +46,7 @@ describe("domain status machines", () => {
       registration: registrationStatuses,
       payment: paymentStatuses,
       refund: refundStatuses,
+      waitlist: waitlistStatuses,
       checkIn: checkInStatuses
     };
 
@@ -60,6 +63,8 @@ describe("domain status machines", () => {
     assert.equal(canTransition("payment", "confirmed", "refunding"), true);
     assert.equal(canTransition("refund", "requested", "approved"), true);
     assert.equal(canTransition("refund", "approved", "proof_uploaded"), true);
+    assert.equal(canTransition("waitlist", "waiting", "invited"), true);
+    assert.equal(canTransition("waitlist", "invited", "converted"), true);
     assert.equal(canTransition("checkIn", "not_arrived", "arrived"), true);
   });
 
@@ -68,6 +73,8 @@ describe("domain status machines", () => {
     assert.equal(canTransition("registration", "payment_submitted", "refunded"), false);
     assert.equal(canTransition("payment", "unpaid", "confirmed"), false);
     assert.equal(canTransition("refund", "requested", "confirmed"), false);
+    assert.equal(canTransition("waitlist", "waiting", "converted"), false);
+    assert.equal(canTransition("waitlist", "expired", "invited"), false);
     assert.equal(canTransition("checkIn", "arrived", "not_arrived"), false);
   });
 
@@ -83,6 +90,8 @@ describe("domain status machines", () => {
     assert.equal(isTerminalStatus("registration", "confirmed"), false);
     assert.equal(isTerminalStatus("payment", "disputed"), true);
     assert.equal(isTerminalStatus("refund", "confirmed"), true);
+    assert.equal(isTerminalStatus("waitlist", "converted"), true);
+    assert.equal(isTerminalStatus("waitlist", "waiting"), false);
     assert.deepEqual(listNextStatuses("refund", "rejected"), []);
   });
 });

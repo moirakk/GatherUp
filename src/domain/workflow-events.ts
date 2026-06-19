@@ -4,6 +4,7 @@ import {
   type PaymentStatus,
   type RefundStatus,
   type RegistrationStatus,
+  type WaitlistStatus,
   type WorkflowName
 } from "./status-machine.ts";
 
@@ -14,6 +15,7 @@ type WorkflowStatus<TWorkflow extends WorkflowName> =
   TWorkflow extends "registration" ? RegistrationStatus :
   TWorkflow extends "payment" ? PaymentStatus :
   TWorkflow extends "refund" ? RefundStatus :
+  TWorkflow extends "waitlist" ? WaitlistStatus :
   CheckInStatus;
 
 export type WorkflowTransitionEvent<TWorkflow extends WorkflowName = WorkflowName> = {
@@ -67,6 +69,15 @@ const refundEventRules: ReadonlyArray<TransitionEventRule<RefundStatus>> = [
   { to: "cancelled", auditAction: "refund.cancelled", notificationType: "refund_cancelled", audience: "participant", riskLevel: "medium" }
 ];
 
+const waitlistEventRules: ReadonlyArray<TransitionEventRule<WaitlistStatus>> = [
+  { to: "waiting", auditAction: "waitlist.joined", notificationType: "registration_waitlisted", audience: "participant", riskLevel: "low" },
+  { to: "invited", auditAction: "waitlist.invited", notificationType: "waitlist_invited", audience: "participant", riskLevel: "medium" },
+  { to: "converted", auditAction: "waitlist.converted", notificationType: "waitlist_converted", audience: "participant", riskLevel: "medium" },
+  { to: "expired", auditAction: "waitlist.expired", notificationType: "waitlist_invitation_expired", audience: "participant", riskLevel: "low" },
+  { to: "cancelled", auditAction: "waitlist.cancelled", notificationType: "waitlist_cancelled", audience: "participant", riskLevel: "low" },
+  { to: "skipped", auditAction: "waitlist.skipped", notificationType: null, audience: "none", riskLevel: "medium" }
+];
+
 const checkInEventRules: ReadonlyArray<TransitionEventRule<CheckInStatus>> = [
   { to: "arrived", auditAction: "check_in.arrived", notificationType: null, audience: "none", riskLevel: "low" },
   { to: "exception", auditAction: "check_in.exception", notificationType: "check_in_exception", audience: "staff", riskLevel: "medium" }
@@ -76,6 +87,7 @@ const eventRules = {
   registration: registrationEventRules,
   payment: paymentEventRules,
   refund: refundEventRules,
+  waitlist: waitlistEventRules,
   checkIn: checkInEventRules
 } as const;
 

@@ -49,6 +49,28 @@ describe("workflow transition events", () => {
     assert.equal(event.riskLevel, "high");
   });
 
+  it("notifies participants when a waitlist invitation opens", () => {
+    const event = createWorkflowTransitionEvent("waitlist", "waiting", "invited");
+
+    assert.equal(event.auditAction, "waitlist.invited");
+    assert.equal(event.notificationType, "waitlist_invited");
+    assert.equal(event.audience, "participant");
+    assert.equal(event.riskLevel, "medium");
+    assert.equal(shouldCreateNotification(event), true);
+    assert.equal(shouldWriteAuditLog(event), true);
+  });
+
+  it("keeps skipped waitlist entries auditable but quiet", () => {
+    const event = createWorkflowTransitionEvent("waitlist", "invited", "skipped");
+
+    assert.equal(event.auditAction, "waitlist.skipped");
+    assert.equal(event.notificationType, null);
+    assert.equal(event.audience, "none");
+    assert.equal(event.riskLevel, "medium");
+    assert.equal(shouldCreateNotification(event), false);
+    assert.equal(shouldWriteAuditLog(event), true);
+  });
+
   it("rejects invalid transitions before deriving side effects", () => {
     assert.throws(
       () => createWorkflowTransitionEvent("payment", "unpaid", "confirmed"),

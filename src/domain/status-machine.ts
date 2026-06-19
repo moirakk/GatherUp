@@ -37,6 +37,15 @@ export const refundStatuses = [
   "cancelled"
 ] as const;
 
+export const waitlistStatuses = [
+  "waiting",
+  "invited",
+  "converted",
+  "expired",
+  "cancelled",
+  "skipped"
+] as const;
+
 export const checkInStatuses = [
   "not_arrived",
   "arrived",
@@ -46,8 +55,9 @@ export const checkInStatuses = [
 export type RegistrationStatus = (typeof registrationStatuses)[number];
 export type PaymentStatus = (typeof paymentStatuses)[number];
 export type RefundStatus = (typeof refundStatuses)[number];
+export type WaitlistStatus = (typeof waitlistStatuses)[number];
 export type CheckInStatus = (typeof checkInStatuses)[number];
-export type WorkflowName = "registration" | "payment" | "refund" | "checkIn";
+export type WorkflowName = "registration" | "payment" | "refund" | "waitlist" | "checkIn";
 
 type TransitionMap<TStatus extends string> = Record<TStatus, readonly TStatus[]>;
 
@@ -104,6 +114,15 @@ export const refundTransitions = {
   cancelled: []
 } as const satisfies TransitionMap<RefundStatus>;
 
+export const waitlistTransitions = {
+  waiting: ["invited", "cancelled", "skipped"],
+  invited: ["converted", "expired", "cancelled", "skipped"],
+  converted: [],
+  expired: [],
+  cancelled: [],
+  skipped: ["invited", "cancelled"]
+} as const satisfies TransitionMap<WaitlistStatus>;
+
 export const checkInTransitions = {
   not_arrived: ["arrived", "exception"],
   arrived: ["exception"],
@@ -114,6 +133,7 @@ export const statusMachines = {
   registration: registrationTransitions,
   payment: paymentTransitions,
   refund: refundTransitions,
+  waitlist: waitlistTransitions,
   checkIn: checkInTransitions
 } as const;
 
@@ -121,6 +141,7 @@ type WorkflowStatus<TWorkflow extends WorkflowName> =
   TWorkflow extends "registration" ? RegistrationStatus :
   TWorkflow extends "payment" ? PaymentStatus :
   TWorkflow extends "refund" ? RefundStatus :
+  TWorkflow extends "waitlist" ? WaitlistStatus :
   CheckInStatus;
 
 function getTransitionMap<TWorkflow extends WorkflowName>(workflow: TWorkflow): TransitionMap<WorkflowStatus<TWorkflow>> {

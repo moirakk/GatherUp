@@ -72,6 +72,22 @@ const notificationTemplates: Record<string, NotificationTemplate> = {
     title: "You are on the waitlist",
     body: "You have joined the waitlist for {eventName}. We will notify you if a spot opens."
   },
+  waitlist_invited: {
+    title: "A spot is available",
+    body: "A spot opened for {eventName}. Please confirm your waitlist invitation before it expires."
+  },
+  waitlist_converted: {
+    title: "Waitlist spot converted",
+    body: "Your waitlist invitation for {eventName} has been converted into order {orderNumber}."
+  },
+  waitlist_invitation_expired: {
+    title: "Waitlist invitation expired",
+    body: "Your waitlist invitation for {eventName} expired before confirmation."
+  },
+  waitlist_cancelled: {
+    title: "Waitlist entry cancelled",
+    body: "Your waitlist entry for {eventName} has been cancelled."
+  },
   registration_cancelled: {
     title: "Registration cancelled",
     body: "Order {orderNumber} for {eventName} has been cancelled."
