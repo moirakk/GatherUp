@@ -1190,6 +1190,335 @@ $$ language plpgsql security definer set search_path = public, auth, pg_temp;
 revoke all on function public.create_registration_atomic(uuid, text, contact_type, text, integer, jsonb, text) from public;
 grant execute on function public.create_registration_atomic(uuid, text, contact_type, text, integer, jsonb, text) to authenticated;
 
+create or replace function public.join_waitlist_atomic(
+  p_event_id uuid,
+  p_desired_quantity integer default 1,
+  p_note text default null
+)
+returns jsonb as $$
+declare
+  v_user_id uuid;
+  v_event record;
+  v_desired_quantity integer;
+  v_active_quantity integer;
+  v_next_position integer;
+  v_existing record;
+  v_has_existing boolean := false;
+  v_waitlist_entry_id uuid;
+begin
+  v_user_id := public.current_app_user_id();
+
+  if v_user_id is null then
+    return jsonb_build_object('success', false, 'error_code', 'UNAUTHORIZED', 'message', 'Please sign in before joining the waitlist.');
+  end if;
+
+  select
+    id,
+    name,
+    capacity,
+    status,
+    accept_waitlist,
+    allow_multi_person_registration,
+    max_people_per_registration
+  into v_event
+  from public.events
+  where id = p_event_id
+  for update;
+
+  if not found then
+    return jsonb_build_object('success', false, 'error_code', 'EVENT_NOT_FOUND', 'message', 'Event not found.');
+  end if;
+
+  if v_event.status <> 'registration_open' then
+    return jsonb_build_object('success', false, 'error_code', 'REGISTRATION_CLOSED', 'message', 'This event is not accepting waitlist entries.');
+  end if;
+
+  if v_event.accept_waitlist = false then
+    return jsonb_build_object('success', false, 'error_code', 'WAITLIST_CLOSED', 'message', 'This event does not accept waitlist entries.');
+  end if;
+
+  if exists (
+    select 1
+    from public.registrations r
+    where r.event_id = p_event_id
+      and r.user_id = v_user_id
+      and r.status not in ('cancelled', 'expired', 'refunded', 'waitlisted')
+  ) then
+    return jsonb_build_object('success', false, 'error_code', 'ALREADY_REGISTERED', 'message', 'You already have an active registration for this event.');
+  end if;
+
+  v_desired_quantity := greatest(1, coalesce(p_desired_quantity, 1));
+
+  if v_event.allow_multi_person_registration = false then
+    v_desired_quantity := 1;
+  else
+    v_desired_quantity := least(v_desired_quantity, v_event.max_people_per_registration);
+  end if;
+
+  select coalesce(sum(r.quantity), 0)
+  into v_active_quantity
+  from public.registrations r
+  where r.event_id = p_event_id
+    and r.status not in ('cancelled', 'expired', 'refunded', 'waitlisted');
+
+  if v_active_quantity + v_desired_quantity <= v_event.capacity then
+    return jsonb_build_object(
+      'success', false,
+      'error_code', 'CAPACITY_AVAILABLE',
+      'message', 'Capacity is still available. Please register directly.',
+      'capacity', v_event.capacity,
+      'registered_quantity', v_active_quantity
+    );
+  end if;
+
+  select *
+  into v_existing
+  from public.waitlist_entries
+  where event_id = p_event_id
+    and user_id = v_user_id
+  for update;
+
+  v_has_existing := found;
+
+  if v_has_existing and v_existing.status in ('waiting', 'invited', 'skipped') then
+    return jsonb_build_object(
+      'success', false,
+      'error_code', 'ALREADY_WAITLISTED',
+      'message', 'You already have an active waitlist entry for this event.',
+      'waitlist_entry_id', v_existing.id,
+      'status', v_existing.status
+    );
+  end if;
+
+  if v_has_existing and v_existing.status = 'converted' then
+    return jsonb_build_object(
+      'success', false,
+      'error_code', 'WAITLIST_ALREADY_CONVERTED',
+      'message', 'Your waitlist entry has already been converted.',
+      'waitlist_entry_id', v_existing.id
+    );
+  end if;
+
+  select coalesce(max(priority_position), 0) + 1
+  into v_next_position
+  from public.waitlist_entries
+  where event_id = p_event_id;
+
+  if v_has_existing then
+    update public.waitlist_entries
+    set
+      desired_quantity = v_desired_quantity,
+      status = 'waiting',
+      priority_position = v_next_position,
+      note = nullif(trim(p_note), ''),
+      invited_at = null,
+      invitation_expires_at = null,
+      converted_registration_id = null,
+      updated_at = now()
+    where id = v_existing.id
+    returning id into v_waitlist_entry_id;
+  else
+    insert into public.waitlist_entries (
+      event_id,
+      user_id,
+      desired_quantity,
+      status,
+      priority_position,
+      note
+    ) values (
+      p_event_id,
+      v_user_id,
+      v_desired_quantity,
+      'waiting',
+      v_next_position,
+      nullif(trim(p_note), '')
+    )
+    returning id into v_waitlist_entry_id;
+  end if;
+
+  insert into public.notification_deliveries (
+    event_id,
+    recipient_id,
+    channel,
+    status,
+    template_key,
+    title,
+    body,
+    metadata,
+    sent_at
+  ) values (
+    p_event_id,
+    v_user_id,
+    'in_app',
+    'sent',
+    'registration_waitlisted',
+    'You are on the waitlist',
+    'You have joined the waitlist for ' || v_event.name || '. We will notify you if a spot opens.',
+    jsonb_build_object(
+      'workflow', 'waitlist_joined',
+      'eventId', p_event_id,
+      'waitlistEntryId', v_waitlist_entry_id,
+      'desiredQuantity', v_desired_quantity,
+      'priorityPosition', v_next_position
+    ),
+    now()
+  );
+
+  return jsonb_build_object(
+    'success', true,
+    'waitlist_entry_id', v_waitlist_entry_id,
+    'status', 'waiting',
+    'desired_quantity', v_desired_quantity,
+    'priority_position', v_next_position,
+    'event_name', v_event.name
+  );
+exception
+  when deadlock_detected or serialization_failure then
+    return jsonb_build_object('success', false, 'error_code', 'CONCURRENT_CONFLICT', 'message', 'The waitlist is busy. Please retry.');
+  when unique_violation then
+    return jsonb_build_object('success', false, 'error_code', 'DUPLICATE_WAITLIST_ENTRY', 'message', 'A waitlist entry already exists.');
+  when others then
+    raise warning '[GatherUp] join_waitlist_atomic: % | %', sqlstate, sqlerrm;
+    return jsonb_build_object('success', false, 'error_code', 'INTERNAL_ERROR', 'message', 'Joining waitlist failed.');
+end;
+$$ language plpgsql security definer set search_path = public, auth, pg_temp;
+
+revoke all on function public.join_waitlist_atomic(uuid, integer, text) from public;
+grant execute on function public.join_waitlist_atomic(uuid, integer, text) to authenticated;
+
+create or replace function public.invite_waitlist_entry_atomic(
+  p_waitlist_entry_id uuid
+)
+returns jsonb as $$
+declare
+  v_actor_id uuid;
+  v_entry record;
+  v_invitation_expires_at timestamptz;
+begin
+  v_actor_id := public.current_app_user_id();
+
+  if v_actor_id is null then
+    return jsonb_build_object('success', false, 'error_code', 'UNAUTHORIZED', 'message', 'Please sign in before inviting waitlist entries.');
+  end if;
+
+  select
+    wl.id as waitlist_entry_id,
+    wl.event_id,
+    wl.user_id,
+    wl.status,
+    wl.desired_quantity,
+    wl.priority_position,
+    e.name as event_name,
+    e.waitlist_invitation_minutes
+  into v_entry
+  from public.waitlist_entries wl
+  join public.events e on e.id = wl.event_id
+  where wl.id = p_waitlist_entry_id
+  for update of wl, e;
+
+  if not found then
+    return jsonb_build_object('success', false, 'error_code', 'WAITLIST_ENTRY_NOT_FOUND', 'message', 'Waitlist entry not found.');
+  end if;
+
+  if not (public.can_manage_event(v_entry.event_id) or public.is_platform_admin()) then
+    return jsonb_build_object('success', false, 'error_code', 'FORBIDDEN', 'message', 'Only event managers can invite waitlist entries.');
+  end if;
+
+  if v_entry.status not in ('waiting', 'skipped') then
+    return jsonb_build_object(
+      'success', false,
+      'error_code', 'INVALID_WAITLIST_STATUS',
+      'message', 'Only waiting or skipped entries can be invited.',
+      'current_status', v_entry.status
+    );
+  end if;
+
+  v_invitation_expires_at := now() + make_interval(mins => v_entry.waitlist_invitation_minutes);
+
+  update public.waitlist_entries
+  set
+    status = 'invited',
+    invited_at = now(),
+    invitation_expires_at = v_invitation_expires_at,
+    updated_at = now()
+  where id = v_entry.waitlist_entry_id;
+
+  insert into public.audit_logs (
+    actor_id,
+    actor_role,
+    event_id,
+    target_type,
+    target_id,
+    action,
+    risk_level,
+    before_snapshot,
+    after_snapshot,
+    metadata
+  ) values (
+    v_actor_id,
+    case when public.is_platform_admin() then 'admin' else 'event_manager' end,
+    v_entry.event_id,
+    'waitlist_entry',
+    v_entry.waitlist_entry_id,
+    'waitlist.invited',
+    'medium',
+    jsonb_build_object('status', v_entry.status),
+    jsonb_build_object('status', 'invited', 'invitation_expires_at', v_invitation_expires_at),
+    jsonb_build_object(
+      'waitlistEntryId', v_entry.waitlist_entry_id,
+      'desiredQuantity', v_entry.desired_quantity,
+      'priorityPosition', v_entry.priority_position
+    )
+  );
+
+  insert into public.notification_deliveries (
+    event_id,
+    recipient_id,
+    channel,
+    status,
+    template_key,
+    title,
+    body,
+    metadata,
+    sent_at
+  ) values (
+    v_entry.event_id,
+    v_entry.user_id,
+    'in_app',
+    'sent',
+    'waitlist_invited',
+    'A spot is available',
+    'A spot opened for ' || v_entry.event_name || '. Please confirm your waitlist invitation before it expires.',
+    jsonb_build_object(
+      'workflow', 'waitlist_invitation',
+      'eventId', v_entry.event_id,
+      'waitlistEntryId', v_entry.waitlist_entry_id,
+      'desiredQuantity', v_entry.desired_quantity,
+      'priorityPosition', v_entry.priority_position,
+      'invitationExpiresAt', v_invitation_expires_at
+    ),
+    now()
+  );
+
+  return jsonb_build_object(
+    'success', true,
+    'waitlist_entry_id', v_entry.waitlist_entry_id,
+    'status', 'invited',
+    'invitation_expires_at', v_invitation_expires_at,
+    'event_name', v_entry.event_name
+  );
+exception
+  when deadlock_detected or serialization_failure then
+    return jsonb_build_object('success', false, 'error_code', 'CONCURRENT_CONFLICT', 'message', 'The waitlist invitation is busy. Please retry.');
+  when others then
+    raise warning '[GatherUp] invite_waitlist_entry_atomic: % | %', sqlstate, sqlerrm;
+    return jsonb_build_object('success', false, 'error_code', 'INTERNAL_ERROR', 'message', 'Inviting waitlist entry failed.');
+end;
+$$ language plpgsql security definer set search_path = public, auth, pg_temp;
+
+revoke all on function public.invite_waitlist_entry_atomic(uuid) from public;
+grant execute on function public.invite_waitlist_entry_atomic(uuid) to authenticated;
+
 create or replace function public.mark_payment_submitted_from_proof()
 returns trigger as $$
 begin

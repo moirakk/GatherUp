@@ -323,6 +323,34 @@ describe("commercial schema contract", () => {
     assert.doesNotMatch(schema, /registered_count|ticket_price_cents|current_value|pending_payment|awaiting_payment_proof/);
   });
 
+  it("keeps waitlist joins and invitations transactional", () => {
+    expectSql(schema, "create table public.waitlist_entries");
+    expectSql(schema, "unique (event_id, user_id)");
+    expectSql(schema, "create or replace function public.join_waitlist_atomic(");
+    expectSql(schema, "from public.events");
+    expectSql(schema, "for update;");
+    expectSql(schema, "v_event.accept_waitlist = false");
+    expectSql(schema, "error_code', 'CAPACITY_AVAILABLE'");
+    expectSql(schema, "status = 'waiting'");
+    expectSql(schema, "priority_position = v_next_position");
+    expectSql(schema, "insert into public.notification_deliveries");
+    expectSql(schema, "'workflow', 'waitlist_joined'");
+    expectSql(schema, "'registration_waitlisted'");
+    expectSql(schema, "grant execute on function public.join_waitlist_atomic(uuid, integer, text) to authenticated;");
+    assert.doesNotMatch(schema, /grant execute on function public\.join_waitlist_atomic\(uuid, integer, text\) to anon/);
+
+    expectSql(schema, "create or replace function public.invite_waitlist_entry_atomic(");
+    expectSql(schema, "public.can_manage_event(v_entry.event_id)");
+    expectSql(schema, "v_entry.status not in ('waiting', 'skipped')");
+    expectSql(schema, "make_interval(mins => v_entry.waitlist_invitation_minutes)");
+    expectSql(schema, "status = 'invited'");
+    expectSql(schema, "insert into public.audit_logs");
+    expectSql(schema, "'waitlist.invited'");
+    expectSql(schema, "'waitlist_invited'");
+    expectSql(schema, "grant execute on function public.invite_waitlist_entry_atomic(uuid) to authenticated;");
+    assert.doesNotMatch(schema, /grant execute on function public\.invite_waitlist_entry_atomic\(uuid\) to anon/);
+  });
+
   it("keeps payment review atomic and audited", () => {
     expectSql(schema, "create or replace function public.review_payment_atomic(");
     expectSql(schema, "v_actor_id := public.current_app_user_id();");
