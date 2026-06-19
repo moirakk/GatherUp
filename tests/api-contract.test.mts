@@ -24,6 +24,7 @@ describe("registration and payment proof API contracts", () => {
   const orderVerifyRoute = readSource("src/app/api/orders/verify/route.ts");
   const exportAttendeesRoute = readSource("src/app/api/export/attendees/route.ts");
   const exportFinanceRoute = readSource("src/app/api/export/finance/route.ts");
+  const devStatusRoute = readSource("src/app/api/dev/status/route.ts");
   const seatLockRoute = readSource("src/app/api/seats/lock/route.ts");
   const seatConfirmRoute = readSource("src/app/api/seats/confirm/route.ts");
   const waitlistRoute = readSource("src/app/api/waitlist/route.ts");
@@ -33,6 +34,7 @@ describe("registration and payment proof API contracts", () => {
   const notificationBell = readSource("src/components/notification-bell.tsx");
   const orderSeatSelectionPanel = readSource("src/components/order-seat-selection-panel.tsx");
   const orderPage = readSource("src/app/me/orders/[orderNumber]/page.tsx");
+  const devStatusPage = readSource("src/app/dev/status/page.tsx");
   const registrationFlow = readSource("src/components/registration-flow.tsx");
   const serverApi = readSource("src/lib/server/api.ts");
   const supabaseServer = readSource("src/lib/supabase/server.ts");
@@ -97,6 +99,21 @@ describe("registration and payment proof API contracts", () => {
       expectSource(route, "canManageEvent(authContext.supabase, event.id)");
       assert.doesNotMatch(route, /canManageEventByAuthUserId/);
     }
+  });
+
+  it("keeps dev status checks authenticated and read-only", () => {
+    expectSource(devStatusRoute, "getAuthenticatedSupabaseClient(request)");
+    expectSource(devStatusRoute, "getSupabaseServiceClient()");
+    expectSource(devStatusRoute, 'select("id", { head: true, count: "exact" })');
+    expectSource(devStatusRoute, "SUPABASE_SERVICE_ROLE_KEY");
+    expectSource(devStatusPage, 'fetch("/api/dev/status"');
+    expectSource(devStatusPage, "ServerHealthResponse");
+    expectSource(devStatusPage, "服务端 Supabase Health");
+
+    assert.doesNotMatch(devStatusRoute, /SUPABASE_SERVICE_ROLE_KEY[^\\n]*:/);
+    assert.doesNotMatch(devStatusRoute, /\.insert\(/);
+    assert.doesNotMatch(devStatusRoute, /\.update\(/);
+    assert.doesNotMatch(devStatusRoute, /\.delete\(/);
   });
 
   it("keeps participant refund requests on the authenticated Supabase RPC path", () => {

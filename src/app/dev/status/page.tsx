@@ -15,6 +15,18 @@ type StatusCheck = {
   status: CheckStatus;
 };
 
+type ServerHealthResponse = {
+  ok?: boolean;
+  configured?: boolean;
+  authenticated?: boolean;
+  service_role_configured?: boolean;
+  service_role_ready?: boolean;
+  checked_tables?: string[];
+  failed_tables?: Array<{ table: string; message: string }>;
+  message?: string;
+  project_host?: string;
+};
+
 const commercialSchemaTables = [
   "organizer_verifications",
   "review_requests",
@@ -58,6 +70,8 @@ export default function DevStatusPage() {
   const [profileReady, setProfileReady] = useState(false);
   const [schemaMessage, setSchemaMessage] = useState("尚未检查。");
   const [schemaReady, setSchemaReady] = useState(false);
+  const [serverHealthMessage, setServerHealthMessage] = useState("尚未检查。");
+  const [serverHealthReady, setServerHealthReady] = useState(false);
   const supabaseConfigured = isSupabaseConfigured();
 
   useEffect(() => {
@@ -69,6 +83,7 @@ export default function DevStatusPage() {
       setSupabaseAuthMessage("还没有配置 Supabase 环境变量。");
       setProfileMessage("等待 Supabase 环境变量。");
       setSchemaMessage("等待 Supabase 环境变量。");
+      setServerHealthMessage("等待 Supabase 环境变量。");
       return;
     }
 
@@ -94,6 +109,21 @@ export default function DevStatusPage() {
 
       setSupabaseAuthReady(true);
       setSupabaseAuthMessage(`${userResult.data.user.email} · ${userResult.data.user.id}`);
+
+      const serverHealthResponse = await fetch("/api/dev/status", { cache: "no-store" });
+      const serverHealth = (await serverHealthResponse.json()) as ServerHealthResponse;
+
+      if (isCancelled) {
+        return;
+      }
+
+      setServerHealthReady(serverHealthResponse.ok && serverHealth.ok === true);
+      setServerHealthMessage(
+        serverHealth.message ||
+          (serverHealth.project_host
+            ? `${serverHealth.project_host} · 服务端检查完成。`
+            : "服务端检查完成。")
+      );
 
       const profileResult = await getCurrentSupabaseProfile();
 
@@ -185,9 +215,25 @@ export default function DevStatusPage() {
         label: "商业化 Schema",
         description: schemaMessage,
         status: schemaReady ? "ready" : supabaseConfigured ? "warning" : "pending"
+      },
+      {
+        label: "服务端 Supabase Health",
+        description: serverHealthMessage,
+        status: serverHealthReady ? "ready" : supabaseConfigured ? "warning" : "pending"
       }
     ];
-  }, [profileMessage, profileReady, schemaMessage, schemaReady, session, supabaseAuthMessage, supabaseAuthReady, supabaseConfigured]);
+  }, [
+    profileMessage,
+    profileReady,
+    schemaMessage,
+    schemaReady,
+    serverHealthMessage,
+    serverHealthReady,
+    session,
+    supabaseAuthMessage,
+    supabaseAuthReady,
+    supabaseConfigured
+  ]);
 
   return (
     <>
@@ -224,6 +270,11 @@ export default function DevStatusPage() {
           <ServerCog size={20} />
           <span>商业化表</span>
           <strong>{schemaReady ? "已就绪" : "待验证"}</strong>
+        </article>
+        <article className="metric-card">
+          <ServerCog size={20} />
+          <span>服务端检查</span>
+          <strong>{serverHealthReady ? "已通过" : "待验证"}</strong>
         </article>
       </section>
 
