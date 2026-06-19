@@ -1,5 +1,8 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { describe, it } from "node:test";
+import { fileURLToPath } from "node:url";
 
 import {
   createNotificationQueueItems,
@@ -7,6 +10,27 @@ import {
   toNotificationDeliveryInsert
 } from "../src/domain/notification-queue.ts";
 import { createWorkflowTransitionEvent } from "../src/domain/workflow-events.ts";
+
+const repoRoot = dirname(dirname(fileURLToPath(import.meta.url)));
+const schema = readFileSync(join(repoRoot, "supabase", "schema.sql"), "utf8");
+
+function extractSchemaNotificationTemplateKeys() {
+  const keys = new Set<string>();
+  const blocks = schema.match(/insert into public\.notification_deliveries \([\s\S]*?\n  \);/g) ?? [];
+
+  for (const block of blocks) {
+    for (const match of block.matchAll(/\n\s+'([a-z]+_[a-z_]+)',\n\s+'[A-Z]/g)) {
+      keys.add(match[1]);
+    }
+
+    for (const match of block.matchAll(/then '([a-z]+_[a-z_]+)' else '([a-z]+_[a-z_]+)' end/g)) {
+      keys.add(match[1]);
+      keys.add(match[2]);
+    }
+  }
+
+  return Array.from(keys).sort();
+}
 
 describe("notification queue contract", () => {
   it("queues participant notifications for confirmed registrations", () => {
@@ -79,6 +103,14 @@ describe("notification queue contract", () => {
     assert.ok(keys.includes("refund_disputed"));
     assert.ok(keys.includes("check_in_confirmed"));
     assert.ok(keys.includes("check_in_exception"));
+  });
+
+  it("keeps Supabase notification inserts aligned with registered templates", () => {
+    const registeredKeys = new Set(listNotificationTemplateKeys());
+
+    for (const key of extractSchemaNotificationTemplateKeys()) {
+      assert.equal(registeredKeys.has(key), true, `Missing notification template ${key}`);
+    }
   });
 
   it("maps queue items to notification_deliveries insert payloads", () => {
