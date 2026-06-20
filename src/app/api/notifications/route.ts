@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { asRecord, findUserByAuthUserId, getNumber, getString, jsonError } from "@/lib/server/api";
+import { enforceRateLimit } from "@/lib/server/rate-limit";
 import { getAuthenticatedSupabaseClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
@@ -81,6 +82,16 @@ export async function GET(request: Request) {
 }
 
 export async function PATCH(request: Request) {
+  const rateLimitResponse = enforceRateLimit(request, {
+    keyPrefix: "notifications:read",
+    limit: 120,
+    windowMs: 60_000
+  });
+
+  if (rateLimitResponse) {
+    return rateLimitResponse;
+  }
+
   const authContext = await getAuthenticatedSupabaseClient(request);
 
   if (!authContext) {

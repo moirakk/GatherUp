@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { asRecord, getNumber, getString, jsonError } from "@/lib/server/api";
+import { enforceRateLimit } from "@/lib/server/rate-limit";
 import { getAuthenticatedSupabaseClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
@@ -24,6 +25,16 @@ function getRelationRecord(value: unknown) {
 }
 
 export async function POST(request: Request) {
+  const rateLimitResponse = enforceRateLimit(request, {
+    keyPrefix: "orders:refund-proof",
+    limit: 30,
+    windowMs: 60_000
+  });
+
+  if (rateLimitResponse) {
+    return rateLimitResponse;
+  }
+
   const authContext = await getAuthenticatedSupabaseClient(request);
 
   if (!authContext) {

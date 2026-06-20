@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { asRecord, findUserByAuthUserId, getNumber, getString, jsonError, orderStatus } from "@/lib/server/api";
+import { enforceRateLimit } from "@/lib/server/rate-limit";
 import { getAuthenticatedUser, getSupabaseServiceClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
@@ -22,6 +23,16 @@ function pathMatchesProof(path: string, eventId: string, registrationId: string,
 }
 
 export async function POST(request: Request) {
+  const rateLimitResponse = enforceRateLimit(request, {
+    keyPrefix: "orders:payment-proof",
+    limit: 30,
+    windowMs: 60_000
+  });
+
+  if (rateLimitResponse) {
+    return rateLimitResponse;
+  }
+
   const authUser = await getAuthenticatedUser(request);
 
   if (!authUser) {

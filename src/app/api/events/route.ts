@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { asRecord, findUserByAuthUserId, getNumber, getString, jsonError, normalizeJsonInput } from "@/lib/server/api";
+import { enforceRateLimit } from "@/lib/server/rate-limit";
 import { getAuthenticatedUser, getSupabaseServiceClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
@@ -47,6 +48,16 @@ function mapEnum(value: string, values: Record<string, string>, fallback: string
 }
 
 export async function POST(request: Request) {
+  const rateLimitResponse = enforceRateLimit(request, {
+    keyPrefix: "events:create",
+    limit: 20,
+    windowMs: 60_000
+  });
+
+  if (rateLimitResponse) {
+    return rateLimitResponse;
+  }
+
   const authUser = await getAuthenticatedUser(request);
 
   if (!authUser) {
