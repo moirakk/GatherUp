@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { readdirSync, readFileSync, statSync } from "node:fs";
+import { dirname, join, relative } from "node:path";
 import { describe, it } from "node:test";
 import { fileURLToPath } from "node:url";
 
@@ -12,6 +12,19 @@ function readSource(path: string) {
 
 function expectSource(source: string, needle: string) {
   assert.ok(source.includes(needle), `Expected source to include: ${needle}`);
+}
+
+function listApiRouteFiles(dir = join(repoRoot, "src/app/api")): string[] {
+  return readdirSync(dir)
+    .flatMap((entry) => {
+      const path = join(dir, entry);
+      if (statSync(path).isDirectory()) {
+        return listApiRouteFiles(path);
+      }
+
+      return entry === "route.ts" ? [path] : [];
+    })
+    .sort();
 }
 
 describe("registration and payment proof API contracts", () => {
@@ -47,6 +60,20 @@ describe("registration and payment proof API contracts", () => {
     expectSource(supabaseServer, "getSupabaseUserClient(accessToken)");
     expectSource(supabaseServer, "createSupabaseServerClient()");
     expectSource(supabaseServer, "supabase.auth.getUser()");
+  });
+
+  it("requires every mutating API route to enforce rate limiting", () => {
+    const mutatingRoutePattern = /export async function (POST|PATCH|PUT|DELETE)\s*\(/;
+    const mutatingRoutes = listApiRouteFiles()
+      .map((file) => ({ file: relative(repoRoot, file), source: readFileSync(file, "utf8") }))
+      .filter(({ source }) => mutatingRoutePattern.test(source));
+
+    assert.ok(mutatingRoutes.length > 0, "Expected at least one mutating API route.");
+
+    for (const { file, source } of mutatingRoutes) {
+      assert.ok(source.includes("enforceRateLimit(request"), `${file} must call enforceRateLimit(request) before mutating work.`);
+      assert.ok(source.includes('from "@/lib/server/rate-limit"'), `${file} must import the shared server rate limiter.`);
+    }
   });
 
   it("keeps order creation on the authenticated Supabase atomic registration RPC path", () => {
