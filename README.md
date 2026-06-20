@@ -120,6 +120,7 @@ Not production-ready yet:
 - Most business workflows still use mock/local prototype data; public event listing and public/unlisted event detail now have an initial Supabase read path.
 - Real write APIs are still early integration endpoints. Registration creation now uses the database RPC for atomic order numbering and capacity protection, organizer APIs verify Supabase identities through Bearer or SSR cookie sessions, payment proof upload has an initial Storage-backed path, payment review has an audited RPC draft wired through the API, and seat locking has RPC-backed API endpoints with an initial order-detail UI; full live RLS verification still needs production-grade implementation.
 - Event creation, finance, and admin workflows are not yet fully backed by production-grade database services; payment review, payment proof submission, refund request/review/proof upload, seat selection, and check-in now have initial RPC/API paths that still need live Supabase validation.
+- Mutating API routes now have a shared in-process rate limiter and a contract test that blocks new write endpoints without rate limiting. This is an early abuse-control baseline for local and single-instance deployments; multi-instance production should replace the in-memory bucket store with a shared Redis/Upstash-backed limiter.
 - Supabase schema, seed, and Storage policy drafts exist. The original live project has been restored and audited as partially initialized. A clean dev/staging project has been created, `schema.sql` and `seed.sql` have executed successfully, and `storage.sql` has been corrected after a real enum mismatch surfaced during execution.
 - Anonymous public-read grants for public event detail surfaces are now included in the schema draft and local contract tests. The follow-up grant patch and consolidated post-execution summary SQL still need to be run in the clean Supabase project after dashboard access/tooling is available.
 - Permission enforcement and RLS need continued real database testing beyond the first public read path.
@@ -179,6 +180,7 @@ GatherUp is intentionally being moved from a prototype into a reliable product f
 - Notification delivery schema contract that keeps queued message content, template keys, and metadata persistable in Supabase.
 - In-app notification API contract for authenticated reads and RPC-scoped read-state updates.
 - Shared notification bell UI for Supabase sessions, backed by the in-app notification API.
+- Shared server rate limiting is enforced on all mutating API routes, with an API contract test that scans every `POST`, `PATCH`, `PUT`, and `DELETE` route for `enforceRateLimit(request)`.
 - Registration creation RPC writes participant in-app notifications for payment or confirmation next steps.
 - Payment proof submission trigger writes in-app review notifications for event payment managers.
 - Payment review RPC writes participant in-app notifications in the same transaction as approval/rejection state changes.
