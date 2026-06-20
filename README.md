@@ -192,6 +192,7 @@ GatherUp is intentionally being moved from a prototype into a reliable product f
 - Opt-in real Supabase RPC integration tests for registration creation, duplicate protection, capacity contention, payment review, check-in, and refund request/review/proof upload.
 - Database-first transactional design for sensitive workflows: registration, payment review, seat locking, check-in, and refunds are represented as PostgreSQL RPC paths rather than loose client-side state changes.
 - Supabase SSR middleware and Bearer-token API support so browser sessions and external API calls share the same verified identity model.
+- API route authentication is guarded by a directory-scanning contract test: every `src/app/api/**/route.ts` file must call the shared Supabase server auth helpers inside the handler because middleware intentionally lets `/api` requests reach route-level authorization.
 - Private Storage path contracts for sensitive proof files, including payment proofs and refund proofs.
 - Documentation-first runbooks for clean Supabase project execution, validation logging, and future service-layer expansion.
 

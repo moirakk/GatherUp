@@ -76,6 +76,27 @@ describe("registration and payment proof API contracts", () => {
     }
   });
 
+  it("requires every API route to authenticate inside its route handler", () => {
+    const apiRoutes = listApiRouteFiles().map((file) => ({
+      file: relative(repoRoot, file),
+      source: readFileSync(file, "utf8")
+    }));
+
+    assert.ok(apiRoutes.length > 0, "Expected at least one API route.");
+
+    for (const { file, source } of apiRoutes) {
+      assert.match(
+        source,
+        /getAuthenticated(User|SupabaseClient)\(request\)/,
+        `${file} must authenticate the request because middleware intentionally lets /api routes reach their handlers.`
+      );
+      assert.ok(
+        source.includes('from "@/lib/supabase/server"'),
+        `${file} must use the shared Supabase server auth helpers instead of local cookie/session parsing.`
+      );
+    }
+  });
+
   it("keeps order creation on the authenticated Supabase atomic registration RPC path", () => {
     expectSource(orderRoute, "getAuthenticatedSupabaseClient(request)");
     expectSource(orderRoute, "enforceRateLimit(request");
