@@ -1,6 +1,6 @@
 # GatherUp RPC integration testing guide
 
-Last updated: 2026-06-16
+Last updated: 2026-06-20
 
 This guide explains how to run opt-in integration tests against a real clean Supabase dev/staging project.
 
@@ -8,13 +8,18 @@ These tests are separate from `npm test` on purpose. They create temporary Supab
 
 ## Current Coverage
 
-The first integration test file is:
+The opt-in integration test files are:
 
 ```text
+tests/integration/rpc/_helpers.mts
 tests/integration/rpc/registration.test.mts
+tests/integration/rpc/concurrency.test.mts
+tests/integration/rpc/storage-proof-access.test.mts
 ```
 
-It validates `public.create_registration_atomic` against a real Supabase project:
+`_helpers.mts` contains shared setup and cleanup helpers. It is not matched by the `*.test.mts` runner glob.
+
+`registration.test.mts` validates `public.create_registration_atomic` against a real Supabase project:
 
 - anonymous callers are rejected;
 - authenticated users can create a registration;
@@ -47,6 +52,19 @@ It also validates the audited refund RPC chain after payment confirmation:
 - the registration and payment stay in `refunding`;
 - a `refund_proofs` record is created;
 - duplicate refund proof upload is rejected with `INVALID_REFUND_STATUS`.
+
+`concurrency.test.mts` validates high-risk competing writes:
+
+- two payment managers racing to approve/reject the same submitted payment produce exactly one successful review and one typed `INVALID_ORDER_STATUS` rejection;
+- two staff members racing to check in the same code produce exactly one successful check-in and one `ALREADY_CHECKED_IN` rejection;
+- two confirmed participants racing to lock the same seat produce exactly one active seat lock and one typed seat conflict rejection.
+
+`storage-proof-access.test.mts` validates real Supabase Storage RLS:
+
+- payment proof upload is limited to the registration owner and the policy path `{event_id}/{registration_id}/{payment_id}/{filename}`;
+- payment proof reads are limited to the order owner and payment managers;
+- refund proof upload is limited to refund managers, not the participant;
+- refund proof reads are limited to the order owner and refund managers, with cohost payment permission intentionally kept separate from refund permission.
 
 ## Required Environment
 
@@ -106,6 +124,10 @@ If `GATHERUP_RUN_RPC_INTEGRATION` is not set to `1`, the test suite skips withou
 Expected local output:
 
 ```text
+GatherUp RPC concurrency
+  ✔ allows exactly one reviewer to win when two payment managers race the same order
+  ✔ allows exactly one check-in when two staff members scan the same code at once
+  ✔ lets exactly one participant lock a seat when two confirmed orders compete for it
 GatherUp RPC integration
   ✔ rejects unauthenticated calls
   ✔ creates an order with the event-scoped number format
@@ -114,6 +136,11 @@ GatherUp RPC integration
   ✔ reviews a submitted payment through the audited payment RPC
   ✔ checks in a confirmed order through the audited check-in RPC
   ✔ requests, reviews, and records proof for a refund through audited refund RPCs
+GatherUp Storage RLS
+  ✔ only lets the registration owner upload to their own payment-proofs path
+  ✔ restricts payment-proofs reads to the order owner and payment managers, not a permission-less cohost
+  ✔ never lets a participant upload their own refund-proofs file, only refund managers
+  ✔ restricts refund-proofs reads to the order owner and refund managers, excluding cohost even with payment permissions
 ```
 
 Expected database side effects after cleanup:
@@ -139,14 +166,14 @@ Database cleanup needed: yes/no
 Follow-up commit:
 ```
 
-Do not continue to seat RPC validation until registration, payment review, check-in, and refund proof upload pass. Seating workflows depend on confirmed registrations and payments, and refund workflows exercise the same payment state machine from the reversal side.
+Do not treat the clean Supabase project as validated for commercial v0.1 until the registration, payment review, check-in, refund proof, concurrency, and Storage RLS suites all pass. Seating workflows depend on confirmed registrations and payments, and refund workflows exercise the same payment state machine from the reversal side.
 
 ## Next RPCs To Add
 
 Recommended order:
 
-1. `create_seat_lock_atomic`
-2. `confirm_seat_assignment_atomic`
-3. refund participant confirmation and dispute RPCs, once implemented
+1. `confirm_seat_assignment_atomic` concurrent assignment coverage.
+2. refund participant confirmation and dispute RPCs, once implemented.
+3. notification delivery side-effect assertions after live RPC success.
 
 Keep each integration test isolated, self-cleaning, and opt-in.

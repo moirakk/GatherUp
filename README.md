@@ -189,7 +189,7 @@ GatherUp is intentionally being moved from a prototype into a reliable product f
 - Refund request RPC writes in-app review notifications for event refund managers.
 - Refund review RPC writes participant in-app notifications when refund requests are approved or rejected.
 - Refund proof upload RPC writes participant in-app notifications after transfer proof is recorded.
-- Opt-in real Supabase RPC integration tests for registration creation, duplicate protection, capacity contention, payment review, check-in, and refund request/review/proof upload.
+- Opt-in real Supabase RPC integration tests for registration creation, duplicate protection, capacity contention, payment review, check-in, refund request/review/proof upload, concurrent payment/check-in/seat races, and private Storage proof access.
 - Database-first transactional design for sensitive workflows: registration, payment review, seat locking, check-in, and refunds are represented as PostgreSQL RPC paths rather than loose client-side state changes.
 - Supabase SSR middleware and Bearer-token API support so browser sessions and external API calls share the same verified identity model.
 - API route authentication is guarded by a directory-scanning contract test: every `src/app/api/**/route.ts` file must call the shared Supabase server auth helpers inside the handler because middleware intentionally lets `/api` requests reach route-level authorization.
@@ -318,7 +318,7 @@ Every core feature should be implemented in this order:
 Recommended order:
 
 1. Run `supabase/validation/06-public-read-grants.sql` and `07-clean-dev-post-execution-summary.sql` in the clean Supabase project and record the results.
-2. Execute `GATHERUP_RUN_RPC_INTEGRATION=1 npm run test:integration:rpc` against clean Supabase to validate registration creation, duplicate protection, unauthenticated rejection, concurrent capacity behavior, payment review, and check-in.
+2. Execute `GATHERUP_RUN_RPC_INTEGRATION=1 npm run test:integration:rpc` against clean Supabase to validate registration creation, duplicate protection, unauthenticated rejection, concurrent capacity/payment/check-in/seat behavior, refund proof upload, and Storage RLS access boundaries.
 3. Expand the real data service layer beyond public reads: event creation, draft/publish, organizer roles, visibility, capacity, and review gates.
 4. Auth foundation: continue replacing prototype page cookies with durable Supabase SSR/session handling while preserving Bearer token support for API clients.
 5. Validate the new private Storage payment-proof flow against the clean Supabase project with real user sessions.
