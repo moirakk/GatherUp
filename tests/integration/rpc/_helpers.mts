@@ -39,11 +39,20 @@ export function loadRpcIntegrationEnv() {
 
 loadRpcIntegrationEnv();
 
-export const shouldRunRpcIntegration = process.env.GATHERUP_RUN_RPC_INTEGRATION === "1";
+export const rpcIntegrationRequested = process.env.GATHERUP_RUN_RPC_INTEGRATION === "1";
+export const cleanProjectConfirmed = process.env.GATHERUP_RPC_INTEGRATION_TARGET === "clean-dev";
+export const shouldRunRpcIntegration = rpcIntegrationRequested && cleanProjectConfirmed;
 export const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 export const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 export const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 export const requiredEnvConfigured = Boolean(supabaseUrl && anonKey && serviceRoleKey);
+
+if (rpcIntegrationRequested && !cleanProjectConfirmed) {
+  console.warn(
+    "GATHERUP_RUN_RPC_INTEGRATION=1 was set, but RPC integration tests are skipped until " +
+      "GATHERUP_RPC_INTEGRATION_TARGET=clean-dev confirms the target is a disposable dev/staging project."
+  );
+}
 
 export type TestAuthUser = {
   appUserId: string;

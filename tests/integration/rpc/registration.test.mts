@@ -6,7 +6,7 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 import "./_helpers.mts";
 
-const shouldRun = process.env.GATHERUP_RUN_RPC_INTEGRATION === "1";
+const shouldRun = process.env.GATHERUP_RUN_RPC_INTEGRATION === "1" && process.env.GATHERUP_RPC_INTEGRATION_TARGET === "clean-dev";
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
