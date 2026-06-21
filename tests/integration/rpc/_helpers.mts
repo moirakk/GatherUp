@@ -54,6 +54,18 @@ if (rpcIntegrationRequested && !cleanProjectConfirmed) {
   );
 }
 
+if (shouldRunRpcIntegration && !requiredEnvConfigured) {
+  const missingKeys = [
+    ["NEXT_PUBLIC_SUPABASE_URL", supabaseUrl],
+    ["NEXT_PUBLIC_SUPABASE_ANON_KEY", anonKey],
+    ["SUPABASE_SERVICE_ROLE_KEY", serviceRoleKey]
+  ]
+    .filter(([, value]) => !value)
+    .map(([key]) => key);
+
+  console.warn(`RPC integration tests are enabled for clean-dev but skipped because env is missing: ${missingKeys.join(", ")}.`);
+}
+
 export type TestAuthUser = {
   appUserId: string;
   authUserId: string;
