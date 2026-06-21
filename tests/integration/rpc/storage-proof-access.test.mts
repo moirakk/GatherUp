@@ -93,7 +93,10 @@ describe("GatherUp Storage RLS", { skip: !shouldRunRpcIntegration || !requiredEn
 
   after(async () => {
     for (const object of uploadedObjects) {
-      await admin.storage.from(object.bucket).remove([object.path]);
+      const { error } = await admin.storage.from(object.bucket).remove([object.path]);
+      if (error) {
+        console.warn(`Storage RLS cleanup failed for ${object.bucket}/${object.path}: ${error.message}`);
+      }
     }
 
     await cleanupRpcIntegrationData(admin, {

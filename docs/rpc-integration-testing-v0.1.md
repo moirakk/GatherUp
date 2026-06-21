@@ -78,9 +78,10 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=...
 SUPABASE_SERVICE_ROLE_KEY=...
 GATHERUP_RUN_RPC_INTEGRATION=1
 GATHERUP_RPC_INTEGRATION_TARGET=clean-dev
+GATHERUP_RPC_INTEGRATION_ALLOWED_REF=<clean-dev-project-ref>
 ```
 
-The integration helper loads `.env.local` for convenience, without overriding variables already set in the shell. `GATHERUP_RUN_RPC_INTEGRATION=1` and `GATHERUP_RPC_INTEGRATION_TARGET=clean-dev` should still be passed explicitly when running the suite so the tests never touch Supabase by accident. The target marker is intentionally narrow: it confirms the service-role test run is pointed at a disposable clean dev/staging project, not production or a shared live project.
+The integration helper loads `.env.local` for convenience, without overriding variables already set in the shell. `GATHERUP_RUN_RPC_INTEGRATION=1`, `GATHERUP_RPC_INTEGRATION_TARGET=clean-dev`, and `GATHERUP_RPC_INTEGRATION_ALLOWED_REF=<clean-dev-project-ref>` should still be passed explicitly when running the suite so the tests never touch Supabase by accident. The target marker is intentionally narrow: it confirms the service-role test run is pointed at a disposable clean dev/staging project, not production or a shared live project. The allowed ref check binds that marker to the physical Supabase project ref extracted from `NEXT_PUBLIC_SUPABASE_URL`.
 
 The service role key is required only for test setup and cleanup:
 
@@ -117,10 +118,10 @@ git diff --check
 Run the integration test explicitly:
 
 ```bash
-GATHERUP_RUN_RPC_INTEGRATION=1 GATHERUP_RPC_INTEGRATION_TARGET=clean-dev npm run test:integration:rpc
+GATHERUP_RUN_RPC_INTEGRATION=1 GATHERUP_RPC_INTEGRATION_TARGET=clean-dev GATHERUP_RPC_INTEGRATION_ALLOWED_REF=<clean-dev-project-ref> npm run test:integration:rpc
 ```
 
-If `GATHERUP_RUN_RPC_INTEGRATION` is not set to `1`, or `GATHERUP_RPC_INTEGRATION_TARGET` is not set to `clean-dev`, the test suite skips without touching Supabase.
+If `GATHERUP_RUN_RPC_INTEGRATION` is not set to `1`, `GATHERUP_RPC_INTEGRATION_TARGET` is not set to `clean-dev`, or `GATHERUP_RPC_INTEGRATION_ALLOWED_REF` does not match the project ref extracted from `NEXT_PUBLIC_SUPABASE_URL`, the test suite skips without touching Supabase.
 
 ## Expected Result
 

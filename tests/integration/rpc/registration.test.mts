@@ -4,9 +4,9 @@ import { after, before, describe, it } from "node:test";
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
-import "./_helpers.mts";
+import { cleanupRpcIntegrationData, shouldRunRpcIntegration } from "./_helpers.mts";
 
-const shouldRun = process.env.GATHERUP_RUN_RPC_INTEGRATION === "1" && process.env.GATHERUP_RPC_INTEGRATION_TARGET === "clean-dev";
+const shouldRun = shouldRunRpcIntegration;
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -196,17 +196,11 @@ describe("GatherUp RPC integration", { skip: !shouldRun || !requiredEnvConfigure
   });
 
   after(async () => {
-    if (!admin) return;
-
-    if (createdEventIds.length > 0) {
-      await admin.from("events").delete().in("id", createdEventIds);
-    }
-
-    if (createdAppUserIds.length > 0) {
-      await admin.from("users").delete().in("id", createdAppUserIds);
-    }
-
-    await Promise.all(createdAuthUserIds.map((userId) => admin.auth.admin.deleteUser(userId)));
+    await cleanupRpcIntegrationData(admin, {
+      eventIds: createdEventIds,
+      appUserIds: createdAppUserIds,
+      authUserIds: createdAuthUserIds
+    });
   });
 
   it("rejects unauthenticated calls", async () => {

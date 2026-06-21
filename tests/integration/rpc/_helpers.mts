@@ -39,12 +39,29 @@ export function loadRpcIntegrationEnv() {
 
 loadRpcIntegrationEnv();
 
+function extractSupabaseProjectRef(url: string | undefined) {
+  if (!url) {
+    return "";
+  }
+
+  try {
+    const hostname = new URL(url).hostname;
+    const match = hostname.match(/^([a-z0-9]+)\.supabase\.co$/i);
+    return match?.[1] ?? "";
+  } catch {
+    return "";
+  }
+}
+
 export const rpcIntegrationRequested = process.env.GATHERUP_RUN_RPC_INTEGRATION === "1";
 export const cleanProjectConfirmed = process.env.GATHERUP_RPC_INTEGRATION_TARGET === "clean-dev";
-export const shouldRunRpcIntegration = rpcIntegrationRequested && cleanProjectConfirmed;
 export const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 export const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 export const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+export const expectedProjectRef = process.env.GATHERUP_RPC_INTEGRATION_ALLOWED_REF;
+export const actualProjectRef = extractSupabaseProjectRef(supabaseUrl);
+export const projectRefAllowed = Boolean(expectedProjectRef && actualProjectRef && expectedProjectRef === actualProjectRef);
+export const shouldRunRpcIntegration = rpcIntegrationRequested && cleanProjectConfirmed && projectRefAllowed;
 export const requiredEnvConfigured = Boolean(supabaseUrl && anonKey && serviceRoleKey);
 
 if (rpcIntegrationRequested && !cleanProjectConfirmed) {
@@ -64,6 +81,15 @@ if (shouldRunRpcIntegration && !requiredEnvConfigured) {
     .map(([key]) => key);
 
   console.warn(`RPC integration tests are enabled for clean-dev but skipped because env is missing: ${missingKeys.join(", ")}.`);
+}
+
+if (rpcIntegrationRequested && cleanProjectConfirmed && !projectRefAllowed) {
+  console.warn(
+    "GATHERUP_RUN_RPC_INTEGRATION=1 and GATHERUP_RPC_INTEGRATION_TARGET=clean-dev were set, but RPC integration tests are skipped until " +
+      `GATHERUP_RPC_INTEGRATION_ALLOWED_REF matches NEXT_PUBLIC_SUPABASE_URL. expected=${expectedProjectRef || "missing"} actual=${
+        actualProjectRef || "unrecognized"
+      }.`
+  );
 }
 
 export type TestAuthUser = {
@@ -305,12 +331,25 @@ export async function cleanupRpcIntegrationData(
   if (!admin) return;
 
   if (ids.eventIds.length > 0) {
-    await admin.from("events").delete().in("id", ids.eventIds);
+    const { error } = await admin.from("events").delete().in("id", ids.eventIds);
+    if (error) {
+      console.warn(`RPC integration cleanup failed for events: ${error.message}`);
+    }
   }
 
   if (ids.appUserIds.length > 0) {
-    await admin.from("users").delete().in("id", ids.appUserIds);
+    const { error } = await admin.from("users").delete().in("id", ids.appUserIds);
+    if (error) {
+      console.warn(`RPC integration cleanup failed for users: ${error.message}`);
+    }
   }
 
-  await Promise.all(ids.authUserIds.map((userId) => admin.auth.admin.deleteUser(userId)));
+  await Promise.all(
+    ids.authUserIds.map(async (userId) => {
+      const { error } = await admin.auth.admin.deleteUser(userId);
+      if (error) {
+        console.warn(`RPC integration cleanup failed for auth user ${userId}: ${error.message}`);
+      }
+    })
+  );
 }
