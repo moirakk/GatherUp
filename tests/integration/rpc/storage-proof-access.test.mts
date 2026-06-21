@@ -56,8 +56,6 @@ describe("GatherUp Storage RLS", { skip: !shouldRunRpcIntegration || !requiredEn
   let cohostClient: SupabaseClient;
   let registrationOwnerClient: SupabaseClient;
   let outsiderClient: SupabaseClient;
-  let paymentEventId: string;
-  let refundEventId: string;
 
   const suffix = randomUUID().replaceAll("-", "").slice(0, 10);
   const createdAuthUserIds: string[] = [];
@@ -74,16 +72,6 @@ describe("GatherUp Storage RLS", { skip: !shouldRunRpcIntegration || !requiredEn
     outsider = await createAuthAndAppUser(admin, suffix, "st-outsider");
     createdAuthUserIds.push(owner.authUserId, cohostNoPermission.authUserId, registrationOwner.authUserId, outsider.authUserId);
     createdAppUserIds.push(owner.appUserId, cohostNoPermission.appUserId, registrationOwner.appUserId, outsider.appUserId);
-
-    paymentEventId = await createEvent(admin, owner, suffix, "st-payment", 5);
-    refundEventId = await createEvent(admin, owner, suffix, "st-refund", 5);
-    createdEventIds.push(paymentEventId, refundEventId);
-
-    // Deliberately a cohost WITHOUT can_manage_payments, on both events, so
-    // the read tests below confirm the default-deny behavior rather than
-    // accidentally testing a cohost who happens to have access.
-    await addEventOrganizer(admin, paymentEventId, cohostNoPermission.appUserId, "cohost", {});
-    await addEventOrganizer(admin, refundEventId, cohostNoPermission.appUserId, "cohost", { can_manage_payments: true });
 
     ownerClient = await makeSignedInClient(owner.email, owner.password);
     cohostClient = await makeSignedInClient(cohostNoPermission.email, cohostNoPermission.password);
@@ -106,11 +94,14 @@ describe("GatherUp Storage RLS", { skip: !shouldRunRpcIntegration || !requiredEn
     });
   });
 
-  it("only lets the registration owner upload to their own payment-proofs path", async () => {
-    const createResult = await registrationOwnerClient.rpc(
-      "create_registration_atomic",
-      rpcPayload(paymentEventId, "storage-upload-owner")
-    );
+  async function createTestEvent(label: string) {
+    const eventId = await createEvent(admin, owner, suffix, label, 5);
+    createdEventIds.push(eventId);
+    return eventId;
+  }
+
+  async function createPendingRegistration(client: SupabaseClient, eventId: string, nickname: string) {
+    const createResult = await client.rpc("create_registration_atomic", rpcPayload(eventId, nickname));
 
     assert.ifError(createResult.error);
     assert.equal(createResult.data?.success, true);
@@ -125,7 +116,14 @@ describe("GatherUp Storage RLS", { skip: !shouldRunRpcIntegration || !requiredEn
     assert.ifError(paymentError);
     assert.ok(payment?.id);
 
-    const path = `${paymentEventId}/${registrationId}/${payment.id}/owner-upload.png`;
+    return { registrationId, paymentId: payment.id as string };
+  }
+
+  it("only lets the registration owner upload to their own payment-proofs path", async () => {
+    const eventId = await createTestEvent("st-pay-own");
+    const { registrationId, paymentId } = await createPendingRegistration(registrationOwnerClient, eventId, "storage-upload-owner");
+
+    const path = `${eventId}/${registrationId}/${paymentId}/owner-upload.png`;
 
     const outsiderAttempt = await uploadFixture(outsiderClient, "payment-proofs", path);
     assert.ok(outsiderAttempt.error, "An outsider must not be able to upload into someone else's payment-proofs path.");
@@ -136,16 +134,19 @@ describe("GatherUp Storage RLS", { skip: !shouldRunRpcIntegration || !requiredEn
   });
 
   it("restricts payment-proofs reads to the order owner and payment managers, not a permission-less cohost", async () => {
+    const eventId = await createTestEvent("st-pay-read");
+    await addEventOrganizer(admin, eventId, cohostNoPermission.appUserId, "cohost", {});
+
     const { registrationId, paymentId } = await createConfirmedRegistration(
       registrationOwnerClient,
       admin,
       ownerClient,
-      paymentEventId,
+      eventId,
       registrationOwner.appUserId,
       "storage-read-payment"
     );
 
-    const path = `${paymentEventId}/${registrationId}/${paymentId}/read-check.png`;
+    const path = `${eventId}/${registrationId}/${paymentId}/read-check.png`;
     const upload = await admin.storage.from("payment-proofs").upload(path, fixtureBytes, {
       contentType: "image/png",
       upsert: false
@@ -169,11 +170,13 @@ describe("GatherUp Storage RLS", { skip: !shouldRunRpcIntegration || !requiredEn
   });
 
   it("never lets a participant upload their own refund-proofs file, only refund managers", async () => {
+    const eventId = await createTestEvent("st-ref-up");
+
     const { registrationId } = await createConfirmedRegistration(
       registrationOwnerClient,
       admin,
       ownerClient,
-      refundEventId,
+      eventId,
       registrationOwner.appUserId,
       "storage-refund-upload"
     );
@@ -188,7 +191,7 @@ describe("GatherUp Storage RLS", { skip: !shouldRunRpcIntegration || !requiredEn
     assert.equal(refundRequestResult.data?.success, true);
 
     const refundRequestId = refundRequestResult.data.refund_request_id as string;
-    const path = `${refundEventId}/${refundRequestId}/upload-check.png`;
+    const path = `${eventId}/${refundRequestId}/upload-check.png`;
 
     const participantAttempt = await uploadFixture(registrationOwnerClient, "refund-proofs", path);
     assert.ok(
@@ -202,11 +205,14 @@ describe("GatherUp Storage RLS", { skip: !shouldRunRpcIntegration || !requiredEn
   });
 
   it("restricts refund-proofs reads to the order owner and refund managers, excluding cohost even with payment permissions", async () => {
+    const eventId = await createTestEvent("st-ref-read");
+    await addEventOrganizer(admin, eventId, cohostNoPermission.appUserId, "cohost", { can_manage_payments: true });
+
     const { registrationId } = await createConfirmedRegistration(
       registrationOwnerClient,
       admin,
       ownerClient,
-      refundEventId,
+      eventId,
       registrationOwner.appUserId,
       "storage-refund-read"
     );
@@ -221,7 +227,7 @@ describe("GatherUp Storage RLS", { skip: !shouldRunRpcIntegration || !requiredEn
     assert.equal(refundRequestResult.data?.success, true);
 
     const refundRequestId = refundRequestResult.data.refund_request_id as string;
-    const path = `${refundEventId}/${refundRequestId}/read-check.png`;
+    const path = `${eventId}/${refundRequestId}/read-check.png`;
     const upload = await admin.storage.from("refund-proofs").upload(path, fixtureBytes, {
       contentType: "image/png",
       upsert: false
@@ -246,5 +252,108 @@ describe("GatherUp Storage RLS", { skip: !shouldRunRpcIntegration || !requiredEn
       false,
       "can_handle_event_refunds only grants owner/finance -- a cohost must stay locked out of refund proofs even with can_manage_payments = true."
     );
+  });
+
+  it("blocks same-event participants from uploading into another participant's payment-proofs path", async () => {
+    const eventId = await createTestEvent("st-pay-peer");
+    const victim = await createPendingRegistration(registrationOwnerClient, eventId, "storage-victim");
+    const attacker = await createPendingRegistration(outsiderClient, eventId, "storage-attacker");
+
+    const victimPath = `${eventId}/${victim.registrationId}/${victim.paymentId}/peer-attack.png`;
+    const attackerPath = `${eventId}/${attacker.registrationId}/${attacker.paymentId}/attacker-own.png`;
+
+    const peerAttempt = await uploadFixture(outsiderClient, "payment-proofs", victimPath);
+    assert.ok(
+      peerAttempt.error,
+      "A participant in the same event must still be unable to upload proof into another registration/payment path."
+    );
+
+    const ownAttempt = await uploadFixture(outsiderClient, "payment-proofs", attackerPath);
+    assert.ifError(ownAttempt.error);
+    uploadedObjects.push({ bucket: "payment-proofs", path: attackerPath });
+  });
+
+  it("blocks replacement payment-proof uploads after the order is confirmed", async () => {
+    const eventId = await createTestEvent("st-pay-lock");
+    const { registrationId, paymentId } = await createConfirmedRegistration(
+      registrationOwnerClient,
+      admin,
+      ownerClient,
+      eventId,
+      registrationOwner.appUserId,
+      "storage-confirmed-no-reupload"
+    );
+
+    const path = `${eventId}/${registrationId}/${paymentId}/after-confirmed.png`;
+    const upload = await uploadFixture(registrationOwnerClient, "payment-proofs", path);
+
+    assert.ok(upload.error, "A confirmed registration must not accept new participant-uploaded payment proofs.");
+  });
+
+  it("rejects malformed proof paths before they can match a Storage policy", async () => {
+    const badPaymentPath = "not-a-uuid/not-a-registration/not-a-payment/bad-payment.png";
+    const badRefundPath = "not-a-uuid/not-a-refund/bad-refund.png";
+
+    const paymentAttempt = await uploadFixture(registrationOwnerClient, "payment-proofs", badPaymentPath);
+    assert.ok(paymentAttempt.error, "Malformed payment-proof paths must be rejected by Storage RLS.");
+
+    const refundAttempt = await uploadFixture(ownerClient, "refund-proofs", badRefundPath);
+    assert.ok(refundAttempt.error, "Malformed refund-proof paths must be rejected by Storage RLS.");
+  });
+
+  it("keeps payment-proof objects immutable for authenticated participants", async () => {
+    const eventId = await createTestEvent("st-pay-imm");
+    const { registrationId, paymentId } = await createPendingRegistration(registrationOwnerClient, eventId, "storage-payment-immutable");
+    const path = `${eventId}/${registrationId}/${paymentId}/immutable.png`;
+    const upload = await uploadFixture(registrationOwnerClient, "payment-proofs", path);
+
+    assert.ifError(upload.error);
+    uploadedObjects.push({ bucket: "payment-proofs", path });
+
+    const update = await registrationOwnerClient.storage.from("payment-proofs").update(path, Buffer.from("changed"), {
+      contentType: "image/png",
+      upsert: true
+    });
+    assert.ok(update.error, "Payment proofs must not be mutable after upload.");
+
+    const remove = await registrationOwnerClient.storage.from("payment-proofs").remove([path]);
+    assert.ok(remove.error, "Payment proofs must not be deletable by authenticated participants.");
+  });
+
+  it("keeps refund-proof objects immutable for authenticated refund managers", async () => {
+    const eventId = await createTestEvent("st-ref-imm");
+    const { registrationId } = await createConfirmedRegistration(
+      registrationOwnerClient,
+      admin,
+      ownerClient,
+      eventId,
+      registrationOwner.appUserId,
+      "storage-refund-immutable"
+    );
+
+    const refundRequestResult = await registrationOwnerClient.rpc("request_refund_atomic", {
+      p_registration_id: registrationId,
+      p_requested_amount_cents: 100,
+      p_reason: "storage integration test immutable refund proof"
+    });
+
+    assert.ifError(refundRequestResult.error);
+    assert.equal(refundRequestResult.data?.success, true);
+
+    const refundRequestId = refundRequestResult.data.refund_request_id as string;
+    const path = `${eventId}/${refundRequestId}/immutable.png`;
+    const upload = await uploadFixture(ownerClient, "refund-proofs", path);
+
+    assert.ifError(upload.error);
+    uploadedObjects.push({ bucket: "refund-proofs", path });
+
+    const update = await ownerClient.storage.from("refund-proofs").update(path, Buffer.from("changed"), {
+      contentType: "image/png",
+      upsert: true
+    });
+    assert.ok(update.error, "Refund proofs must not be mutable after upload.");
+
+    const remove = await ownerClient.storage.from("refund-proofs").remove([path]);
+    assert.ok(remove.error, "Refund proofs must not be deletable by authenticated refund managers.");
   });
 });

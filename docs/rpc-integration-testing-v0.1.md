@@ -64,7 +64,13 @@ It also validates the audited refund RPC chain after payment confirmation:
 - payment proof upload is limited to the registration owner and the policy path `{event_id}/{registration_id}/{payment_id}/{filename}`;
 - payment proof reads are limited to the order owner and payment managers;
 - refund proof upload is limited to refund managers, not the participant;
-- refund proof reads are limited to the order owner and refund managers, with cohost payment permission intentionally kept separate from refund permission.
+- refund proof reads are limited to the order owner and refund managers, with cohost payment permission intentionally kept separate from refund permission;
+- same-event participants cannot upload into another participant's payment-proof path;
+- confirmed orders cannot receive replacement participant payment-proof uploads;
+- malformed proof paths are rejected before they can match a Storage policy;
+- payment-proof and refund-proof objects are immutable to authenticated non-service clients after upload.
+
+Each Storage test creates its own temporary event so registration idempotency and order state from one case cannot leak into another.
 
 ## Required Environment
 
@@ -145,6 +151,11 @@ GatherUp Storage RLS
   ✔ restricts payment-proofs reads to the order owner and payment managers, not a permission-less cohost
   ✔ never lets a participant upload their own refund-proofs file, only refund managers
   ✔ restricts refund-proofs reads to the order owner and refund managers, excluding cohost even with payment permissions
+  ✔ blocks same-event participants from uploading into another participant's payment-proofs path
+  ✔ blocks replacement payment-proof uploads after the order is confirmed
+  ✔ rejects malformed proof paths before they can match a Storage policy
+  ✔ keeps payment-proof objects immutable for authenticated participants
+  ✔ keeps refund-proof objects immutable for authenticated refund managers
 ```
 
 Expected database side effects after cleanup:

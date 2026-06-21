@@ -87,7 +87,7 @@ Supabase live 状态：
 - API Route 认证已统一到底层 helper：外部/API 客户端可继续传 Supabase Bearer token；同源浏览器请求也可使用 Supabase SSR session cookie 获取用户和 authenticated Supabase client。
 - 已新增 `create_registration_atomic` 数据库 RPC 草案：通过 `public.current_app_user_id()` 获取真实用户，锁定活动行校验容量，用 `event_order_counters.current_number` 原子生成订单号，并在同一事务路径中写入 `registrations`、主参与人和 payment stub。
 - `/api/orders` 已改为 authenticated Supabase client 调用 RPC；前端可附带 access token，同源浏览器请求也可走 SSR session cookie，让数据库内的 `auth.uid()` 和 `current_app_user_id()` 可用。
-- 已新增 opt-in 真实 Supabase RPC 集成测试入口：`GATHERUP_RUN_RPC_INTEGRATION=1 GATHERUP_RPC_INTEGRATION_TARGET=clean-dev GATHERUP_RPC_INTEGRATION_ALLOWED_REF=<clean-dev-project-ref> npm run test:integration:rpc` 会创建隔离临时 Auth 用户和活动，验证 `create_registration_atomic` 的匿名拒绝、正常创建、重复报名拒绝和并发防超卖行为，并验证 `review_payment_atomic` 可审核已提交付款的订单、`check_in_order_atomic` 可核销已确认订单、退款申请/审核/凭证上传三段 RPC 可完成状态推进，最后清理测试数据。
+- 已新增 opt-in 真实 Supabase RPC 集成测试入口：`GATHERUP_RUN_RPC_INTEGRATION=1 GATHERUP_RPC_INTEGRATION_TARGET=clean-dev GATHERUP_RPC_INTEGRATION_ALLOWED_REF=<clean-dev-project-ref> npm run test:integration:rpc` 会创建隔离临时 Auth 用户和活动，验证 `create_registration_atomic` 的匿名拒绝、正常创建、重复报名拒绝和并发防超卖行为，并验证 `review_payment_atomic` 可审核已提交付款的订单、`check_in_order_atomic` 可核销已确认订单、退款申请/审核/凭证上传三段 RPC 可完成状态推进，以及付款/退款凭证 Storage RLS 的跨用户路径隔离、确认后拒绝补传、畸形路径拒绝和对象不可变边界，最后清理测试数据。
 - 已新增 `src/domain/status-machine.ts` 作为第一版统一状态机底座：覆盖报名、付款、退款和签到工作流，并用测试反查 `supabase/schema.sql` 的 enum，防止应用层状态规则和数据库契约分叉。
 - 已新增 `src/domain/workflow-events.ts` 作为状态变化事件契约：合法状态跳转可统一派生 `auditAction`、`notificationType`、目标受众和风险级别，为后续通知中心、审计事件和 Dashboard 聚合打底。
 - 已新增 `src/domain/notification-queue.ts` 作为通知队列契约：可把 workflow event 转成站内/邮件/微信 channel 的待投递通知项，并提供 `toNotificationDeliveryInsert()` 映射到 Supabase insert payload。

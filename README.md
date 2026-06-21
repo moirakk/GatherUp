@@ -189,11 +189,11 @@ GatherUp is intentionally being moved from a prototype into a reliable product f
 - Refund request RPC writes in-app review notifications for event refund managers.
 - Refund review RPC writes participant in-app notifications when refund requests are approved or rejected.
 - Refund proof upload RPC writes participant in-app notifications after transfer proof is recorded.
-- Opt-in real Supabase RPC integration tests for registration creation, duplicate protection, capacity contention, payment review, check-in, refund request/review/proof upload, concurrent payment/check-in/seat races, and private Storage proof access.
+- Opt-in real Supabase RPC integration tests for registration creation, duplicate protection, capacity contention, payment review, check-in, refund request/review/proof upload, concurrent payment/check-in/seat races, and private Storage proof access including cross-user path isolation, post-confirmation upload denial, malformed path denial, and proof immutability.
 - Database-first transactional design for sensitive workflows: registration, payment review, seat locking, check-in, and refunds are represented as PostgreSQL RPC paths rather than loose client-side state changes.
 - Supabase SSR middleware and Bearer-token API support so browser sessions and external API calls share the same verified identity model.
 - API route authentication is guarded by a directory-scanning contract test: every `src/app/api/**/route.ts` file must call the shared Supabase server auth helpers inside the handler because middleware intentionally lets `/api` requests reach route-level authorization.
-- Private Storage path contracts for sensitive proof files, including payment proofs and refund proofs.
+- Private Storage path contracts for sensitive proof files, including payment proofs and refund proofs, with integration coverage for owner/manager reads, participant upload boundaries, refund-role separation, malformed paths, and no update/delete policies.
 - Documentation-first runbooks for clean Supabase project execution, validation logging, and future service-layer expansion.
 
 Current local verification:
