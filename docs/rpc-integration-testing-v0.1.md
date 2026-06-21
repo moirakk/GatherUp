@@ -79,6 +79,8 @@ SUPABASE_SERVICE_ROLE_KEY=...
 GATHERUP_RUN_RPC_INTEGRATION=1
 ```
 
+The integration helper loads `.env.local` for convenience, without overriding variables already set in the shell. `GATHERUP_RUN_RPC_INTEGRATION=1` should still be passed explicitly when running the suite so the tests never touch Supabase by accident.
+
 The service role key is required only for test setup and cleanup:
 
 - create temporary Supabase Auth users;
