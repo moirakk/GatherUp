@@ -248,6 +248,8 @@ GATHERUP_RUN_RPC_INTEGRATION=1 GATHERUP_RPC_INTEGRATION_TARGET=clean-dev npm run
 
 This requires `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, and `SUPABASE_SERVICE_ROLE_KEY`. The test creates isolated temporary Supabase Auth users and events, validates `create_registration_atomic`, `review_payment_atomic`, `check_in_order_atomic`, and the refund request/review/proof-upload RPC chain, then cleans up.
 
+Use the clean dev/staging project service role key only. Do not run the opt-in integration suite against production or a shared live database.
+
 The project currently recommends `dev:webpack` for local preview because it has been more stable than Turbopack dev mode in this workspace.
 
 ## Demo Account
