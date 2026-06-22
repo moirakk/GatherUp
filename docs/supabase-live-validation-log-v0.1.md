@@ -379,6 +379,38 @@ Next required action:
 2. Re-run the RPC integration command above.
 3. If tests fail later in the workflow, record the next concrete failure here.
 
+## 2026-06-22 Service-Role Grant Patch Result
+
+Target project:
+
+- `gatherup-commercial-v01-validation`
+- Project ref: `oxbrxkllftyevlzmiydt`
+
+Script executed:
+
+- `supabase/validation/09-service-role-grants.sql`
+
+Observed result:
+
+| check_name | ok |
+| --- | --- |
+| `service_role_can_use_public_schema` | true |
+| `service_role_can_insert_users` | true |
+| `service_role_can_manage_events` | true |
+| `registration_rpc_exists` | false |
+| `service_role_can_execute_registration_rpc` | false |
+
+Interpretation:
+
+- The service-role grant blocker is fixed.
+- The clean validation project does not currently contain the latest `public.create_registration_atomic` RPC.
+- The database is therefore not on the latest `supabase/schema.sql` contract yet.
+
+Follow-up:
+
+1. Updated `supabase/validation/08-create-registration-rpc-contract.sql` so missing RPCs report `ok = false` instead of causing SQL execution to fail.
+2. Next required database step is to apply the current schema/RPC definitions to the clean validation project before running `npm run test:integration:rpc` again.
+
 ## 2026-06-12 First Supabase-Backed Public Reads
 
 Local application changes completed:
