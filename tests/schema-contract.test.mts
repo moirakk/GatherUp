@@ -653,7 +653,7 @@ describe("commercial storage contract", () => {
     expectSql(storageSql, "public.can_manage_event_finance");
     expectSql(storageSql, "public.is_platform_admin");
     expectSql(storageSql, "public.current_app_user_id");
-    expectSql(storageSql, "as restrictive");
-    expectSql(storageSql, "on storage.objects for delete");
+    expectSql(storageSql, "on storage.objects as restrictive for update");
+    expectSql(storageSql, "on storage.objects as restrictive for delete");
   });
 });

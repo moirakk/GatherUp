@@ -82,28 +82,24 @@ $$ language plpgsql;
 
 drop policy if exists "payment proof files are immutable" on storage.objects;
 create policy "payment proof files are immutable"
-  as restrictive
-  on storage.objects for update
+  on storage.objects as restrictive for update
   using (bucket_id <> 'payment-proofs')
   with check (bucket_id <> 'payment-proofs');
 
 drop policy if exists "payment proof files cannot be deleted" on storage.objects;
 create policy "payment proof files cannot be deleted"
-  as restrictive
-  on storage.objects for delete
+  on storage.objects as restrictive for delete
   using (bucket_id <> 'payment-proofs');
 
 drop policy if exists "refund proof files are immutable" on storage.objects;
 create policy "refund proof files are immutable"
-  as restrictive
-  on storage.objects for update
+  on storage.objects as restrictive for update
   using (bucket_id <> 'refund-proofs')
   with check (bucket_id <> 'refund-proofs');
 
 drop policy if exists "refund proof files cannot be deleted" on storage.objects;
 create policy "refund proof files cannot be deleted"
-  as restrictive
-  on storage.objects for delete
+  on storage.objects as restrictive for delete
   using (bucket_id <> 'refund-proofs');
 
 with trigger_source as (
