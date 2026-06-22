@@ -492,6 +492,7 @@ describe("commercial schema contract", () => {
     expectSql(schema, "join public.registrations r on r.id = rr.registration_id");
     expectSql(schema, "join public.payments p on p.id = rr.payment_id");
     expectSql(schema, "for update of rr, r, p;");
+    expectSql(schema, "rr.requested_by");
     expectSql(schema, "public.can_handle_event_refunds(v_refund.event_id)");
     expectSql(schema, "v_refund.refund_status <> 'approved'");
     expectSql(schema, "insert into public.refund_proofs");

@@ -2728,6 +2728,7 @@ begin
     rr.registration_id,
     rr.payment_id,
     rr.status as refund_status,
+    rr.requested_by,
     rr.requested_amount_cents,
     rr.approved_amount_cents,
     r.event_id,

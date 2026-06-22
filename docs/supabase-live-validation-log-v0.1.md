@@ -487,6 +487,59 @@ Next required action:
 2. Confirm the final result rows are all `ok = true`.
 3. Re-run the opt-in RPC integration suite.
 
+## 2026-06-22 Second Real RPC Integration Run
+
+Target project:
+
+- `gatherup-commercial-v01-validation`
+- Project ref: `oxbrxkllftyevlzmiydt`
+
+Preconditions completed:
+
+- `10-payment-proof-submission-and-storage-immutability.sql`: all checks true.
+
+Command:
+
+```bash
+GATHERUP_RUN_RPC_INTEGRATION=1 GATHERUP_RPC_INTEGRATION_TARGET=clean-dev GATHERUP_RPC_INTEGRATION_ALLOWED_REF=oxbrxkllftyevlzmiydt npm run test:integration:rpc
+```
+
+Observed result:
+
+- 19 integration tests ran.
+- 16 passed.
+- 3 failed.
+
+Confirmed newly working:
+
+- Concurrent payment review race.
+- Concurrent check-in race.
+- Concurrent seat lock race.
+- Payment review RPC happy path.
+- Check-in RPC happy path.
+- Payment/refund proof read boundaries.
+- Confirmed orders reject replacement payment-proof uploads.
+
+Remaining failures:
+
+1. `record_refund_proof_atomic` returned `success = false` after refund approval.
+   - Root cause: the function writes a notification to `v_refund.requested_by` but did not select `rr.requested_by` into the record.
+2. Storage delete calls can return success-like responses even when the product guarantee should be object persistence.
+   - Test assertion updated to verify the object remains readable after an authenticated delete attempt, rather than requiring the SDK call to expose an error.
+
+Fix prepared:
+
+1. `supabase/schema.sql` now selects `rr.requested_by` inside `record_refund_proof_atomic`.
+2. `supabase/validation/11-record-refund-proof-requested-by.sql` patches the current clean validation project.
+3. `tests/schema-contract.test.mts` now guards the `rr.requested_by` selection.
+4. `tests/integration/rpc/storage-proof-access.test.mts` now verifies persistence after delete attempts.
+
+Next required action:
+
+1. Run `supabase/validation/11-record-refund-proof-requested-by.sql` in the Supabase SQL Editor.
+2. Confirm the final result row is `ok = true`.
+3. Re-run the opt-in RPC integration suite.
+
 ## 2026-06-12 First Supabase-Backed Public Reads
 
 Local application changes completed:

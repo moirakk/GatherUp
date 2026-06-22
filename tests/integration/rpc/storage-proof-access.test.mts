@@ -317,7 +317,11 @@ describe("GatherUp Storage RLS", { skip: !shouldRunRpcIntegration || !requiredEn
     assert.ok(update.error, "Payment proofs must not be mutable after upload.");
 
     const remove = await registrationOwnerClient.storage.from("payment-proofs").remove([path]);
-    assert.ok(remove.error, "Payment proofs must not be deletable by authenticated participants.");
+    assert.equal(
+      await canRead(registrationOwnerClient, "payment-proofs", path),
+      true,
+      `Payment proofs must remain readable after an authenticated participant delete attempt. removeError=${remove.error?.message ?? "none"}`
+    );
   });
 
   it("keeps refund-proof objects immutable for authenticated refund managers", async () => {
@@ -354,6 +358,10 @@ describe("GatherUp Storage RLS", { skip: !shouldRunRpcIntegration || !requiredEn
     assert.ok(update.error, "Refund proofs must not be mutable after upload.");
 
     const remove = await ownerClient.storage.from("refund-proofs").remove([path]);
-    assert.ok(remove.error, "Refund proofs must not be deletable by authenticated refund managers.");
+    assert.equal(
+      await canRead(ownerClient, "refund-proofs", path),
+      true,
+      `Refund proofs must remain readable after an authenticated refund-manager delete attempt. removeError=${remove.error?.message ?? "none"}`
+    );
   });
 });
