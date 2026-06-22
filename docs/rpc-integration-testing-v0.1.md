@@ -103,11 +103,13 @@ Application behavior still uses authenticated user clients for the RPC calls und
 Before running integration tests, the clean Supabase project should have already executed:
 
 ```text
+supabase/validation/00-reset-clean-validation-project.sql
 supabase/schema.sql
 supabase/seed.sql
 supabase/storage.sql
 supabase/validation/06-public-read-grants.sql
 supabase/validation/09-service-role-grants.sql
+supabase/validation/08-create-registration-rpc-contract.sql
 supabase/validation/07-clean-dev-post-execution-summary.sql
 ```
 

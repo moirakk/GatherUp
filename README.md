@@ -319,7 +319,7 @@ Every core feature should be implemented in this order:
 
 Recommended order:
 
-1. Run `supabase/validation/06-public-read-grants.sql`, `09-service-role-grants.sql`, and `07-clean-dev-post-execution-summary.sql` in the clean Supabase project and record the results.
+1. Reset and rebuild the clean Supabase validation project with `00-reset-clean-validation-project.sql`, then run `schema.sql`, `seed.sql`, `storage.sql`, `06-public-read-grants.sql`, `09-service-role-grants.sql`, `08-create-registration-rpc-contract.sql`, and `07-clean-dev-post-execution-summary.sql` in order.
 2. Execute `GATHERUP_RUN_RPC_INTEGRATION=1 GATHERUP_RPC_INTEGRATION_TARGET=clean-dev GATHERUP_RPC_INTEGRATION_ALLOWED_REF=<clean-dev-project-ref> npm run test:integration:rpc` against clean Supabase to validate registration creation, duplicate protection, unauthenticated rejection, concurrent capacity/payment/check-in/seat behavior, refund proof upload, and Storage RLS access boundaries.
 3. Expand the real data service layer beyond public reads: event creation, draft/publish, organizer roles, visibility, capacity, and review gates.
 4. Auth foundation: continue replacing prototype page cookies with durable Supabase SSR/session handling while preserving Bearer token support for API clients.

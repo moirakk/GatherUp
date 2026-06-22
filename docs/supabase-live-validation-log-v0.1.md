@@ -409,7 +409,20 @@ Interpretation:
 Follow-up:
 
 1. Updated `supabase/validation/08-create-registration-rpc-contract.sql` so missing RPCs report `ok = false` instead of causing SQL execution to fail.
-2. Next required database step is to apply the current schema/RPC definitions to the clean validation project before running `npm run test:integration:rpc` again.
+2. Added `supabase/validation/00-reset-clean-validation-project.sql` for the chosen reset-and-rebuild path.
+3. Next required database step is to reset the clean validation project and reapply the current schema/RPC definitions before running `npm run test:integration:rpc` again.
+
+Chosen recovery path:
+
+1. Run `supabase/validation/00-reset-clean-validation-project.sql`.
+2. Run `supabase/schema.sql`.
+3. Run `supabase/seed.sql`.
+4. Run `supabase/storage.sql`.
+5. Run `supabase/validation/06-public-read-grants.sql`.
+6. Run `supabase/validation/09-service-role-grants.sql`.
+7. Run `supabase/validation/08-create-registration-rpc-contract.sql`.
+8. Run `supabase/validation/07-clean-dev-post-execution-summary.sql`.
+9. Re-run the opt-in RPC integration suite from local Codex.
 
 ## 2026-06-12 First Supabase-Backed Public Reads
 
