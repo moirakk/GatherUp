@@ -38,10 +38,23 @@ select
   has_table_privilege('service_role', 'public.events', 'select, insert, update, delete')
 union all
 select
+  'registration_rpc_exists',
+  exists (
+    select 1
+    from pg_catalog.pg_proc p
+    join pg_catalog.pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public'
+      and p.proname = 'create_registration_atomic'
+  )
+union all
+select
   'service_role_can_execute_registration_rpc',
-  has_function_privilege(
-    'service_role',
-    'public.create_registration_atomic(uuid, text, contact_type, text, integer, jsonb, text)',
-    'execute'
+  exists (
+    select 1
+    from pg_catalog.pg_proc p
+    join pg_catalog.pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public'
+      and p.proname = 'create_registration_atomic'
+      and has_function_privilege('service_role', p.oid, 'execute')
   )
 order by check_name;
