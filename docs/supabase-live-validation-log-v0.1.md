@@ -424,6 +424,69 @@ Chosen recovery path:
 8. Run `supabase/validation/07-clean-dev-post-execution-summary.sql`.
 9. Re-run the opt-in RPC integration suite from local Codex.
 
+## 2026-06-22 First Real RPC Integration Run After Clean Rebuild
+
+Target project:
+
+- `gatherup-commercial-v01-validation`
+- Project ref: `oxbrxkllftyevlzmiydt`
+
+Preconditions completed:
+
+- `00-reset-clean-validation-project.sql`: success.
+- `schema.sql`: success.
+- `seed.sql`: success.
+- `storage.sql`: success.
+- `06-public-read-grants.sql`: success.
+- `09-service-role-grants.sql`: all checks true.
+- `08-create-registration-rpc-contract.sql`: all checks true.
+- `07-clean-dev-post-execution-summary.sql`: all checks true.
+
+Command:
+
+```bash
+GATHERUP_RUN_RPC_INTEGRATION=1 GATHERUP_RPC_INTEGRATION_TARGET=clean-dev GATHERUP_RPC_INTEGRATION_ALLOWED_REF=oxbrxkllftyevlzmiydt npm run test:integration:rpc
+```
+
+Observed result:
+
+- 19 integration tests ran.
+- 7 passed.
+- 12 failed.
+
+Confirmed working:
+
+- Anonymous registration RPC calls are rejected.
+- Authenticated registration creation works.
+- Duplicate active registration rejection works.
+- Capacity contention protection works.
+- Basic payment-proof Storage upload owner boundary works.
+- Same-event participant path isolation works.
+- Malformed Storage proof paths are rejected.
+
+Primary failure cluster:
+
+- Inserting `payment_proofs` did not move the related registration from `awaiting_payment` to `payment_submitted`.
+- This caused payment review, check-in, refund, concurrency, and several Storage read/refund tests to fail downstream.
+
+Secondary Storage failure:
+
+- A participant-uploaded payment proof object could be deleted by the authenticated participant client.
+- Sensitive payment/refund proof objects need explicit restrictive update/delete policies in Storage, not only the absence of local delete policies.
+
+Fix prepared:
+
+1. `supabase/schema.sql` now updates `registrations.status` to `payment_submitted` inside `mark_payment_submitted_from_proof()`.
+2. `supabase/storage.sql` now adds restrictive update/delete policies for `payment-proofs` and `refund-proofs`.
+3. `supabase/validation/10-payment-proof-submission-and-storage-immutability.sql` patches the current clean validation project without another reset.
+4. `tests/schema-contract.test.mts` now guards both the registration status update and proof immutability policy names.
+
+Next required action:
+
+1. Run `supabase/validation/10-payment-proof-submission-and-storage-immutability.sql` in the Supabase SQL Editor.
+2. Confirm the final result rows are all `ok = true`.
+3. Re-run the opt-in RPC integration suite.
+
 ## 2026-06-12 First Supabase-Backed Public Reads
 
 Local application changes completed:

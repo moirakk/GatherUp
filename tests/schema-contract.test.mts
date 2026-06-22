@@ -383,6 +383,8 @@ describe("commercial schema contract", () => {
 
   it("keeps payment proof submission notifying event payment managers", () => {
     expectSql(schema, "create or replace function public.mark_payment_submitted_from_proof()");
+    expectSql(schema, "update public.registrations");
+    expectSql(schema, "status = 'payment_submitted'");
     expectSql(schema, "insert into public.notification_deliveries");
     expectSql(schema, "'workflow', 'payment_proof_submission'");
     expectSql(schema, "'payment_proof_submitted'");
@@ -620,8 +622,12 @@ describe("commercial storage contract", () => {
       "payment roles can manage collection code files",
       "participants can upload own payment proof files",
       "payment proof files readable by owner and payment roles",
+      "payment proof files are immutable",
+      "payment proof files cannot be deleted",
       "refund roles can upload refund proof files",
       "refund proof files readable by owner refund roles and admins",
+      "refund proof files are immutable",
+      "refund proof files cannot be deleted",
       "finance roles can manage expense proof files",
       "export files readable by requester event managers and admins"
     ];
@@ -647,5 +653,7 @@ describe("commercial storage contract", () => {
     expectSql(storageSql, "public.can_manage_event_finance");
     expectSql(storageSql, "public.is_platform_admin");
     expectSql(storageSql, "public.current_app_user_id");
+    expectSql(storageSql, "as restrictive");
+    expectSql(storageSql, "on storage.objects for delete");
   });
 });

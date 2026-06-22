@@ -1529,6 +1529,13 @@ begin
     submitted_at = now()
   where id = new.payment_id;
 
+  update public.registrations
+  set
+    status = 'payment_submitted',
+    updated_at = now()
+  where id = new.registration_id
+    and status in ('awaiting_payment', 'payment_rejected_resubmittable', 'partial_paid_needs_topup');
+
   with payment_context as (
     select
       r.event_id,
