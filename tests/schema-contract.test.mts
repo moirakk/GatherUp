@@ -293,7 +293,7 @@ describe("commercial schema contract", () => {
   });
 
   it("grants anonymous read access only to public event detail surfaces", () => {
-    expectSql(schema, "grant usage on schema public to anon, authenticated;");
+    expectSql(schema, "grant usage on schema public to anon, authenticated, service_role;");
     expectSql(schema, "grant select on public.events to anon;");
     expectSql(schema, "grant select on public.announcements to anon;");
     expectSql(schema, "grant select on public.activity_materials to anon;");
@@ -302,6 +302,16 @@ describe("commercial schema contract", () => {
     expectSql(schema, "grant execute on function public.is_platform_admin() to anon;");
     assert.doesNotMatch(schema, /grant select, insert, update, delete on all tables in schema public to anon/);
     assert.doesNotMatch(schema, /grant select on public\.(registrations|payments|payment_proofs|refund_requests|refund_proofs) to anon/);
+  });
+
+  it("keeps service-role grants available for clean dev integration setup", () => {
+    expectSql(schema, "grant usage on schema public to anon, authenticated, service_role;");
+    expectSql(schema, "grant select, insert, update, delete on all tables in schema public to service_role;");
+    expectSql(schema, "grant usage, select, update on all sequences in schema public to service_role;");
+    expectSql(schema, "grant execute on all functions in schema public to service_role;");
+    expectSql(schema, "grant select, insert, update, delete on tables to service_role;");
+    expectSql(schema, "grant usage, select, update on sequences to service_role;");
+    expectSql(schema, "grant execute on functions to service_role;");
   });
 
   it("keeps registration creation atomic and aligned with the current schema", () => {

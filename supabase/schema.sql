@@ -3506,7 +3506,7 @@ create policy "audit logs visible to admins and event managers"
 -- Data API grants.
 -- RLS still decides which rows each user can access; these grants only allow
 -- users to reach the tables through Supabase's generated API.
-grant usage on schema public to anon, authenticated;
+grant usage on schema public to anon, authenticated, service_role;
 grant select on public.events to anon;
 grant select on public.announcements to anon;
 grant select on public.activity_materials to anon;
@@ -3515,9 +3515,21 @@ grant execute on function public.can_manage_event(uuid) to anon;
 grant execute on function public.is_platform_admin() to anon;
 grant select, insert, update, delete on all tables in schema public to authenticated;
 grant execute on all functions in schema public to authenticated;
+grant select, insert, update, delete on all tables in schema public to service_role;
+grant usage, select, update on all sequences in schema public to service_role;
+grant execute on all functions in schema public to service_role;
 
 alter default privileges in schema public
   grant select, insert, update, delete on tables to authenticated;
 
 alter default privileges in schema public
   grant execute on functions to authenticated;
+
+alter default privileges in schema public
+  grant select, insert, update, delete on tables to service_role;
+
+alter default privileges in schema public
+  grant usage, select, update on sequences to service_role;
+
+alter default privileges in schema public
+  grant execute on functions to service_role;

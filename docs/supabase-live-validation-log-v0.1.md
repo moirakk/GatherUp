@@ -329,6 +329,7 @@ Local changes completed:
 Real SQL execution status:
 
 - `06-public-read-grants.sql`: pending in Supabase SQL Editor.
+- `09-service-role-grants.sql`: pending in Supabase SQL Editor.
 - `07-clean-dev-post-execution-summary.sql`: pending in Supabase SQL Editor.
 
 Blocker:
@@ -339,8 +340,44 @@ Blocker:
 Next required action:
 
 1. Run `supabase/validation/06-public-read-grants.sql` in the clean dev/staging project `oxbrxkllftyevlzmiydt`.
-2. Run `supabase/validation/07-clean-dev-post-execution-summary.sql` in the same project.
-3. Record the resulting rows here. The expected state is that every returned row has `ok = true`.
+2. Run `supabase/validation/09-service-role-grants.sql` in the same project.
+3. Run `supabase/validation/07-clean-dev-post-execution-summary.sql` in the same project.
+4. Record the resulting rows here. The expected state is that every returned row has `ok = true`.
+
+## 2026-06-22 RPC Integration Permission Preflight
+
+Target project:
+
+- `gatherup-commercial-v01-validation`
+- Project ref: `oxbrxkllftyevlzmiydt`
+- Region: Tokyo / `ap-northeast-1`
+- Dashboard status observed as healthy.
+
+Command attempted:
+
+```bash
+GATHERUP_RUN_RPC_INTEGRATION=1 GATHERUP_RPC_INTEGRATION_TARGET=clean-dev GATHERUP_RPC_INTEGRATION_ALLOWED_REF=oxbrxkllftyevlzmiydt npm run test:integration:rpc
+```
+
+Observed result:
+
+- The test runner reached the real Supabase project.
+- All suites stopped during fixture setup because the service-role test client could create Supabase Auth users, but could not insert matching rows into `public.users`.
+- Exact database error class: `42501`.
+- Exact behavior: `permission denied for table users`.
+- Supabase hint: grant `INSERT` on `public.users` to `service_role`.
+
+Fix prepared:
+
+1. `supabase/schema.sql` now grants public schema/table/sequence/function privileges to `service_role` for future clean projects.
+2. `supabase/validation/09-service-role-grants.sql` can patch the current clean dev/staging project.
+3. `tests/schema-contract.test.mts` now prevents accidental removal of these grants.
+
+Next required action:
+
+1. Run `supabase/validation/09-service-role-grants.sql` in the Supabase SQL Editor for `oxbrxkllftyevlzmiydt`.
+2. Re-run the RPC integration command above.
+3. If tests fail later in the workflow, record the next concrete failure here.
 
 ## 2026-06-12 First Supabase-Backed Public Reads
 
