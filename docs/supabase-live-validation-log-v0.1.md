@@ -540,6 +540,52 @@ Next required action:
 2. Confirm the final result row is `ok = true`.
 3. Re-run the opt-in RPC integration suite.
 
+## 2026-06-28 Real RPC Integration Suite Passed
+
+Target project:
+
+- `gatherup-commercial-v01-validation`
+- Project ref: `oxbrxkllftyevlzmiydt`
+
+Command:
+
+```bash
+GATHERUP_RUN_RPC_INTEGRATION=1 GATHERUP_RPC_INTEGRATION_TARGET=clean-dev GATHERUP_RPC_INTEGRATION_ALLOWED_REF=oxbrxkllftyevlzmiydt npm run test:integration:rpc
+```
+
+Observed result:
+
+- 19 integration tests ran.
+- 19 passed.
+- 0 failed.
+
+Validated real Supabase behaviors:
+
+- Anonymous registration RPC calls are rejected.
+- Authenticated registration creation succeeds.
+- Duplicate active registrations are rejected.
+- Capacity contention prevents oversell.
+- Payment proof submission moves orders into review.
+- Payment review RPC confirms submitted payments.
+- Check-in RPC records arrivals and rejects duplicate scans.
+- Refund request, review, and proof upload RPC chain completes.
+- Concurrent payment review allows exactly one reviewer to win.
+- Concurrent check-in allows exactly one staff member to win.
+- Concurrent seat lock allows exactly one participant to hold a seat.
+- Payment proof Storage upload is limited to the registration owner.
+- Payment proof reads are limited to the order owner and payment managers.
+- Refund proof upload is limited to refund managers.
+- Refund proof reads are limited to the order owner and refund managers.
+- Same-event participants cannot upload into another participant's proof path.
+- Confirmed orders reject replacement participant payment-proof uploads.
+- Malformed proof paths are rejected by Storage RLS.
+- Payment/refund proof objects remain readable after authenticated delete attempts.
+
+Conclusion:
+
+- The clean Supabase validation project has passed the commercial v0.1 RPC and private Storage RLS integration baseline.
+- The next engineering step can move from database/RPC validation into service/UI integration and remaining product workflows.
+
 ## 2026-06-12 First Supabase-Backed Public Reads
 
 Local application changes completed:
