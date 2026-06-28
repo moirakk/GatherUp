@@ -48,10 +48,12 @@ describe("registration and payment proof API contracts", () => {
   const notificationBell = readSource("src/components/notification-bell.tsx");
   const orderSeatSelectionPanel = readSource("src/components/order-seat-selection-panel.tsx");
   const orderPage = readSource("src/app/me/orders/[orderNumber]/page.tsx");
+  const myOrdersPage = readSource("src/app/me/page.tsx");
   const registerPage = readSource("src/app/events/[eventId]/register/page.tsx");
   const devStatusPage = readSource("src/app/dev/status/page.tsx");
   const registrationFlow = readSource("src/components/registration-flow.tsx");
   const eventsData = readSource("src/lib/events-data.ts");
+  const ordersData = readSource("src/lib/orders-data.ts");
   const serverApi = readSource("src/lib/server/api.ts");
   const supabaseServer = readSource("src/lib/supabase/server.ts");
 
@@ -260,6 +262,21 @@ describe("registration and payment proof API contracts", () => {
     expectSource(eventsData, 'checkin: "签到活动"');
 
     assert.doesNotMatch(registerPage, /findEvent|getEventSetup|@\/lib\/mock-data/);
+  });
+
+  it("keeps the participant order list on the authenticated Supabase orders adapter", () => {
+    expectSource(myOrdersPage, 'import { getMyOrders } from "@/lib/orders-data";');
+    expectSource(myOrdersPage, "await getMyOrders()");
+    expectSource(myOrdersPage, "eventsById.get(registration.eventId)");
+    expectSource(myOrdersPage, "registrations.length === 0");
+    expectSource(ordersData, "export async function getMyOrders()");
+    expectSource(ordersData, "await createSupabaseServerClient()");
+    expectSource(ordersData, "await supabase.auth.getUser()");
+    expectSource(ordersData, "findUserByAuthUserId(supabase, user.id)");
+    expectSource(ordersData, '.eq("user_id", appUser.id)');
+    expectSource(ordersData, "function emptySupabaseMyOrders()");
+
+    assert.doesNotMatch(myOrdersPage, /@\/lib\/mock-data|events,\s*registrations/);
   });
 
   it("keeps seat locking and confirmation on authenticated Supabase RPC paths", () => {

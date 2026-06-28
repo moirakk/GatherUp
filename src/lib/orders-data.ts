@@ -1,7 +1,7 @@
-import { events, findRegistration, type GatherEvent, type Registration } from "@/lib/mock-data";
-import { toPublicCheckInStatus } from "@/lib/server/api";
+import { events, findRegistration, registrations, type GatherEvent, type Registration } from "@/lib/mock-data";
+import { findUserByAuthUserId, toPublicCheckInStatus } from "@/lib/server/api";
 import { isSupabaseConfigured } from "@/lib/supabase/client";
-import { getSupabaseServerClient } from "@/lib/supabase/server";
+import { createSupabaseServerClient, getSupabaseServerClient } from "@/lib/supabase/server";
 
 type RegistrationRow = {
   id: string;
@@ -60,6 +60,12 @@ export type OrderDetailData = {
     attendees: OrderAttendeeOption[];
     seats: OrderSeatOption[];
   };
+  source: "mock" | "supabase";
+};
+
+export type MyOrdersData = {
+  registrations: Registration[];
+  eventsById: Map<string, GatherEvent>;
   source: "mock" | "supabase";
 };
 
@@ -141,6 +147,80 @@ function mockOrderDetail(orderNumber: string): OrderDetailData | null {
     registration,
     source: "mock"
   };
+}
+
+function mockMyOrders(): MyOrdersData {
+  return {
+    registrations,
+    eventsById: new Map(events.map((event) => [event.id, event])),
+    source: "mock"
+  };
+}
+
+function emptySupabaseMyOrders(): MyOrdersData {
+  return {
+    registrations: [],
+    eventsById: new Map(),
+    source: "supabase"
+  };
+}
+
+export async function getMyOrders(): Promise<MyOrdersData> {
+  if (!isSupabaseConfigured()) {
+    return mockMyOrders();
+  }
+
+  try {
+    const supabase = await createSupabaseServerClient();
+    const {
+      data: { user },
+      error: authError
+    } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return emptySupabaseMyOrders();
+    }
+
+    const appUser = await findUserByAuthUserId(supabase, user.id);
+
+    if (!appUser) {
+      return emptySupabaseMyOrders();
+    }
+
+    const { data: registrationData, error: registrationError } = await supabase
+      .from("registrations")
+      .select("id, event_id, order_number, nickname, quantity, amount_due_cents, status, payment_screenshot_img, form_answers, check_in_code, check_in_status, created_at")
+      .eq("user_id", appUser.id)
+      .order("created_at", { ascending: false });
+
+    if (registrationError) {
+      return emptySupabaseMyOrders();
+    }
+
+    const registrationRows = (registrationData ?? []) as RegistrationRow[];
+    const eventIds = Array.from(new Set(registrationRows.map((registration) => registration.event_id)));
+
+    if (eventIds.length === 0) {
+      return emptySupabaseMyOrders();
+    }
+
+    const { data: eventData, error: eventError } = await supabase
+      .from("events")
+      .select("id, public_code, name, category, template, custom_type_label, city, venue_name, address, starts_at, registration_deadline, price_cents, capacity, description, status, allow_multi_person_registration, max_people_per_registration, order_number_prefix, wechat_group_img")
+      .in("id", eventIds);
+
+    if (eventError) {
+      return emptySupabaseMyOrders();
+    }
+
+    return {
+      registrations: registrationRows.map(rowToRegistration),
+      eventsById: new Map(((eventData ?? []) as EventRow[]).map((event) => [event.id, rowToEvent(event)])),
+      source: "supabase"
+    };
+  } catch {
+    return emptySupabaseMyOrders();
+  }
 }
 
 export async function getOrderDetail(orderNumber: string): Promise<OrderDetailData | null> {

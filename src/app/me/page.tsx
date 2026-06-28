@@ -2,11 +2,12 @@ import Link from "next/link";
 
 import { AccountPanel } from "@/components/account-panel";
 import { StatusBadge } from "@/components/status-badge";
-import { events, registrations } from "@/lib/mock-data";
+import { getMyOrders } from "@/lib/orders-data";
 
-export default function MyEventsPage() {
+export default async function MyEventsPage() {
+  const { eventsById, registrations } = await getMyOrders();
   const pendingPayments = registrations.filter((registration) => registration.paymentStatus === "待审核").length;
-  const pendingSeats = registrations.filter((registration) => registration.seatStatus === "未开放").length;
+  const pendingSeats = registrations.filter((registration) => registration.seatStatus === "待选座/签到").length;
 
   return (
     <>
@@ -21,14 +22,27 @@ export default function MyEventsPage() {
       <section className="metrics-grid">
         <div className="metric-card"><strong>{pendingPayments}</strong><span>待审核</span></div>
         <div className="metric-card"><strong>{pendingSeats}</strong><span>待选座</span></div>
-        <div className="metric-card"><strong>4</strong><span>历史活动</span></div>
+        <div className="metric-card"><strong>{registrations.length}</strong><span>历史活动</span></div>
       </section>
 
       <AccountPanel />
 
       <section className="stack">
+        {registrations.length === 0 ? (
+          <article className="order-card">
+            <div>
+              <span className="tag">暂无订单</span>
+              <h3>还没有报名记录</h3>
+              <p className="subtle">找到感兴趣的活动后，报名订单会出现在这里。</p>
+            </div>
+            <div className="order-actions">
+              <Link className="button secondary" href="/">浏览活动</Link>
+            </div>
+          </article>
+        ) : null}
+
         {registrations.map((registration) => {
-          const event = events.find((item) => item.id === registration.eventId);
+          const event = eventsById.get(registration.eventId);
 
           return (
             <article className="order-card" key={registration.orderNumber}>
