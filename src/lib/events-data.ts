@@ -87,6 +87,7 @@ function mapCategory(value: string): EventCategory {
     community: "同好活动",
     campus: "校园活动",
     conference: "会议会务",
+    private: "好友聚会",
     private_gathering: "好友聚会",
     workshop: "工作坊",
     market: "快闪/市集"
@@ -98,8 +99,10 @@ function mapCategory(value: string): EventCategory {
 function mapTemplate(value: string): EventTemplate {
   const templates: Record<string, EventTemplate> = {
     basic_registration: "基础报名",
+    payment_registration: "报名收款",
     paid_registration: "报名收款",
     seating: "选座活动",
+    checkin: "签到活动",
     check_in: "签到活动",
     time_slot_booking: "分时预约",
     record_only: "记录型聚会"

@@ -48,8 +48,10 @@ describe("registration and payment proof API contracts", () => {
   const notificationBell = readSource("src/components/notification-bell.tsx");
   const orderSeatSelectionPanel = readSource("src/components/order-seat-selection-panel.tsx");
   const orderPage = readSource("src/app/me/orders/[orderNumber]/page.tsx");
+  const registerPage = readSource("src/app/events/[eventId]/register/page.tsx");
   const devStatusPage = readSource("src/app/dev/status/page.tsx");
   const registrationFlow = readSource("src/components/registration-flow.tsx");
+  const eventsData = readSource("src/lib/events-data.ts");
   const serverApi = readSource("src/lib/server/api.ts");
   const supabaseServer = readSource("src/lib/supabase/server.ts");
 
@@ -246,6 +248,18 @@ describe("registration and payment proof API contracts", () => {
     expectSource(registrationFlow, "`${proofEventId}/${registrationId}/${paymentId}/${Date.now()}-${getSafeFileName(file.name)}`");
     expectSource(registrationFlow, 'fetch("/api/orders/payment-proof"');
     expectSource(registrationFlow, "Authorization: `Bearer ${accessToken}`");
+  });
+
+  it("keeps the registration page on the shared Supabase public event detail adapter", () => {
+    expectSource(registerPage, 'import { getPublicEventDetail } from "@/lib/events-data";');
+    expectSource(registerPage, "await getPublicEventDetail(eventId)");
+    expectSource(registerPage, "eventDetail.event");
+    expectSource(registerPage, "eventDetail.setup");
+    expectSource(eventsData, 'private: "好友聚会"');
+    expectSource(eventsData, 'payment_registration: "报名收款"');
+    expectSource(eventsData, 'checkin: "签到活动"');
+
+    assert.doesNotMatch(registerPage, /findEvent|getEventSetup|@\/lib\/mock-data/);
   });
 
   it("keeps seat locking and confirmation on authenticated Supabase RPC paths", () => {
