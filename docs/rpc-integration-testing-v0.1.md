@@ -184,14 +184,14 @@ Database cleanup needed: yes/no
 Follow-up commit:
 ```
 
-Do not treat the clean Supabase project as validated for commercial v0.1 until the registration, payment review, check-in, refund proof, concurrency, and Storage RLS suites all pass. Seating workflows depend on confirmed registrations and payments, and refund workflows exercise the same payment state machine from the reversal side.
+As of 2026-06-28, the clean validation project `oxbrxkllftyevlzmiydt` has passed this suite with 19/19 tests. Keep this command as the regression gate after schema, RPC, or Storage policy changes.
 
 ## Next RPCs To Add
 
 Recommended order:
 
-1. `confirm_seat_assignment_atomic` concurrent assignment coverage.
-2. refund participant confirmation and dispute RPCs, once implemented.
-3. notification delivery side-effect assertions after live RPC success.
+1. Add refund participant confirmation and dispute RPCs, then extend this suite around those states.
+2. Add notification delivery side-effect assertions after live RPC success.
+3. Add UI/API smoke tests that exercise the verified RPC paths through real route handlers rather than direct Supabase RPC calls only.
 
 Keep each integration test isolated, self-cleaning, and opt-in.
