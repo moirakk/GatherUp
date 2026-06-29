@@ -44,6 +44,7 @@ describe("registration and payment proof API contracts", () => {
   const waitlistRoute = readSource("src/app/api/waitlist/route.ts");
   const waitlistInviteRoute = readSource("src/app/api/waitlist/invite/route.ts");
   const announcementPublishRoute = readSource("src/app/api/announcements/route.ts");
+  const expenseRoute = readSource("src/app/api/expenses/route.ts");
   const notificationRoute = readSource("src/app/api/notifications/route.ts");
   const appShell = readSource("src/components/app-shell.tsx");
   const notificationBell = readSource("src/components/notification-bell.tsx");
@@ -57,6 +58,7 @@ describe("registration and payment proof API contracts", () => {
   const devStatusPage = readSource("src/app/dev/status/page.tsx");
   const registrationFlow = readSource("src/components/registration-flow.tsx");
   const announcementCenter = readSource("src/components/announcement-center.tsx");
+  const expenseLedger = readSource("src/components/expense-ledger.tsx");
   const eventsData = readSource("src/lib/events-data.ts");
   const organizerData = readSource("src/lib/organizer-data.ts");
   const ordersData = readSource("src/lib/orders-data.ts");
@@ -334,12 +336,29 @@ describe("registration and payment proof API contracts", () => {
     expectSource(organizerData, 'supabase.rpc("can_manage_event_finance"');
     expectSource(organizerData, '.from("event_finance_settings")');
     expectSource(organizerData, '.from("event_expenses")');
+    expectSource(organizerData, "users!event_expenses_paid_by_fkey(name, public_id)");
     expectSource(organizerData, "buildFinanceSummary(eventRegistrations, expenses)");
 
     assert.doesNotMatch(
       organizerFinancePage,
       /findEvent|getEventExpenses|getEventFinanceSetting|getEventFinanceSummary|getEventRegistrations|@\/lib\/mock-data/
     );
+  });
+
+  it("keeps organizer expense creation on the authenticated finance-scoped API path", () => {
+    expectSource(expenseRoute, "getAuthenticatedSupabaseClient(request)");
+    expectSource(expenseRoute, "enforceRateLimit(request");
+    expectSource(expenseRoute, 'keyPrefix: "expenses:create"');
+    expectSource(expenseRoute, "canManageEventFinance(authContext.supabase, eventId)");
+    expectSource(expenseRoute, '.from("event_expenses")');
+    expectSource(expenseRoute, "findUserByAuthUserId(authContext.supabase, authContext.user.id)");
+    expectSource(expenseRoute, "餐饮茶歇: \"food\"");
+    expectSource(expenseRoute, "交通快递: \"transport\"");
+
+    expectSource(organizerFinancePage, "<ExpenseLedger eventId={event.id} expenses={expenses} />");
+    expectSource(expenseLedger, 'fetch("/api/expenses"');
+    expectSource(expenseLedger, "getSupabaseBrowserClient()");
+    assert.doesNotMatch(expenseLedger, /接入数据库后会长期保存/);
   });
 
   it("keeps seat locking and confirmation on authenticated Supabase RPC paths", () => {

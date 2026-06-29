@@ -5,8 +5,10 @@ import { Plus, X } from "lucide-react";
 
 import { type EventExpense, type ExpenseCategory, type ExpenseStatus } from "@/lib/mock-data";
 import { StatusBadge } from "@/components/status-badge";
+import { getSupabaseBrowserClient, isSupabaseConfigured } from "@/lib/supabase/client";
 
 type ExpenseLedgerProps = {
+  eventId: string;
   expenses: EventExpense[];
 };
 
@@ -17,9 +19,10 @@ function formatMoney(amount: number) {
   return `¥${amount.toLocaleString("zh-CN")}`;
 }
 
-export function ExpenseLedger({ expenses }: ExpenseLedgerProps) {
+export function ExpenseLedger({ eventId, expenses }: ExpenseLedgerProps) {
   const [rows, setRows] = useState(expenses);
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [notice, setNotice] = useState("");
   const [draft, setDraft] = useState({
     title: "",
@@ -29,6 +32,10 @@ export function ExpenseLedger({ expenses }: ExpenseLedgerProps) {
     status: statuses[0],
     note: ""
   });
+
+  useEffect(() => {
+    setRows(expenses);
+  }, [expenses]);
 
   useEffect(() => {
     function openForm() {
@@ -44,7 +51,33 @@ export function ExpenseLedger({ expenses }: ExpenseLedgerProps) {
     setDraft((current) => ({ ...current, [field]: value }));
   }
 
-  function addExpense() {
+  function resetDraft() {
+    setDraft({
+      title: "",
+      category: categories[0],
+      amount: "",
+      paidBy: "",
+      status: statuses[0],
+      note: ""
+    });
+  }
+
+  function buildLocalExpense(amount: number): EventExpense {
+    return {
+      id: `expense-${Date.now()}`,
+      eventId,
+      title: draft.title.trim(),
+      category: draft.category,
+      amount,
+      status: draft.status,
+      paidBy: draft.paidBy.trim() || "未填写",
+      proof: "pending",
+      note: draft.note.trim() || "新添加支出",
+      createdAt: new Date().toISOString().slice(0, 10)
+    };
+  }
+
+  async function addExpense() {
     if (!draft.title.trim() || !draft.amount.trim()) {
       setNotice("请至少填写支出名称和金额。");
       return;
@@ -56,30 +89,54 @@ export function ExpenseLedger({ expenses }: ExpenseLedgerProps) {
       return;
     }
 
-    const newExpense: EventExpense = {
-      id: `expense-${Date.now()}`,
-      eventId: rows[0]?.eventId ?? "draft-event",
-      title: draft.title.trim(),
-      category: draft.category,
-      amount,
-      status: draft.status,
-      paidBy: draft.paidBy.trim() || "未填写",
-      proof: "pending",
-      note: draft.note.trim() || "新添加支出",
-      createdAt: new Date().toISOString().slice(0, 10)
-    };
+    if (!isSupabaseConfigured()) {
+      const newExpense = buildLocalExpense(amount);
+      setRows((current) => [newExpense, ...current]);
+      resetDraft();
+      setIsFormOpen(false);
+      setNotice("本地演示模式：支出已添加到当前页面，不会长期保存。");
+      return;
+    }
 
-    setRows((current) => [newExpense, ...current]);
-    setDraft({
-      title: "",
-      category: categories[0],
-      amount: "",
-      paidBy: "",
-      status: statuses[0],
-      note: ""
-    });
-    setIsFormOpen(false);
-    setNotice("支出已添加到当前页面。接入数据库后会长期保存。");
+    setIsSaving(true);
+    setNotice("");
+
+    try {
+      const supabase = getSupabaseBrowserClient();
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData.session?.access_token;
+      const response = await fetch("/api/expenses", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          ...(accessToken ? { authorization: `Bearer ${accessToken}` } : {})
+        },
+        body: JSON.stringify({
+          event_id: eventId,
+          title: draft.title.trim(),
+          category: draft.category,
+          amount,
+          status: draft.status,
+          note: [draft.note.trim(), draft.paidBy.trim() ? `经办人：${draft.paidBy.trim()}` : ""].filter(Boolean).join("；")
+        })
+      });
+
+      const payload = await response.json().catch(() => ({}));
+
+      if (!response.ok || !payload?.ok || !payload.expense) {
+        setNotice(typeof payload?.message === "string" ? payload.message : "支出保存失败，请稍后重试。");
+        return;
+      }
+
+      setRows((current) => [payload.expense as EventExpense, ...current]);
+      resetDraft();
+      setIsFormOpen(false);
+      setNotice("支出已保存到 Supabase 财务记录。");
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "支出保存失败，请稍后重试。");
+    } finally {
+      setIsSaving(false);
+    }
   }
 
   return (
@@ -102,9 +159,9 @@ export function ExpenseLedger({ expenses }: ExpenseLedgerProps) {
             <label>备注<input value={draft.note} onChange={(event) => updateDraft("note", event.target.value)} /></label>
           </div>
           <div className="button-row">
-            <button className="button primary" type="button" onClick={addExpense}>
+            <button className="button primary" type="button" onClick={addExpense} disabled={isSaving}>
               <Plus size={16} />
-              保存支出
+              {isSaving ? "保存中" : "保存支出"}
             </button>
             <button className="button secondary" type="button" onClick={() => setIsFormOpen(false)}>
               取消

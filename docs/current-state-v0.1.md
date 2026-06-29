@@ -112,6 +112,7 @@ Supabase live 状态：
 - 这些 API/RPC 仍是早期产品集成层，但付款凭证 Storage 链路、付款审核 RPC、座位锁 RPC、核销 RPC 和退款申请/审核/凭证 RPC 已经在干净 Supabase 项目中用真实用户 session 通过集成验证；waitlist、参与者确认收款、退款争议、更多 UI 级端到端流程和新增工作流 RLS 仍需要继续补齐。
 - 主办公告中心已接入真实发布路径：登录主办通过 `/api/announcements` 写入 `announcements` 表，并由数据库 RLS/权限函数控制是否可编辑活动；外部邮件、短信和微信通知仍是后续 channel 层。
 - 主办财务导出已从通用活动管理权限收紧为 finance-level 权限，避免普通协作者导出财务数据。
+- 主办财务支出已接入真实写入路径：登录主办或财务协作者通过 `/api/expenses` 写入 `event_expenses`，API 会统一认证、限流、校验 `can_manage_event_finance`，并将支出分类/状态映射到数据库 enum。
 
 ## 3. 本地运行
 
@@ -329,7 +330,7 @@ Supabase 接入：
 第一优先级：
 
 - 将活动创建页面完整切到 Supabase 持久化，并保留本地草稿作为草稿能力而不是最终数据源。
-- 将财务支出 ledger 写入 `event_expenses`，补齐支出凭证路径和导出证据链。
+- 补齐财务支出凭证上传路径、凭证导出证据链和支出编辑/作废能力。
 - 围绕参与者报名、付款截图、主办审核、选座、核销、退款、财务导出和公告发布补 UI 级端到端验证。
 - 继续保持 README、GitHub profile copy、当前状态文档和真实代码同步。
 

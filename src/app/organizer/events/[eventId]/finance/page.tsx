@@ -102,7 +102,7 @@ export default async function FinancePage({ params }: FinancePageProps) {
             </div>
             <ReceiptText size={20} />
           </div>
-          <ExpenseLedger expenses={expenses} />
+          <ExpenseLedger eventId={event.id} expenses={expenses} />
         </article>
 
         <article className="content-card">

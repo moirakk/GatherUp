@@ -70,6 +70,16 @@ type ExpenseRow = {
   amount_cents: number;
   status: string;
   paid_by: string | null;
+  users?:
+    | {
+        name: string;
+        public_id: string;
+      }
+    | {
+        name: string;
+        public_id: string;
+      }[]
+    | null;
   proof_url: string | null;
   note: string | null;
   created_at: string;
@@ -252,6 +262,8 @@ function financeSettingRowToSetting(row: FinanceSettingRow, eventId: string): Ev
 }
 
 function expenseRowToExpense(row: ExpenseRow): EventExpense {
+  const paidByUser = firstRelation(row.users);
+
   return {
     id: row.id,
     eventId: row.event_id,
@@ -259,7 +271,7 @@ function expenseRowToExpense(row: ExpenseRow): EventExpense {
     title: row.title,
     amount: Math.round(row.amount_cents / 100),
     status: mapExpenseStatus(row.status),
-    paidBy: row.paid_by ?? "未填写",
+    paidBy: paidByUser?.name ?? paidByUser?.public_id ?? "未填写",
     proof: row.proof_url ?? "pending",
     note: row.note ?? "活动支出",
     createdAt: formatDateTime(row.created_at)
@@ -572,7 +584,7 @@ export async function getOrganizerFinanceDetail(eventId: string): Promise<Organi
         .maybeSingle(),
       supabase
         .from("event_expenses")
-        .select("id, event_id, category, title, amount_cents, status, paid_by, proof_url, note, created_at")
+        .select("id, event_id, category, title, amount_cents, status, paid_by, proof_url, note, created_at, users!event_expenses_paid_by_fkey(name, public_id)")
         .eq("event_id", eventRow.id)
         .order("created_at", { ascending: false }),
       supabase
