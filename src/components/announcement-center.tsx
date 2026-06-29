@@ -5,6 +5,7 @@ import { BellRing, Copy, Send } from "lucide-react";
 
 import { type AnnouncementType, type EventAnnouncement, type GatherEvent } from "@/lib/mock-data";
 import { StatusBadge } from "@/components/status-badge";
+import { getSupabaseBrowserClient, isSupabaseConfigured } from "@/lib/supabase/client";
 
 type AnnouncementCenterProps = {
   announcements: EventAnnouncement[];
@@ -39,6 +40,7 @@ export function AnnouncementCenter({ announcements, event }: AnnouncementCenterP
   const [type, setType] = useState<AnnouncementType>("报名通知");
   const [title, setTitle] = useState("报名入口和活动提醒");
   const [content, setContent] = useState(() => getDefaultContent(event, "报名通知"));
+  const [isPublishing, setIsPublishing] = useState(false);
 
   const publishedCount = useMemo(
     () => rows.filter((announcement) => announcement.status === "已发布").length,
@@ -63,7 +65,20 @@ export function AnnouncementCenter({ announcements, event }: AnnouncementCenterP
     }
   }
 
-  function publishAnnouncement() {
+  function buildLocalAnnouncement(trimmedTitle: string, trimmedContent: string): EventAnnouncement {
+    return {
+      id: `ann-${Date.now()}`,
+      eventId: event.id,
+      type,
+      title: trimmedTitle,
+      content: trimmedContent,
+      status: "已发布",
+      publishedAt: "刚刚",
+      audience: type === "付款提醒" ? "待付款参与者" : type === "选座通知" ? "已确认参与者" : "全部参与者"
+    };
+  }
+
+  async function publishAnnouncement() {
     const trimmedTitle = title.trim();
     const trimmedContent = content.trim();
 
@@ -72,20 +87,70 @@ export function AnnouncementCenter({ announcements, event }: AnnouncementCenterP
       return;
     }
 
-    setRows((current) => [
-      {
-        id: `ann-${Date.now()}`,
-        eventId: event.id,
-        type,
-        title: trimmedTitle,
-        content: trimmedContent,
-        status: "已发布",
-        publishedAt: "刚刚",
-        audience: type === "付款提醒" ? "待付款参与者" : type === "选座通知" ? "已确认参与者" : "全部参与者"
-      },
-      ...current
-    ]);
-    setNotice("通知已模拟发布");
+    const accessToken = isSupabaseConfigured()
+      ? (await getSupabaseBrowserClient().auth.getSession()).data.session?.access_token
+      : "";
+
+    if (!accessToken) {
+      setRows((current) => [buildLocalAnnouncement(trimmedTitle, trimmedContent), ...current]);
+      setNotice("通知已添加到本地预览；真实发布需要先使用 Supabase 账号登录。");
+      return;
+    }
+
+    setIsPublishing(true);
+    setNotice("");
+
+    try {
+      const response = await fetch("/api/announcements", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`
+        },
+        body: JSON.stringify({
+          event_id: event.id,
+          title: trimmedTitle,
+          body: trimmedContent,
+          status: "published"
+        })
+      });
+      const result = (await response.json()) as {
+        ok?: boolean;
+        message?: string;
+        announcement?: {
+          id: string;
+          event_id: string;
+          title: string;
+          body: string;
+          status: string;
+          published_at: string | null;
+        };
+      };
+
+      if (!response.ok || !result.ok || !result.announcement) {
+        setNotice(`通知未发布：${result.message ?? "接口返回失败"}`);
+        return;
+      }
+
+      setRows((current) => [
+        {
+          id: result.announcement?.id ?? `ann-${Date.now()}`,
+          eventId: result.announcement?.event_id ?? event.id,
+          type,
+          title: result.announcement?.title ?? trimmedTitle,
+          content: result.announcement?.body ?? trimmedContent,
+          status: result.announcement?.status === "published" ? "已发布" : "草稿",
+          publishedAt: result.announcement?.published_at ? new Date(result.announcement.published_at).toLocaleString("zh-CN") : "刚刚",
+          audience: type === "付款提醒" ? "待付款参与者" : type === "选座通知" ? "已确认参与者" : "全部参与者"
+        },
+        ...current
+      ]);
+      setNotice("通知已发布并写入数据库");
+    } catch {
+      setNotice("通知未发布，请稍后重试。");
+    } finally {
+      setIsPublishing(false);
+    }
   }
 
   return (
@@ -96,7 +161,7 @@ export function AnnouncementCenter({ announcements, event }: AnnouncementCenterP
         <div className="section-heading">
           <div>
             <h3>新建通知</h3>
-            <p className="subtle">第一版先生成可复制的通知文案，并在原型内模拟发布。</p>
+            <p className="subtle">通知会写入活动公告记录；也可以复制文案同步到外部群聊。</p>
           </div>
           <BellRing size={20} />
         </div>
@@ -130,9 +195,9 @@ export function AnnouncementCenter({ announcements, event }: AnnouncementCenterP
             <Copy size={16} />
             复制通知文案
           </button>
-          <button className="button primary" type="button" onClick={publishAnnouncement}>
+          <button className="button primary" disabled={isPublishing} type="button" onClick={publishAnnouncement}>
             <Send size={16} />
-            发布通知
+            {isPublishing ? "发布中" : "发布通知"}
           </button>
         </div>
       </section>

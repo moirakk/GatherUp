@@ -43,6 +43,7 @@ describe("registration and payment proof API contracts", () => {
   const seatConfirmRoute = readSource("src/app/api/seats/confirm/route.ts");
   const waitlistRoute = readSource("src/app/api/waitlist/route.ts");
   const waitlistInviteRoute = readSource("src/app/api/waitlist/invite/route.ts");
+  const announcementPublishRoute = readSource("src/app/api/announcements/route.ts");
   const notificationRoute = readSource("src/app/api/notifications/route.ts");
   const appShell = readSource("src/components/app-shell.tsx");
   const notificationBell = readSource("src/components/notification-bell.tsx");
@@ -55,6 +56,7 @@ describe("registration and payment proof API contracts", () => {
   const registerPage = readSource("src/app/events/[eventId]/register/page.tsx");
   const devStatusPage = readSource("src/app/dev/status/page.tsx");
   const registrationFlow = readSource("src/components/registration-flow.tsx");
+  const announcementCenter = readSource("src/components/announcement-center.tsx");
   const eventsData = readSource("src/lib/events-data.ts");
   const organizerData = readSource("src/lib/organizer-data.ts");
   const ordersData = readSource("src/lib/orders-data.ts");
@@ -396,6 +398,19 @@ describe("registration and payment proof API contracts", () => {
     assert.doesNotMatch(waitlistInviteRoute, /getSupabaseServiceClient/);
     assert.doesNotMatch(waitlistRoute, /\.from\("waitlist_entries"\)\s*\n\s*\.insert/);
     assert.doesNotMatch(waitlistInviteRoute, /\.from\("waitlist_entries"\)\s*\n\s*\.update/);
+  });
+
+  it("keeps organizer announcements published through an authenticated API route", () => {
+    expectSource(announcementPublishRoute, "getAuthenticatedSupabaseClient(request)");
+    expectSource(announcementPublishRoute, "enforceRateLimit(request");
+    expectSource(announcementPublishRoute, 'keyPrefix: "announcements:create"');
+    expectSource(announcementPublishRoute, '.from("announcements")');
+    expectSource(announcementPublishRoute, ".insert({");
+    expectSource(announcementPublishRoute, "published_at: status === \"published\" ? new Date().toISOString() : null");
+    expectSource(announcementCenter, 'fetch("/api/announcements"');
+    expectSource(announcementCenter, "Authorization: `Bearer ${accessToken}`");
+    expectSource(announcementCenter, "通知已发布并写入数据库");
+    expectSource(announcementCenter, "真实发布需要先使用 Supabase 账号登录");
   });
 
   it("keeps in-app notifications on authenticated RLS reads and read-state RPC updates", () => {
