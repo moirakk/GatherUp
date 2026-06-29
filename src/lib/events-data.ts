@@ -17,7 +17,7 @@ import {
 import { isSupabaseConfigured } from "@/lib/supabase/client";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 
-type EventRow = {
+export type EventRow = {
   id: string;
   public_code: string;
   name: string;
@@ -136,7 +136,7 @@ function mapSetupStatus(status: string): EventSetup["setupStatus"] {
   return "报名已开放";
 }
 
-function eventRowToGatherEvent(row: EventRow): GatherEvent {
+export function eventRowToGatherEvent(row: EventRow): GatherEvent {
   return {
     id: row.id,
     publicCode: row.public_code,
@@ -165,7 +165,7 @@ function eventRowToGatherEvent(row: EventRow): GatherEvent {
   };
 }
 
-function eventRowToSetup(row: EventRow): EventSetup {
+export function eventRowToSetup(row: EventRow): EventSetup {
   return {
     eventId: row.id,
     setupStatus: mapSetupStatus(row.status),

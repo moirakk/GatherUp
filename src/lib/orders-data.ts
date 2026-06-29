@@ -3,7 +3,7 @@ import { findUserByAuthUserId, toPublicCheckInStatus } from "@/lib/server/api";
 import { isSupabaseConfigured } from "@/lib/supabase/client";
 import { createSupabaseServerClient, getSupabaseServerClient } from "@/lib/supabase/server";
 
-type RegistrationRow = {
+export type RegistrationRow = {
   id: string;
   event_id: string;
   order_number: string;
@@ -110,7 +110,7 @@ function rowToEvent(row: EventRow): GatherEvent {
   };
 }
 
-function rowToRegistration(row: RegistrationRow): Registration {
+export function rowToRegistration(row: RegistrationRow): Registration {
   const paymentStatus = mapPaymentStatus(row.status);
 
   return {

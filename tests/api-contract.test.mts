@@ -49,10 +49,12 @@ describe("registration and payment proof API contracts", () => {
   const orderSeatSelectionPanel = readSource("src/components/order-seat-selection-panel.tsx");
   const orderPage = readSource("src/app/me/orders/[orderNumber]/page.tsx");
   const myOrdersPage = readSource("src/app/me/page.tsx");
+  const organizerPage = readSource("src/app/organizer/page.tsx");
   const registerPage = readSource("src/app/events/[eventId]/register/page.tsx");
   const devStatusPage = readSource("src/app/dev/status/page.tsx");
   const registrationFlow = readSource("src/components/registration-flow.tsx");
   const eventsData = readSource("src/lib/events-data.ts");
+  const organizerData = readSource("src/lib/organizer-data.ts");
   const ordersData = readSource("src/lib/orders-data.ts");
   const serverApi = readSource("src/lib/server/api.ts");
   const supabaseServer = readSource("src/lib/supabase/server.ts");
@@ -277,6 +279,24 @@ describe("registration and payment proof API contracts", () => {
     expectSource(ordersData, "function emptySupabaseMyOrders()");
 
     assert.doesNotMatch(myOrdersPage, /@\/lib\/mock-data|events,\s*registrations/);
+  });
+
+  it("keeps the organizer dashboard on the authenticated Supabase organizer adapter", () => {
+    expectSource(organizerPage, 'import { getOrganizerDashboard } from "@/lib/organizer-data";');
+    expectSource(organizerPage, "await getOrganizerDashboard()");
+    expectSource(organizerPage, "organizersByEventId.get(event.id)");
+    expectSource(organizerPage, 'href="/organizer/events/new"');
+    expectSource(organizerData, "export async function getOrganizerDashboard()");
+    expectSource(organizerData, "await createSupabaseServerClient()");
+    expectSource(organizerData, "await supabase.auth.getUser()");
+    expectSource(organizerData, "findUserByAuthUserId(supabase, user.id)");
+    expectSource(organizerData, '.from("event_organizers")');
+    expectSource(organizerData, '.eq("user_id", appUser.id)');
+    expectSource(organizerData, '.eq("organizer_id", appUser.id)');
+    expectSource(organizerData, "eventRowToGatherEvent(row)");
+    expectSource(organizerData, "rowToRegistration");
+
+    assert.doesNotMatch(organizerPage, /import\s+\{[^}]*eventSetups|import\s+\{[^}]*registrations|getEventOrganizers/);
   });
 
   it("keeps seat locking and confirmation on authenticated Supabase RPC paths", () => {

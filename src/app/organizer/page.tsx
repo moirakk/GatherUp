@@ -4,7 +4,8 @@ import { CalendarCheck, CircleDollarSign, MapPinned, Plus, QrCode, ServerCog } f
 import { LocalCreatedEventList } from "@/components/local-created-event-list";
 import { MetricCard } from "@/components/metric-card";
 import { getNextActions } from "@/components/next-action-card";
-import { eventSetups, events, getEventOrganizers, registrations, type EventSetup, type GatherEvent, type Registration } from "@/lib/mock-data";
+import type { EventSetup, GatherEvent, Registration } from "@/lib/mock-data";
+import { getOrganizerDashboard } from "@/lib/organizer-data";
 
 function getPrimaryAction(event: GatherEvent, setup: EventSetup, eventRegistrations: Registration[]) {
   return getNextActions({
@@ -15,14 +16,18 @@ function getPrimaryAction(event: GatherEvent, setup: EventSetup, eventRegistrati
   })[0];
 }
 
-export default function OrganizerPage() {
+export default async function OrganizerPage() {
+  const { eventSetups, events, organizersByEventId, registrations } = await getOrganizerDashboard();
   const activeSetups = eventSetups.filter((setup) => setup.setupStatus !== "报名已开放");
   const paymentReadyCount = eventSetups.filter((setup) => setup.paymentQrStatus === "已配置").length;
   const pendingPaymentRegistrations = registrations.filter((registration) => registration.paymentStatus === "待审核");
   const pendingPaymentCount = pendingPaymentRegistrations.length;
-  const firstSetupEventId = activeSetups[0]?.eventId ?? events[0].id;
-  const firstPaymentEventId = eventSetups.find((setup) => setup.paymentQrStatus === "已配置")?.eventId ?? events[0].id;
+  const firstSetupEventId = activeSetups[0]?.eventId ?? events[0]?.id ?? "";
+  const firstPaymentEventId = eventSetups.find((setup) => setup.paymentQrStatus === "已配置")?.eventId ?? events[0]?.id ?? "";
   const firstPendingPaymentEventId = pendingPaymentRegistrations[0]?.eventId ?? firstSetupEventId;
+  const setupHref = firstSetupEventId ? "#setup-list" : "/organizer/events/new";
+  const paymentHref = firstPaymentEventId ? `/organizer/events/${firstPaymentEventId}/finance` : "/organizer/events/new";
+  const pendingPaymentHref = firstPendingPaymentEventId ? `/organizer/events/${firstPendingPaymentEventId}?panel=orders` : "/organizer/events/new";
 
   return (
     <>
@@ -45,16 +50,38 @@ export default function OrganizerPage() {
       </section>
 
       <section className="metrics-grid">
-        <MetricCard label="筹备中活动" value={activeSetups.length} href="#setup-list" />
-        <MetricCard label="已配置收款" value={`${paymentReadyCount}/${eventSetups.length}`} href={`/organizer/events/${firstPaymentEventId}/finance`} />
-        <MetricCard label="待审核付款" value={pendingPaymentCount} href={`/organizer/events/${firstPendingPaymentEventId}?panel=orders`} />
+        <MetricCard label="筹备中活动" value={activeSetups.length} href={setupHref} />
+        <MetricCard label="已配置收款" value={`${paymentReadyCount}/${eventSetups.length}`} href={paymentHref} />
+        <MetricCard label="待审核付款" value={pendingPaymentCount} href={pendingPaymentHref} />
       </section>
 
       <LocalCreatedEventList />
 
       <section className="setup-grid" id="setup-list">
+        {eventSetups.length === 0 ? (
+          <article className="content-card setup-card">
+            <div className="section-heading">
+              <div>
+                <span className="tag">暂无活动</span>
+                <h2>还没有可管理的活动</h2>
+                <p className="event-meta compact">创建活动后，配置、收款和待办事项会出现在这里。</p>
+              </div>
+              <QrCode size={20} />
+            </div>
+            <Link className="button primary" href="/organizer/events/new">
+              <Plus size={17} />
+              创建活动
+            </Link>
+          </article>
+        ) : null}
+
         {activeSetups.map((setup) => {
-          const event = events.find((item) => item.id === setup.eventId) ?? events[0];
+          const event = events.find((item) => item.id === setup.eventId);
+
+          if (!event) {
+            return null;
+          }
+
           const eventRegistrations = registrations.filter((registration) => registration.eventId === event.id);
           const selectedTime = setup.surveyOptions.find((option) => option.selected);
           const selectedVenue = setup.venueOptions.find((option) => option.selected);
@@ -97,7 +124,7 @@ export default function OrganizerPage() {
         </div>
         {events.map((event) => {
           const setup = eventSetups.find((item) => item.eventId === event.id);
-          const organizers = getEventOrganizers(event.id);
+          const organizers = organizersByEventId.get(event.id) ?? [];
           const pendingPaymentCount = registrations.filter(
             (registration) => registration.eventId === event.id && registration.paymentStatus === "待审核"
           ).length;
