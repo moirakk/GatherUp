@@ -50,6 +50,7 @@ describe("registration and payment proof API contracts", () => {
   const orderPage = readSource("src/app/me/orders/[orderNumber]/page.tsx");
   const myOrdersPage = readSource("src/app/me/page.tsx");
   const organizerPage = readSource("src/app/organizer/page.tsx");
+  const organizerEventPage = readSource("src/app/organizer/events/[eventId]/page.tsx");
   const registerPage = readSource("src/app/events/[eventId]/register/page.tsx");
   const devStatusPage = readSource("src/app/dev/status/page.tsx");
   const registrationFlow = readSource("src/components/registration-flow.tsx");
@@ -297,6 +298,24 @@ describe("registration and payment proof API contracts", () => {
     expectSource(organizerData, "rowToRegistration");
 
     assert.doesNotMatch(organizerPage, /import\s+\{[^}]*eventSetups|import\s+\{[^}]*registrations|getEventOrganizers/);
+  });
+
+  it("keeps the organizer event workspace on the authenticated Supabase organizer detail adapter", () => {
+    expectSource(organizerEventPage, 'import { getOrganizerEventDetail } from "@/lib/organizer-data";');
+    expectSource(organizerEventPage, "await getOrganizerEventDetail(eventId)");
+    expectSource(organizerEventPage, "const { announcements, event, organizers, registrations, setup } = eventDetail;");
+    expectSource(organizerData, "export async function getOrganizerEventDetail(eventId: string)");
+    expectSource(organizerData, "await createSupabaseServerClient()");
+    expectSource(organizerData, "findUserByAuthUserId(supabase, user.id)");
+    expectSource(organizerData, "await canManageEvent(supabase, eventRow.id)");
+    expectSource(organizerData, '.from("announcements")');
+    expectSource(organizerData, '.from("registrations")');
+    expectSource(organizerData, '.from("event_organizers")');
+
+    assert.doesNotMatch(
+      organizerEventPage,
+      /findEvent|getEventAnnouncements|getEventOrganizers|getEventRegistrations|getEventSetup|@\/lib\/mock-data/
+    );
   });
 
   it("keeps seat locking and confirmation on authenticated Supabase RPC paths", () => {

@@ -12,7 +12,7 @@ import { PollDecisionPanel } from "@/components/poll-decision-panel";
 import { PromotionCenter } from "@/components/promotion-center";
 import { SeatMap } from "@/components/seat-map";
 import { WorkflowStepper } from "@/components/workflow-stepper";
-import { findEvent, getEventAnnouncements, getEventOrganizers, getEventRegistrations, getEventSetup } from "@/lib/mock-data";
+import { getOrganizerEventDetail } from "@/lib/organizer-data";
 
 type OrganizerEventPageProps = {
   params: Promise<{ eventId: string }>;
@@ -29,16 +29,13 @@ function getPanelId(panel?: string): PanelId | null {
 export default async function OrganizerEventPage({ params, searchParams }: OrganizerEventPageProps) {
   const { eventId } = await params;
   const { panel } = await searchParams;
-  const event = findEvent(eventId);
+  const eventDetail = await getOrganizerEventDetail(eventId);
 
-  if (!event) {
+  if (!eventDetail) {
     notFound();
   }
 
-  const announcements = getEventAnnouncements(eventId);
-  const registrations = getEventRegistrations(eventId);
-  const setup = getEventSetup(eventId);
-  const organizers = getEventOrganizers(eventId);
+  const { announcements, event, organizers, registrations, setup } = eventDetail;
   const activePanel = getPanelId(panel);
   const totalSurveyVotes = setup.surveyOptions.reduce((sum, option) => sum + option.votes, 0);
   const totalVenueVotes = setup.venueOptions.reduce((sum, option) => sum + option.votes, 0);
