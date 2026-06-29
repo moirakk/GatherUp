@@ -1,6 +1,6 @@
 # GatherUp v0.1 project architecture brief
 
-Last updated: 2026-06-14
+Last updated: 2026-06-29
 
 This brief is written for product and engineering review. It summarizes what GatherUp is, how the current codebase is structured, what has already been validated, and what remains before a reliable commercial v0.1 release.
 
@@ -13,18 +13,20 @@ GatherUp is an offline event operations platform for small community activities,
 GatherUp is currently at the **commercial v0.1 foundation stage**:
 
 - The product direction and business rules are documented.
-- The Next.js frontend prototype covers the main participant and organizer workflows.
-- The Supabase schema, seed, Storage buckets, and RLS policy drafts exist.
+- The Next.js frontend covers the main participant and organizer workflows, with local/mock fallback still retained for demo mode and unavailable Supabase environments.
+- The Supabase schema, seed, Storage buckets, and RLS policies exist and have been exercised against a clean validation project.
 - Static contract tests verify important SQL, Storage, auth, and documentation assumptions.
-- A clean Supabase dev/staging project has run `schema.sql`, `seed.sql`, and corrected `storage.sql`.
+- A clean Supabase dev/staging project has run `schema.sql`, `seed.sql`, corrected `storage.sql`, post-execution validation scripts, and the opt-in RPC/Storage integration suite.
 - Organizer-sensitive APIs now use shared Supabase auth helpers that accept verified Bearer tokens and same-origin SSR session cookies, while page route protection uses Supabase SSR middleware with `getUser()` session verification and cookie refresh.
 - Registration order creation now calls the atomic PostgreSQL RPC through an authenticated Supabase client.
+- Public event listing/detail, participant order views, organizer dashboard, organizer event workspace, and organizer finance workspace now have Supabase-backed read paths with local fallback behavior.
 - The first private Storage-backed payment-proof path has been added: browser upload to `payment-proofs`, then JWT-protected proof metadata submission.
 - Payment review now has an audited PostgreSQL RPC draft wired through the organizer review API.
 - Participant refund requests, organizer refund review, and refund proof upload now have audited PostgreSQL RPC drafts wired through JWT APIs.
 - Seat locking now has PostgreSQL RPC drafts, JWT API entry points, and an initial order-detail seat selection panel for expiring locks, creating locks, and confirming seat assignments.
 - Check-in now has an audited PostgreSQL RPC draft wired through the organizer verification API.
-- The app still uses mock/local data for most user-facing workflows, so real Supabase service-layer integration is the next major engineering phase.
+- Organizer announcements now publish through a Supabase-authenticated API route into the `announcements` table, while external delivery channels remain future work.
+- The app still has prototype surfaces, especially event creation UX, expense ledger writes, venue intelligence, admin review, and external notification delivery, so the next engineering phase is to complete end-to-end Supabase-backed product journeys rather than only adding more SQL.
 
 ```mermaid
 flowchart LR
@@ -33,23 +35,23 @@ flowchart LR
   C --> D["Supabase SQL / Storage drafts"]
   D --> E["Clean Supabase validation"]
   E --> F["JWT APIs and atomic orders"]
-  F --> H["Private payment-proof Storage"]
-  H --> J["Audited payment review RPC"]
-  J --> R["Refund request RPC"]
-  R --> K["Seat-lock RPCs"]
-  K --> L["Audited check-in RPC"]
-  L --> I["Service layer and real data"]
+  F --> H["Private proof Storage"]
+  H --> J["Audited workflow RPCs"]
+  J --> R["Real participant views"]
+  R --> K["Real organizer views"]
+  K --> L["Announcement publishing"]
+  L --> I["Remaining product services"]
   I --> G["Internal beta"]
 
   A:::done
   B:::done
   C:::done
   D:::done
-  E:::doing
+  E:::done
   F:::done
-  H:::doing
-  J:::doing
-  R:::doing
+  H:::done
+  J:::done
+  R:::done
   K:::doing
   L:::doing
   I:::todo
@@ -101,12 +103,12 @@ Recent UX improvement:
 flowchart TB
   UI["Next.js App Router UI"] --> Components["React components"]
   UI --> Routes["Server components and protected routes"]
-  Components --> Mock["Current mock/local data"]
+  Components --> Data["Supabase-backed data plus local fallback"]
 
   Routes --> Auth["Auth adapter and middleware"]
-  Routes --> FutureServices["Planned service layer"]
+  Routes --> Services["Server data and workflow services"]
 
-  FutureServices --> Supabase["Supabase"]
+  Services --> Supabase["Supabase"]
   Supabase --> DB["PostgreSQL schema"]
   Supabase --> Storage["Storage buckets"]
   Supabase --> RLS["RLS policies"]
@@ -128,23 +130,24 @@ Implemented stack:
 - lucide-react icons
 - Supabase JavaScript client
 - Supabase Auth/profile adapters
-- PostgreSQL schema draft
-- Supabase Storage policy draft
+- PostgreSQL schema and workflow RPCs
+- Supabase Storage policies for private proof buckets
 - Node test runner contract tests
 - JWT-gated server APIs for sensitive organizer operations
 - Atomic registration RPC call path for order creation
-- Initial private Storage payment-proof upload and proof-record API
-- Initial audited payment-review RPC call path
-- Initial participant refund request/review/proof-upload RPC call paths
-- Initial seat-lock and assignment RPC/API drafts plus order-detail UI wiring
-- Initial audited check-in RPC call path
+- Private Storage payment-proof upload and proof-record API
+- Audited payment-review RPC call path
+- Participant refund request/review/proof-upload RPC call paths
+- Seat-lock and assignment RPC/API paths plus order-detail UI wiring
+- Audited check-in RPC call path
+- Supabase-backed public event, participant order, organizer dashboard, organizer event, organizer finance, and announcement publishing paths
 
 ## 5. Data architecture direction
 
 Current data source:
 
-- Most pages still read from `src/lib/mock-data.ts`.
-- Local browser storage is used for prototype-only draft and account behavior.
+- Core participant and organizer surfaces now use Supabase-backed services when configured: public event listing/detail, registration order creation, participant order list/detail, organizer dashboard, organizer event workspace, organizer finance workspace, finance export, proof-file workflows, and announcement publishing.
+- Local/mock data remains as explicit fallback for local demo mode, unavailable Supabase environments, event creation draft behavior, venue intelligence, and unfinished product modules.
 
 Target data source:
 
@@ -190,13 +193,11 @@ Important real finding:
 - The schema currently defines `participant` and `organizer_internal`.
 - Storage policy was fixed to use `participant`.
 
-Remaining Supabase validation:
+Latest Supabase validation:
 
-- Run post-seed count checks.
-- Run identity integrity checks.
-- Run payment setup checks.
-- Run Storage bucket checks.
-- Run final object coverage audit.
+- Post-execution validation scripts have been run against the clean validation project.
+- The opt-in integration suite passed 19/19 real Supabase RPC and Storage RLS tests against `oxbrxkllftyevlzmiydt` on 2026-06-28.
+- Covered behaviors include registration creation, duplicate rejection, capacity contention, payment review, check-in, refund request/review/proof upload, concurrent payment/check-in/seat races, and private payment/refund proof Storage boundaries.
 
 ## 7. Reliability posture
 
@@ -226,34 +227,29 @@ Most recent local verification:
 
 The main remaining gaps are engineering depth, not product concept:
 
-- Mock/local data still needs to be replaced by real Supabase reads and writes.
-- Payment proof upload now has an initial service path, but still needs real clean-project user/session testing.
-- Refund confirmation, dispute, and notification workflows still need service-layer implementation; refund request/review/proof upload, payment review, seat selection, and check-in now have initial RPC/API paths that still need live Supabase validation.
-- Seat selection needs atomic locking and realtime updates.
-- Notification publishing needs a real email provider such as Resend.
+- Remaining mock/local surfaces need to be replaced intentionally rather than all at once: event creation persistence, expense ledger writes, venue intelligence, admin review, complaints, and some edge-case UI flows.
+- Payment proof upload, refund proof upload, payment review, seat selection, check-in, and refund request/review have passed clean-project user/session validation, but still need broader UI-level end-to-end testing.
+- Seat selection has atomic locking and integration coverage; realtime visual updates are still future work.
+- Announcement publishing now writes database records; external notification delivery still needs a real provider such as Resend and later WeChat integration.
 - Minimum admin review and broader audit tooling still need implementation.
 
 ## 9. Recommended next steps
 
 ```mermaid
 flowchart LR
-  A["Finish Supabase validation SQL"] --> B["Validate payment-proof Storage flow"]
-  B --> C["Validate payment-review RPC"]
-  C --> D["Validate seat-lock RPCs"]
-  D --> E["Validate check-in RPC"]
-  E --> R["Validate refund request/review/proof RPCs"]
-  R --> F["Expand real event services"]
-  E --> F["Add notifications and admin review"]
+  A["Keep docs and GitHub current"] --> B["Persist event creation"]
+  B --> C["Persist expense ledger"]
+  C --> D["Add organizer verification"]
+  D --> E["Add external notifications"]
+  E --> F["Minimum admin review"]
+  F --> G["UI-level beta QA"]
 ```
 
 Immediate order:
 
-1. Commit and push the latest repository state.
-2. Finish clean Supabase post-execution validation queries.
-3. Validate private `payment-proofs` Storage upload with real Supabase users and RLS.
-4. Validate the audited payment-review RPC with real Supabase users and RLS.
-5. Validate order-detail seat selection against real Supabase users and concurrency behavior.
-6. Validate check-in RPC/API against real Supabase users.
-7. Validate refund request/review/proof RPC/API against real Supabase users.
-8. Expand real Supabase-backed event and organizer services.
-9. Add notification delivery after the payment, refund request, seating, and check-in flows are reliable.
+1. Keep README, status docs, and GitHub profile copy aligned with the actual codebase after each major workflow migration.
+2. Persist event creation into Supabase instead of relying on local created-event records.
+3. Persist organizer finance expenses and optional proof paths.
+4. Add organizer verification and minimum admin review.
+5. Add external notification delivery after the database notification/audit baseline remains stable.
+6. Expand UI-level beta QA around participant registration, payment proof, organizer review, seat selection, check-in, refund, finance export, and announcement publishing.

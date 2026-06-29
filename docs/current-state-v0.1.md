@@ -81,7 +81,7 @@ Supabase live 状态：
 
 - `/` 活动广场已改为 Server Component，通过 `getPublicEvents()` 优先读取 Supabase `events` 中 `visibility = 'public'` 的活动；Supabase 未配置、查询失败或空结果时回退 mock 数据。
 - `/events/[eventId]` 活动详情已通过 `getPublicEventDetail()` 优先读取 Supabase，可用 UUID 或 `public_code` 查找；未公开但 link-only 的活动由数据库 RLS 控制直链可见。
-- 当前 Supabase 读取只覆盖公开展示面：活动基本信息和已发布通知。报名人数、付款数、选座数、组织者公开资料等仍需后续服务层和权限设计后再接入。
+- Supabase 读取已从公开展示面扩展到核心参与者和主办工作台：公开活动、活动详情、参与者订单、主办首页、活动管理台和财务中心均已有真实读取路径；未配置 Supabase、查询失败或无数据时仍保留本地 mock fallback。
 - 已新增第一批受控写入/导出 API：活动创建、报名订单、付款审核、核销、名单导出、财务导出。它们要求 Supabase 登录态；主办敏感操作不再信任原型 cookie。
 - middleware 已迁移到 `@supabase/ssr`：配置 Supabase 后，页面路由通过 `supabase.auth.getUser()` 验证真实 session，并支持 Supabase session cookie refresh；`/api/*` 由各 Route Handler 自己返回 JSON 鉴权结果。
 - API Route 认证已统一到底层 helper：外部/API 客户端可继续传 Supabase Bearer token；同源浏览器请求也可使用 Supabase SSR session cookie 获取用户和 authenticated Supabase client。
@@ -110,6 +110,8 @@ Supabase live 状态：
 - 退款已新增申请、审核、凭证上传三段 RPC/API 草案：`request_refund_atomic` + `/api/orders/refund` 允许参与者为自己的已确认订单申请退款；`review_refund_request_atomic` + `/api/orders/refund/review` 允许主办/财务/管理员审核通过或驳回；`record_refund_proof_atomic` + `/api/orders/refund/proof` 允许退款负责人提交私有 `refund-proofs` 打款凭证并推进到 `proof_uploaded`。数据库函数会同步订单/付款/退款状态并写入 `audit_logs`。参与者确认收款和争议处理仍需继续补齐。
 - 主办敏感 API 已从原型 cookie 身份切换到 Supabase Bearer/SSR cookie 统一验证：活动创建、付款审核、核销、名单导出和财务导出不再信任可被客户端伪造的 `gatherup_id` cookie。
 - 这些 API/RPC 仍是早期产品集成层，但付款凭证 Storage 链路、付款审核 RPC、座位锁 RPC、核销 RPC 和退款申请/审核/凭证 RPC 已经在干净 Supabase 项目中用真实用户 session 通过集成验证；waitlist、参与者确认收款、退款争议、更多 UI 级端到端流程和新增工作流 RLS 仍需要继续补齐。
+- 主办公告中心已接入真实发布路径：登录主办通过 `/api/announcements` 写入 `announcements` 表，并由数据库 RLS/权限函数控制是否可编辑活动；外部邮件、短信和微信通知仍是后续 channel 层。
+- 主办财务导出已从通用活动管理权限收紧为 finance-level 权限，避免普通协作者导出财务数据。
 
 ## 3. 本地运行
 
@@ -308,40 +310,39 @@ Supabase 接入：
 
 ## 7. 已知限制
 
-当前仍是原型，不是正式可上线产品。
+当前仍是商业化 v0.1 集成阶段，不是正式可上线产品。
 
 限制包括：
 
-- 注册账号保存在浏览器 localStorage，只用于原型验证。
-- 未配置 Supabase 时，注册账号保存在浏览器 localStorage，只用于原型验证。
+- 未配置 Supabase 时，注册账号和部分流程会回退到浏览器 localStorage/local mock，只用于原型验证。
 - 页面路由保护已开始迁移到 Supabase SSR session；原型 cookie 仍保留给部分本地 UI 状态和未完全迁移的组件，不再作为正式主办 API 权限依据。
 - 已配置 Supabase 时，资料补全页和账号中心可以更新 `users` 表；未配置时仍使用本地原型。
-- 付款截图、退款凭证、支出凭证和收款码已有 Storage SQL 草案，但还没有在真实 Supabase 项目中执行。
-- 创建活动分步向导已支持本地草稿保存和发布前检查，但还没有写入数据库。
-- 宣传物料、通知发布和报名提醒当前仍是前端原型状态，没有写入数据库或发送真实消息。
-- 报名、付款、选座还没有写入数据库。
-- 权限规则目前主要在文档和 SQL 草案里，前端没有真实后端校验。
+- 付款截图和退款凭证已有真实 Storage/RLS/API/RPC 路径并通过 clean Supabase 集成验证；支出凭证和收款码版本管理仍需继续补齐到完整产品 UI。
+- 创建活动分步向导已支持本地草稿保存和发布前检查，且存在受控活动创建 API；页面级创建体验仍需要完全切到 Supabase 持久化。
+- 主办公告发布已写入数据库；报名提醒、邮件、短信和微信等外部发送仍未接入真实 provider。
+- 报名、付款、选座、核销、退款的关键数据库路径已经建立并验证；仍需要更完整的 UI 级端到端 QA、waitlist、参与者确认收款、退款争议等业务边界。
+- 权限规则已经在 Supabase RLS、RPC 和 API helper 中落地到核心路径；新增工作流仍需要同步扩展 RLS 与 contract tests。
 - 场地库数据是示例数据，不是真实审核后的数据。
 
 ## 8. 推荐下一步
 
 第一优先级：
 
-- 完成 Auth foundation：真实 Supabase Session 策略、路由保护、用户资料同步和 `/dev/status` 检查。
-- 在干净 Supabase 项目执行 `GATHERUP_RUN_RPC_INTEGRATION=1 GATHERUP_RPC_INTEGRATION_TARGET=clean-dev GATHERUP_RPC_INTEGRATION_ALLOWED_REF=<clean-dev-project-ref> npm run test:integration:rpc`，记录报名创建、付款审核和核销 RPC 的端到端验证结果。
-- 将商业化 v0.1 PRD 转成数据库 schema、枚举、索引、RLS 和服务层任务。
-- 明确组织者认证、活动审核、订单、付款凭证、退款、座位锁、审计日志和后台所需表结构。
+- 将活动创建页面完整切到 Supabase 持久化，并保留本地草稿作为草稿能力而不是最终数据源。
+- 将财务支出 ledger 写入 `event_expenses`，补齐支出凭证路径和导出证据链。
+- 围绕参与者报名、付款截图、主办审核、选座、核销、退款、财务导出和公告发布补 UI 级端到端验证。
+- 继续保持 README、GitHub profile copy、当前状态文档和真实代码同步。
 
 第二优先级：
 
-- 把活动创建、报名、订单、付款凭证、退款和选座接到真实数据库。
-- 接入 Storage：活动封面、活动物料、付款截图、退款凭证和支出凭证。
-- 实现真实组织者权限、管理员权限和审计日志。
+- 实现组织者认证、活动审核、投诉/争议和最小后台。
+- 接入业务邮件 provider，先完成站内通知到邮件的 channel 层，再预留微信通知。
+- 扩展活动封面、活动物料、收款码版本和支出凭证的 Storage UI。
 
 第三优先级：
 
-- 实现业务邮件通知、导出权限、轻量签到、投诉入口和最小后台。
 - 场地库提交和审核流。
+- waitlist、参与者确认收款、退款争议和数据保留任务。
 - 移动端参与者路径和桌面组织者路径打磨。
 
 ## 9. 当前 Git 状态说明

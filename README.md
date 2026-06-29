@@ -3,7 +3,7 @@
 [![Next.js](https://img.shields.io/badge/Next.js-App%20Router-black?logo=nextdotjs)](https://nextjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-strict%20frontend-3178c6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Supabase](https://img.shields.io/badge/Supabase-Auth%20%2B%20Postgres%20%2B%20Storage-3ecf8e?logo=supabase&logoColor=white)](https://supabase.com/)
-[![CI](https://github.com/moirahoumiki/GatherUp/actions/workflows/ci.yml/badge.svg)](https://github.com/moirahoumiki/GatherUp/actions/workflows/ci.yml)
+[![CI](https://github.com/moirakk/GatherUp/actions/workflows/ci.yml/badge.svg)](https://github.com/moirakk/GatherUp/actions/workflows/ci.yml)
 [![Tests](https://img.shields.io/badge/tests-contract%20%2B%20opt--in%20RPC%20integration-6f8f78)](#quality-bar)
 
 GatherUp is a commercial v0.1 event operations platform for small offline community activities.
@@ -17,14 +17,14 @@ GatherUp is designed as a general offline event platform, not a fandom-only tool
 - Product: offline community event operations, starting with fandom/community activities.
 - Core users: organizers, participants, event staff, finance/refund reviewers, and future platform admins.
 - Core workflows: event setup, registration, organizer-collected payment proof, review, seating, check-in, refund tracking, finance, and export.
-- Current engineering stage: prototype UI plus commercial v0.1 Supabase transaction foundation.
+- Current engineering stage: commercial v0.1 Supabase integration, with the core participant, organizer, finance, notification, and proof-file workflows moving from prototype state into verified database-backed paths.
 - Reliability direction: PostgreSQL RPCs for atomic state changes, Supabase RLS/Storage for access boundaries, and contract tests to prevent accidental regression.
 
 ## Repository
 
-- GitHub: [github.com/moirahoumiki/GatherUp](https://github.com/moirahoumiki/GatherUp)
+- GitHub: [github.com/moirakk/GatherUp](https://github.com/moirakk/GatherUp)
 - Current branch: `main`
-- Current stage: commercial v0.1 foundation, moving from prototype flows into Supabase-backed transactional workflows.
+- Current stage: commercial v0.1 foundation, now wiring verified Supabase-backed workflows through participant and organizer UI surfaces.
 - License: proprietary / all rights reserved during pre-commercial development.
 
 ## Product Preview
@@ -88,7 +88,7 @@ GatherUp/
 
 ## Status
 
-Current status: **commercial v0.1 foundation with a passing real Supabase RPC and private Storage RLS validation baseline**. Public reads, Supabase SSR/Bearer-gated endpoints, atomic registration, organizer-collected payment proof review, check-in, refunds, seat-lock concurrency, and sensitive proof-file access boundaries have all reached a verified backend baseline.
+Current status: **commercial v0.1 foundation with a passing real Supabase RPC and private Storage RLS validation baseline, plus the first real Supabase-backed participant and organizer workspaces**. Public event reads, event detail, registration order creation, participant order lists/details, organizer dashboard, organizer event operations, finance center, announcement publishing, payment review, check-in, refunds, seat-lock concurrency, and sensitive proof-file access boundaries now have verified backend paths or UI wiring.
 
 Implemented prototype coverage:
 
@@ -102,7 +102,7 @@ Implemented prototype coverage:
 - Organizer promotion center, notification center, payment review prototype, seat management prototype.
 - Venue intelligence prototype.
 - Supabase client dependency, Auth adapter, user profile sync adapter, schema/seed/Storage SQL drafts, and contract tests.
-- Server-side Supabase read adapter for public event listing and public/unlisted event detail, with mock fallback when Supabase is not configured or unavailable.
+- Server-side Supabase read adapters for public event listing, public/link-only event detail, participant orders, organizer dashboard, organizer event workspaces, and organizer finance views, with mock fallback when Supabase is not configured or unavailable.
 - Initial guarded server APIs for event creation, registration orders, payment review, check-in verification, and Excel exports.
 - Organizer-sensitive APIs now use a shared Supabase auth helper that accepts verified Bearer tokens for API clients and Supabase SSR session cookies for same-origin browser requests; they no longer trust local prototype cookies.
 - Route protection now uses Supabase SSR middleware with verified `getUser()` session checks and cookie refresh support when Supabase is configured.
@@ -112,19 +112,21 @@ Implemented prototype coverage:
 - Refund proof submission now has a private Storage-backed path: refund managers upload transfer proof to `refund-proofs` under `{event_id}/{refund_request_id}/{filename}`, then a JWT-protected API records the proof through an audited RPC and moves the refund to proof uploaded.
 - Seat locking now has PostgreSQL RPCs plus JWT API entry points for expiring stale locks, creating active locks, and confirming assignments under database constraints. The order detail page has an initial real seat-selection panel, and live Supabase concurrency validation now covers competing seat locks.
 - Check-in verification now has an audited PostgreSQL RPC path: event staff submit a check-in code through the JWT API, and the database updates the order, attendees, `check_ins`, and `audit_logs` together.
+- Organizer announcements now publish through a Supabase-authenticated API route into the `announcements` table; the UI still treats external delivery such as email, SMS, or WeChat as a later channel layer.
+- Organizer finance export now requires finance-level event permission instead of broad event-management permission.
 - Supabase SSR middleware login redirect foundation and safe internal `next` path handling.
 - Real Supabase live project preflight, read-only coverage audit logs, and clean dev/staging schema, seed, and Storage execution notes.
 
 Not production-ready yet:
 
-- Most business workflows still use mock/local prototype data; public event listing and public/unlisted event detail now have an initial Supabase read path.
-- Real write APIs are still early product-integration endpoints, but their core database paths have passed the clean Supabase validation baseline: registration creation, payment proof upload, payment review, check-in, refund request/review/proof upload, seat-lock concurrency, and private proof-file RLS.
-- Event creation, finance, and admin workflows are not yet fully backed by production-grade database services. The next risk is less about SQL/RPC correctness and more about wiring the verified backend paths into complete organizer and participant UI workflows.
+- Several important surfaces are now backed by Supabase, but the product still keeps mock/local fallback paths for local demos and unavailable Supabase environments.
+- Real write APIs are still early product-integration endpoints, but their core database paths have passed the clean Supabase validation baseline: registration creation, payment proof upload, payment review, check-in, refund request/review/proof upload, seat-lock concurrency, announcement publishing, and private proof-file RLS.
+- Event creation, expense ledger writes, venue intelligence, admin workflows, external notification delivery, and some edge-case UI flows are not yet fully backed by production-grade database services. The next risk is less about SQL/RPC correctness and more about finishing end-to-end product journeys on top of the verified backend paths.
 - Mutating API routes now have a shared in-process rate limiter and a contract test that blocks new write endpoints without rate limiting. This is an early abuse-control baseline for local and single-instance deployments; multi-instance production should replace the in-memory bucket store with a shared Redis/Upstash-backed limiter.
 - Supabase schema, seed, Storage policy, and validation scripts have been rebuilt in the clean dev/staging project `oxbrxkllftyevlzmiydt`; the live integration suite now passes 19/19 tests against that project.
 - Anonymous public-read grants for public event detail surfaces are included in the schema draft and local contract tests, and the clean validation project has passed the post-execution SQL summary plus RPC/Storage integration suite.
 - Permission enforcement and RLS still need to expand as new product workflows are added, but the commercial v0.1 registration/payment/check-in/refund/seat-lock/proof-file baseline is no longer unvalidated.
-- Broader transactional service functions, email business notifications, organizer verification UI, admin review UI, complaints, and data retention jobs are still planned.
+- Broader transactional service functions, email business notifications, organizer verification UI, admin review UI, expense persistence, venue review flows, complaints, and data retention jobs are still planned.
 
 ## Commercial v0.1 Direction
 
