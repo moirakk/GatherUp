@@ -97,6 +97,18 @@ export async function canManageEvent(supabase: SupabaseClient, eventId: string) 
   return data === true;
 }
 
+export async function canManageEventFinance(supabase: SupabaseClient, eventId: string) {
+  const { data, error } = await supabase.rpc("can_manage_event_finance", {
+    target_event_id: eventId
+  });
+
+  if (error) {
+    return false;
+  }
+
+  return data === true;
+}
+
 export function generateCheckInCode() {
   return `${randomUUID().replaceAll("-", "")}${randomBytes(12).toString("hex")}`;
 }

@@ -164,14 +164,19 @@ describe("registration and payment proof API contracts", () => {
     expectSource(serverApi, "export async function canManageEvent(supabase: SupabaseClient, eventId: string)");
     expectSource(serverApi, 'supabase.rpc("can_manage_event"');
     expectSource(serverApi, "target_event_id: eventId");
+    expectSource(serverApi, "export async function canManageEventFinance(supabase: SupabaseClient, eventId: string)");
+    expectSource(serverApi, 'supabase.rpc("can_manage_event_finance"');
     assert.doesNotMatch(serverApi, /export async function canManageEvent[\s\S]*?\.from\("event_organizers"\)/);
 
     for (const route of [exportAttendeesRoute, exportFinanceRoute]) {
       expectSource(route, "getAuthenticatedSupabaseClient(request)");
       expectSource(route, "getSupabaseServiceClient()");
-      expectSource(route, "canManageEvent(authContext.supabase, event.id)");
       assert.doesNotMatch(route, /canManageEventByAuthUserId/);
     }
+
+    expectSource(exportAttendeesRoute, "canManageEvent(authContext.supabase, event.id)");
+    expectSource(exportFinanceRoute, "canManageEventFinance(authContext.supabase, event.id)");
+    assert.doesNotMatch(exportFinanceRoute, /canManageEvent\(authContext\.supabase, event\.id\)/);
   });
 
   it("keeps dev status checks authenticated and read-only", () => {

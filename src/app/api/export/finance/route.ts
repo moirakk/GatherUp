@@ -1,4 +1,4 @@
-import { canManageEvent, jsonError } from "@/lib/server/api";
+import { canManageEventFinance, jsonError } from "@/lib/server/api";
 import { buildWorkbookBuffer, excelResponse } from "@/lib/server/excel";
 import { getAuthenticatedSupabaseClient, getSupabaseServiceClient } from "@/lib/supabase/server";
 
@@ -36,7 +36,7 @@ export async function GET(request: Request) {
       return jsonError("找不到活动。", 404);
     }
 
-    const canManage = await canManageEvent(authContext.supabase, event.id);
+    const canManage = await canManageEventFinance(authContext.supabase, event.id);
 
     if (!canManage) {
       return jsonError("只有活动主办或财务协作者可以导出财务对账单。", 403);
