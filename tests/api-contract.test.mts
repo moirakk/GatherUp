@@ -51,6 +51,7 @@ describe("registration and payment proof API contracts", () => {
   const myOrdersPage = readSource("src/app/me/page.tsx");
   const organizerPage = readSource("src/app/organizer/page.tsx");
   const organizerEventPage = readSource("src/app/organizer/events/[eventId]/page.tsx");
+  const organizerFinancePage = readSource("src/app/organizer/events/[eventId]/finance/page.tsx");
   const registerPage = readSource("src/app/events/[eventId]/register/page.tsx");
   const devStatusPage = readSource("src/app/dev/status/page.tsx");
   const registrationFlow = readSource("src/components/registration-flow.tsx");
@@ -315,6 +316,22 @@ describe("registration and payment proof API contracts", () => {
     assert.doesNotMatch(
       organizerEventPage,
       /findEvent|getEventAnnouncements|getEventOrganizers|getEventRegistrations|getEventSetup|@\/lib\/mock-data/
+    );
+  });
+
+  it("keeps the organizer finance workspace on the finance-scoped Supabase adapter", () => {
+    expectSource(organizerFinancePage, 'import { getOrganizerFinanceDetail } from "@/lib/organizer-data";');
+    expectSource(organizerFinancePage, "await getOrganizerFinanceDetail(eventId)");
+    expectSource(organizerFinancePage, "const { event, expenses, registrations, setting, summary } = financeDetail;");
+    expectSource(organizerData, "export async function getOrganizerFinanceDetail(eventId: string)");
+    expectSource(organizerData, 'supabase.rpc("can_manage_event_finance"');
+    expectSource(organizerData, '.from("event_finance_settings")');
+    expectSource(organizerData, '.from("event_expenses")');
+    expectSource(organizerData, "buildFinanceSummary(eventRegistrations, expenses)");
+
+    assert.doesNotMatch(
+      organizerFinancePage,
+      /findEvent|getEventExpenses|getEventFinanceSetting|getEventFinanceSummary|getEventRegistrations|@\/lib\/mock-data/
     );
   });
 

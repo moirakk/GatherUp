@@ -6,13 +6,7 @@ import { ExpenseLedger } from "@/components/expense-ledger";
 import { FinanceActions } from "@/components/finance-actions";
 import { MetricCard } from "@/components/metric-card";
 import { StatusBadge } from "@/components/status-badge";
-import {
-  findEvent,
-  getEventExpenses,
-  getEventFinanceSetting,
-  getEventFinanceSummary,
-  getEventRegistrations
-} from "@/lib/mock-data";
+import { getOrganizerFinanceDetail } from "@/lib/organizer-data";
 
 type FinancePageProps = {
   params: Promise<{ eventId: string }>;
@@ -24,16 +18,13 @@ function formatMoney(amount: number) {
 
 export default async function FinancePage({ params }: FinancePageProps) {
   const { eventId } = await params;
-  const event = findEvent(eventId);
+  const financeDetail = await getOrganizerFinanceDetail(eventId);
 
-  if (!event) {
+  if (!financeDetail) {
     notFound();
   }
 
-  const setting = getEventFinanceSetting(eventId);
-  const summary = getEventFinanceSummary(eventId);
-  const expenses = getEventExpenses(eventId);
-  const registrations = getEventRegistrations(eventId);
+  const { event, expenses, registrations, setting, summary } = financeDetail;
 
   return (
     <>
