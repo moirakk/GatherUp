@@ -115,7 +115,7 @@ Implemented prototype coverage:
 - Check-in verification now has an audited PostgreSQL RPC path: event staff submit a check-in code through the JWT API, and the database updates the order, attendees, `check_ins`, and `audit_logs` together.
 - Organizer announcements now publish through a Supabase-authenticated API route into the `announcements` table; the UI still treats external delivery such as email, SMS, or WeChat as a later channel layer.
 - Organizer finance export now requires finance-level event permission instead of broad event-management permission.
-- Organizer finance expenses can now be created through a Supabase-authenticated, finance-scoped API route and stored in `event_expenses`; optional expense proof upload remains future work.
+- Organizer finance expenses can now be created through a Supabase-authenticated, finance-scoped API route and stored in `event_expenses`; optional expense proof upload writes to the private `expense-proofs` bucket and updates `event_expenses.proof_url`.
 - Supabase SSR middleware login redirect foundation and safe internal `next` path handling.
 - Real Supabase live project preflight, read-only coverage audit logs, and clean dev/staging schema, seed, and Storage execution notes.
 
@@ -123,12 +123,12 @@ Not production-ready yet:
 
 - Several important surfaces are now backed by Supabase, but the product still keeps mock/local fallback paths for local demos and unavailable Supabase environments.
 - Real write APIs are still early product-integration endpoints, but their core database paths have passed the clean Supabase validation baseline: registration creation, payment proof upload, payment review, check-in, refund request/review/proof upload, seat-lock concurrency, announcement publishing, and private proof-file RLS.
-- Expense proof upload, venue intelligence, admin workflows, external notification delivery, and some edge-case UI flows are not yet fully backed by production-grade database services. The next risk is less about SQL/RPC correctness and more about finishing end-to-end product journeys on top of the verified backend paths.
+- Venue intelligence, admin workflows, external notification delivery, and some edge-case UI flows are not yet fully backed by production-grade database services. The next risk is less about SQL/RPC correctness and more about finishing end-to-end product journeys on top of the verified backend paths.
 - Mutating API routes now have a shared in-process rate limiter and a contract test that blocks new write endpoints without rate limiting. This is an early abuse-control baseline for local and single-instance deployments; multi-instance production should replace the in-memory bucket store with a shared Redis/Upstash-backed limiter.
 - Supabase schema, seed, Storage policy, and validation scripts have been rebuilt in the clean dev/staging project `oxbrxkllftyevlzmiydt`; the live integration suite now passes 19/19 tests against that project.
 - Anonymous public-read grants for public event detail surfaces are included in the schema draft and local contract tests, and the clean validation project has passed the post-execution SQL summary plus RPC/Storage integration suite.
 - Permission enforcement and RLS still need to expand as new product workflows are added, but the commercial v0.1 registration/payment/check-in/refund/seat-lock/proof-file baseline is no longer unvalidated.
-- Broader transactional service functions, email business notifications, organizer verification UI, admin review UI, expense proof upload, venue review flows, complaints, and data retention jobs are still planned.
+- Broader transactional service functions, email business notifications, organizer verification UI, admin review UI, expense proof editing/voiding, venue review flows, complaints, and data retention jobs are still planned.
 
 ## Commercial v0.1 Direction
 

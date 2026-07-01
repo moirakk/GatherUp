@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { CircleDollarSign, ClipboardList, FileImage, ReceiptText } from "lucide-react";
 
 import { ExpenseLedger } from "@/components/expense-ledger";
+import { ExpenseProofList } from "@/components/expense-proof-list";
 import { FinanceActions } from "@/components/finance-actions";
 import { MetricCard } from "@/components/metric-card";
 import { StatusBadge } from "@/components/status-badge";
@@ -113,13 +114,7 @@ export default async function FinancePage({ params }: FinancePageProps) {
             </div>
             <FileImage size={20} />
           </div>
-          <div className="notice-list">
-            {expenses.map((expense) => (
-              <div key={`${expense.id}-proof`}>
-                {expense.title}：{expense.proof === "pending" ? "待补充凭证" : expense.proof}
-              </div>
-            ))}
-          </div>
+          <ExpenseProofList eventId={event.id} expenses={expenses} />
         </article>
       </section>
     </>

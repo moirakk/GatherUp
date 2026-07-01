@@ -1,0 +1,123 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { FileImage, Upload } from "lucide-react";
+
+import { type EventExpense } from "@/lib/mock-data";
+import { getSupabaseBrowserClient, isSupabaseConfigured } from "@/lib/supabase/client";
+
+type ExpenseProofListProps = {
+  eventId: string;
+  expenses: EventExpense[];
+};
+
+function safeFileName(value: string) {
+  const fallback = "expense-proof";
+  const cleaned = value.trim().replace(/[^a-zA-Z0-9._-]+/g, "-").replace(/^-+|-+$/g, "");
+
+  return cleaned || fallback;
+}
+
+export function ExpenseProofList({ eventId, expenses }: ExpenseProofListProps) {
+  const [proofsByExpenseId, setProofsByExpenseId] = useState(() => {
+    return new Map(expenses.map((expense) => [expense.id, expense.proof]));
+  });
+  const [busyExpenseId, setBusyExpenseId] = useState("");
+  const [notice, setNotice] = useState("");
+
+  useEffect(() => {
+    setProofsByExpenseId(new Map(expenses.map((expense) => [expense.id, expense.proof])));
+  }, [expenses]);
+
+  async function uploadProof(expense: EventExpense, file: File) {
+    if (!isSupabaseConfigured()) {
+      setNotice("本地演示模式无法上传支出凭证，请配置 Supabase 后重试。");
+      return;
+    }
+
+    setBusyExpenseId(expense.id);
+    setNotice("");
+
+    try {
+      const supabase = getSupabaseBrowserClient();
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData.session?.access_token;
+      const storagePath = `${eventId}/${expense.id}/${Date.now()}-${safeFileName(file.name)}`;
+      const { error: uploadError } = await supabase.storage
+        .from("expense-proofs")
+        .upload(storagePath, file, { upsert: false, contentType: file.type });
+
+      if (uploadError) {
+        setNotice(uploadError.message);
+        return;
+      }
+
+      const response = await fetch("/api/expenses/proof", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          ...(accessToken ? { authorization: `Bearer ${accessToken}` } : {})
+        },
+        body: JSON.stringify({
+          event_id: eventId,
+          expense_id: expense.id,
+          storage_path: storagePath
+        })
+      });
+      const payload = await response.json().catch(() => ({}));
+
+      if (!response.ok || !payload?.ok || !payload.proof_url) {
+        setNotice(typeof payload?.message === "string" ? payload.message : "支出凭证状态更新失败。");
+        return;
+      }
+
+      setProofsByExpenseId((current) => {
+        const next = new Map(current);
+        next.set(expense.id, String(payload.proof_url));
+        return next;
+      });
+      setNotice("支出凭证已上传并写入 Supabase。");
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "支出凭证上传失败。");
+    } finally {
+      setBusyExpenseId("");
+    }
+  }
+
+  return (
+    <div className="notice-list">
+      {notice && <p className="inline-notice">{notice}</p>}
+      {expenses.map((expense) => {
+        const proof = proofsByExpenseId.get(expense.id) ?? expense.proof;
+        const hasProof = proof !== "pending";
+        const isBusy = busyExpenseId === expense.id;
+
+        return (
+          <div className="expense-proof-row" key={`${expense.id}-proof`}>
+            <span>
+              <strong>{expense.title}</strong>
+              <small>{hasProof ? proof : "待补充凭证"}</small>
+            </span>
+            <label className={`button secondary compact ${isBusy ? "disabled" : ""}`}>
+              {hasProof ? <FileImage size={15} /> : <Upload size={15} />}
+              {isBusy ? "上传中" : hasProof ? "替换凭证" : "上传凭证"}
+              <input
+                type="file"
+                accept="image/png,image/jpeg,image/webp,application/pdf"
+                disabled={isBusy}
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  event.currentTarget.value = "";
+
+                  if (file) {
+                    void uploadProof(expense, file);
+                  }
+                }}
+              />
+            </label>
+          </div>
+        );
+      })}
+    </div>
+  );
+}

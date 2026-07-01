@@ -35,6 +35,7 @@ describe("registration and payment proof API contracts", () => {
   const orderRefundRoute = readSource("src/app/api/orders/refund/route.ts");
   const orderRefundReviewRoute = readSource("src/app/api/orders/refund/review/route.ts");
   const orderRefundProofRoute = readSource("src/app/api/orders/refund/proof/route.ts");
+  const expenseProofRoute = readSource("src/app/api/expenses/proof/route.ts");
   const orderVerifyRoute = readSource("src/app/api/orders/verify/route.ts");
   const exportAttendeesRoute = readSource("src/app/api/export/attendees/route.ts");
   const exportFinanceRoute = readSource("src/app/api/export/finance/route.ts");
@@ -60,6 +61,7 @@ describe("registration and payment proof API contracts", () => {
   const registrationFlow = readSource("src/components/registration-flow.tsx");
   const announcementCenter = readSource("src/components/announcement-center.tsx");
   const expenseLedger = readSource("src/components/expense-ledger.tsx");
+  const expenseProofList = readSource("src/components/expense-proof-list.tsx");
   const eventsData = readSource("src/lib/events-data.ts");
   const organizerData = readSource("src/lib/organizer-data.ts");
   const ordersData = readSource("src/lib/orders-data.ts");
@@ -369,6 +371,22 @@ describe("registration and payment proof API contracts", () => {
     expectSource(expenseLedger, 'fetch("/api/expenses"');
     expectSource(expenseLedger, "getSupabaseBrowserClient()");
     assert.doesNotMatch(expenseLedger, /接入数据库后会长期保存/);
+  });
+
+  it("keeps organizer expense proofs bound to the private Storage path and finance API", () => {
+    expectSource(expenseProofRoute, "getAuthenticatedSupabaseClient(request)");
+    expectSource(expenseProofRoute, "enforceRateLimit(request");
+    expectSource(expenseProofRoute, 'keyPrefix: "expenses:proof"');
+    expectSource(expenseProofRoute, 'replace(/^expense-proofs\\//, "")');
+    expectSource(expenseProofRoute, "canManageEventFinance(authContext.supabase, eventId)");
+    expectSource(expenseProofRoute, '.eq("bucket_id", "expense-proofs")');
+    expectSource(expenseProofRoute, '.from("event_expenses")');
+    expectSource(expenseProofRoute, "proof_url: storagePath");
+
+    expectSource(organizerFinancePage, "<ExpenseProofList eventId={event.id} expenses={expenses} />");
+    expectSource(expenseProofList, '.from("expense-proofs")');
+    expectSource(expenseProofList, 'fetch("/api/expenses/proof"');
+    expectSource(expenseProofList, "`${eventId}/${expense.id}/${Date.now()}-${safeFileName(file.name)}`");
   });
 
   it("keeps seat locking and confirmation on authenticated Supabase RPC paths", () => {
