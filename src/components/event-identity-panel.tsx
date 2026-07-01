@@ -20,6 +20,17 @@ function publicUrl(eventId: string) {
   return `${window.location.origin}/events/${eventId}`;
 }
 
+function roleValue(role: string) {
+  const roles: Record<string, string> = {
+    联合主办: "cohost",
+    财务: "finance",
+    现场协作: "staff",
+    只读: "viewer"
+  };
+
+  return roles[role] ?? "viewer";
+}
+
 export function EventIdentityPanel({ eventId, publicCode, organizers }: EventIdentityPanelProps) {
   const [notice, setNotice] = useState("");
   const [isInviteOpen, setIsInviteOpen] = useState(false);
@@ -129,6 +140,47 @@ export function EventIdentityPanel({ eventId, publicCode, organizers }: EventIde
     }
   }
 
+  async function updateOrganizerRole(publicId: string, role: string) {
+    if (!isSupabaseConfigured()) {
+      setNotice("本地演示模式无法调整协作者角色，请配置 Supabase 后重试。");
+      return;
+    }
+
+    setIsSaving(true);
+    setNotice("");
+
+    try {
+      const supabase = getSupabaseBrowserClient();
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData.session?.access_token;
+      const response = await fetch("/api/events/organizers", {
+        method: "PATCH",
+        headers: {
+          "content-type": "application/json",
+          ...(accessToken ? { authorization: `Bearer ${accessToken}` } : {})
+        },
+        body: JSON.stringify({
+          event_id: eventId,
+          public_id: publicId,
+          role
+        })
+      });
+      const payload = await response.json().catch(() => ({}));
+
+      if (!response.ok || !payload?.ok) {
+        setNotice(typeof payload?.message === "string" ? payload.message : "协作者角色调整失败，请稍后重试。");
+        return;
+      }
+
+      setNotice("协作者角色已更新。");
+      window.location.reload();
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "协作者角色调整失败，请稍后重试。");
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
   return (
     <div className="identity-stack">
       {notice && <p className="inline-notice">{notice}</p>}
@@ -157,17 +209,32 @@ export function EventIdentityPanel({ eventId, publicCode, organizers }: EventIde
           <div className="result-row" key={`${organizer.eventId}-${organizer.publicId}`}>
             <span>{organizer.name} · {organizer.publicId}</span>
             <span className="button-row">
-              <strong>{organizer.role}</strong>
-              {organizer.role !== "主办" && (
-                <button
-                  aria-label={`移除 ${organizer.name}`}
-                  className="tiny-icon-button"
-                  disabled={isSaving}
-                  type="button"
-                  onClick={() => removeOrganizer(organizer.publicId)}
-                >
-                  <Trash2 size={14} />
-                </button>
+              {organizer.role === "主办" ? (
+                <strong>{organizer.role}</strong>
+              ) : (
+                <>
+                  <select
+                    aria-label={`调整 ${organizer.name} 的角色`}
+                    className="compact-select"
+                    disabled={isSaving}
+                    value={roleValue(organizer.role)}
+                    onChange={(event) => updateOrganizerRole(organizer.publicId, event.target.value)}
+                  >
+                    <option value="cohost">联合主办</option>
+                    <option value="finance">财务</option>
+                    <option value="staff">现场协作</option>
+                    <option value="viewer">只读</option>
+                  </select>
+                  <button
+                    aria-label={`移除 ${organizer.name}`}
+                    className="tiny-icon-button"
+                    disabled={isSaving}
+                    type="button"
+                    onClick={() => removeOrganizer(organizer.publicId)}
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </>
               )}
             </span>
           </div>

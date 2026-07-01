@@ -194,3 +194,99 @@ export async function DELETE(request: Request) {
     removed_public_id: publicId
   });
 }
+
+export async function PATCH(request: Request) {
+  const rateLimitResponse = enforceRateLimit(request, {
+    keyPrefix: "events:organizers",
+    limit: 20,
+    windowMs: 60_000
+  });
+
+  if (rateLimitResponse) {
+    return rateLimitResponse;
+  }
+
+  const authContext = await getAuthenticatedSupabaseClient(request);
+
+  if (!authContext) {
+    return jsonError("请使用 Supabase 登录后再调整协作者角色。", 401);
+  }
+
+  const body = await readOrganizerRequestBody(request);
+
+  if (!body) {
+    return jsonError("请求体不是合法 JSON。");
+  }
+
+  const eventId = getString(body, ["event_id", "eventId"]);
+  const publicId = getString(body, ["public_id", "publicId", "gatherUpId"]).toUpperCase();
+  const role = normalizeRole(getString(body, ["role"]));
+
+  if (!eventId || !publicId) {
+    return jsonError("缺少 event_id 或协作者 GatherUp ID。");
+  }
+
+  const canEdit = await canEditEvent(authContext.supabase, eventId);
+
+  if (!canEdit) {
+    return jsonError("只有活动主办或具备编辑权限的协作者可以调整协作者角色。", 403);
+  }
+
+  const service = getSupabaseServiceClient();
+  const { data: targetUser, error: userError } = await service
+    .from("users")
+    .select("id, public_id")
+    .eq("public_id", publicId)
+    .single();
+
+  if (userError || !targetUser?.id) {
+    return jsonError("没有找到这个 GatherUp ID 对应的用户。", 404);
+  }
+
+  const { data: event, error: eventError } = await service.from("events").select("id, organizer_id").eq("id", eventId).single();
+
+  if (eventError || !event?.id) {
+    return jsonError("活动不存在。", 404);
+  }
+
+  if (event.organizer_id === targetUser.id) {
+    return jsonError("不能调整活动主办角色。", 409);
+  }
+
+  const { data: existingOrganizer, error: existingError } = await service
+    .from("event_organizers")
+    .select("id, role, permissions")
+    .eq("event_id", eventId)
+    .eq("user_id", targetUser.id)
+    .single();
+
+  if (existingError || !existingOrganizer?.id) {
+    return jsonError("该用户不是此活动的协作者。", 404);
+  }
+
+  if (existingOrganizer.role === "owner") {
+    return jsonError("不能调整活动主办角色。", 409);
+  }
+
+  const permissions = role === "cohost" ? existingOrganizer.permissions ?? {} : {};
+  const { data: organizer, error } = await service
+    .from("event_organizers")
+    .update({
+      role,
+      permissions,
+      updated_at: new Date().toISOString()
+    })
+    .eq("id", existingOrganizer.id)
+    .neq("role", "owner")
+    .select("event_id, role, users(id, public_id, name)")
+    .single();
+
+  if (error || !organizer) {
+    return jsonError(error?.message ?? "协作者角色调整失败。", 500);
+  }
+
+  return NextResponse.json({
+    ok: true,
+    organizer
+  });
+}

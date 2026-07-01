@@ -1452,6 +1452,18 @@ h3 {
   cursor: pointer;
 }
 
+.compact-select {
+  min-height: 28px;
+  max-width: 116px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: 12px;
+  padding: 4px 8px;
+}
+
 .expense-form {
   display: grid;
   gap: 14px;
