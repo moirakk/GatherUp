@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { ArrowLeft, AtSign, BellRing, CalendarCheck, CircleDollarSign, MapPinned, Megaphone, QrCode } from "lucide-react";
 
 import { AnnouncementCenter } from "@/components/announcement-center";
+import { EventBasicsEditor } from "@/components/event-basics-editor";
 import { EventIdentityPanel } from "@/components/event-identity-panel";
 import { MetricCard } from "@/components/metric-card";
 import { NextActionCard } from "@/components/next-action-card";
@@ -180,6 +181,7 @@ export default async function OrganizerEventPage({ params, searchParams }: Organ
             <div><dt>收款方式</dt><dd>{setup.paymentQrStatus} · {setup.paymentMethod}</dd></div>
             <div><dt>下一步</dt><dd>{setup.nextAction}</dd></div>
           </dl>
+          <EventBasicsEditor event={event} />
           <OrganizerEventActions
             eventId={event.id}
             eventName={event.name}

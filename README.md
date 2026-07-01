@@ -114,6 +114,7 @@ Implemented prototype coverage:
 - Seat locking now has PostgreSQL RPCs plus JWT API entry points for expiring stale locks, creating active locks, and confirming assignments under database constraints. The order detail page has an initial real seat-selection panel, and live Supabase concurrency validation now covers competing seat locks.
 - Check-in verification now has an audited PostgreSQL RPC path: event staff submit a check-in code through the JWT API, and the database updates the order, attendees, `check_ins`, and `audit_logs` together.
 - Organizer announcements now publish through a Supabase-authenticated API route into the `announcements` table; the UI still treats external delivery such as email, SMS, or WeChat as a later channel layer.
+- Organizer event consoles can now edit core event basics through an authenticated edit-permission API route, including name, city, venue, address, capacity, start time, registration deadline, and description. Capacity edits are blocked if they would fall below the current active registration count.
 - Organizer event consoles can now open registration through an authenticated edit-permission API route that advances eligible draft/scheduled events to `registration_open`.
 - Organizer finance export now requires finance-level event permission instead of broad event-management permission.
 - Organizer finance expenses can now be created through a Supabase-authenticated, finance-scoped API route and stored in `event_expenses`; optional expense proof upload writes to the private `expense-proofs` bucket and updates `event_expenses.proof_url`.
@@ -129,7 +130,7 @@ Not production-ready yet:
 - Supabase schema, seed, Storage policy, and validation scripts have been rebuilt in the clean dev/staging project `oxbrxkllftyevlzmiydt`; the live integration suite now passes 19/19 tests against that project.
 - Anonymous public-read grants for public event detail surfaces are included in the schema draft and local contract tests, and the clean validation project has passed the post-execution SQL summary plus RPC/Storage integration suite.
 - Permission enforcement and RLS still need to expand as new product workflows are added, but the commercial v0.1 registration/payment/check-in/refund/seat-lock/proof-file baseline is no longer unvalidated.
-- Broader transactional service functions, email business notifications, organizer verification UI, admin review UI, expense proof editing/voiding, venue review flows, complaints, and data retention jobs are still planned.
+- Broader transactional service functions, email business notifications, organizer verification UI, admin review UI, richer event review/role gates, expense proof editing/voiding, venue review flows, complaints, and data retention jobs are still planned.
 
 ## Commercial v0.1 Direction
 
@@ -327,7 +328,7 @@ Every core feature should be implemented in this order:
 Recommended order:
 
 1. Wire the passing backend baseline into more complete participant and organizer UI flows: real order states, proof review, check-in, refund proof visibility, and seat selection feedback.
-2. Expand the real data service layer beyond the current event creation and open-registration baseline: event editing, organizer roles, visibility, capacity, and review gates.
+2. Expand the real data service layer beyond the current event creation, basic event editing, and open-registration baseline: organizer roles, visibility, review gates, and richer post-publish edit constraints.
 3. Organizer-collected payment workflow: collection-code versions, review queues, top-up, overpayment/underpayment, and finance reconciliation.
 4. Continue refund completion: participant receipt confirmation, disputes, retention policy, and finance export evidence.
 5. Build the organizer dashboard metrics layer for pending reviews, check-in rate, refund exposure, seat progress, and revenue.

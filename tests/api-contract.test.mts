@@ -30,6 +30,7 @@ function listApiRouteFiles(dir = join(repoRoot, "src/app/api")): string[] {
 describe("registration and payment proof API contracts", () => {
   const eventRoute = readSource("src/app/api/events/route.ts");
   const eventPublishRoute = readSource("src/app/api/events/publish/route.ts");
+  const eventUpdateRoute = readSource("src/app/api/events/update/route.ts");
   const orderRoute = readSource("src/app/api/orders/route.ts");
   const paymentProofRoute = readSource("src/app/api/orders/payment-proof/route.ts");
   const paymentReviewRoute = readSource("src/app/api/orders/review/route.ts");
@@ -58,6 +59,7 @@ describe("registration and payment proof API contracts", () => {
   const organizerFinancePage = readSource("src/app/organizer/events/[eventId]/finance/page.tsx");
   const organizerNewEventPage = readSource("src/app/organizer/events/new/page.tsx");
   const organizerEventActions = readSource("src/components/organizer-event-actions.tsx");
+  const eventBasicsEditor = readSource("src/components/event-basics-editor.tsx");
   const registerPage = readSource("src/app/events/[eventId]/register/page.tsx");
   const devStatusPage = readSource("src/app/dev/status/page.tsx");
   const registrationFlow = readSource("src/components/registration-flow.tsx");
@@ -153,6 +155,21 @@ describe("registration and payment proof API contracts", () => {
     expectSource(organizerEventPage, "status={event.status}");
     expectSource(organizerEventActions, 'fetch("/api/events/publish"');
     expectSource(organizerEventActions, 'status === "草稿配置"');
+  });
+
+  it("keeps organizer event basics editing on an authenticated edit-permission API path", () => {
+    expectSource(eventUpdateRoute, "getAuthenticatedSupabaseClient(request)");
+    expectSource(eventUpdateRoute, "enforceRateLimit(request");
+    expectSource(eventUpdateRoute, 'keyPrefix: "events:update"');
+    expectSource(eventUpdateRoute, "canEditEvent(authContext.supabase, eventId)");
+    expectSource(eventUpdateRoute, ".not(\"status\", \"in\", \"(cancelled,expired,refunded)\")");
+    expectSource(eventUpdateRoute, "capacity < activeRegistrationCount");
+    expectSource(eventUpdateRoute, '.from("events")');
+
+    expectSource(organizerEventPage, "<EventBasicsEditor event={event} />");
+    expectSource(eventBasicsEditor, 'fetch("/api/events/update"');
+    expectSource(eventBasicsEditor, "getSupabaseBrowserClient()");
+    expectSource(eventBasicsEditor, "supabase.auth.getSession()");
   });
 
   it("keeps participant payment proof submission gated by identity and order ownership", () => {
