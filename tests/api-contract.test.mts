@@ -29,6 +29,7 @@ function listApiRouteFiles(dir = join(repoRoot, "src/app/api")): string[] {
 
 describe("registration and payment proof API contracts", () => {
   const eventRoute = readSource("src/app/api/events/route.ts");
+  const eventPublishRoute = readSource("src/app/api/events/publish/route.ts");
   const orderRoute = readSource("src/app/api/orders/route.ts");
   const paymentProofRoute = readSource("src/app/api/orders/payment-proof/route.ts");
   const paymentReviewRoute = readSource("src/app/api/orders/review/route.ts");
@@ -56,6 +57,7 @@ describe("registration and payment proof API contracts", () => {
   const organizerEventPage = readSource("src/app/organizer/events/[eventId]/page.tsx");
   const organizerFinancePage = readSource("src/app/organizer/events/[eventId]/finance/page.tsx");
   const organizerNewEventPage = readSource("src/app/organizer/events/new/page.tsx");
+  const organizerEventActions = readSource("src/components/organizer-event-actions.tsx");
   const registerPage = readSource("src/app/events/[eventId]/register/page.tsx");
   const devStatusPage = readSource("src/app/dev/status/page.tsx");
   const registrationFlow = readSource("src/components/registration-flow.tsx");
@@ -138,6 +140,19 @@ describe("registration and payment proof API contracts", () => {
     expectSource(organizerNewEventPage, "本地演示模式");
     assert.doesNotMatch(organizerNewEventPage, /模拟发布检查/);
     assert.doesNotMatch(organizerNewEventPage, /本地活动记录已生成/);
+  });
+
+  it("keeps event publishing on an authenticated edit-permission API path", () => {
+    expectSource(eventPublishRoute, "getAuthenticatedSupabaseClient(request)");
+    expectSource(eventPublishRoute, "enforceRateLimit(request");
+    expectSource(eventPublishRoute, 'keyPrefix: "events:publish"');
+    expectSource(eventPublishRoute, "canEditEvent(authContext.supabase, eventId)");
+    expectSource(eventPublishRoute, 'status: "registration_open"');
+    expectSource(eventPublishRoute, '.in("status", ["draft", "interest_collecting", "registration_scheduled"])');
+
+    expectSource(organizerEventPage, "status={event.status}");
+    expectSource(organizerEventActions, 'fetch("/api/events/publish"');
+    expectSource(organizerEventActions, 'status === "草稿配置"');
   });
 
   it("keeps participant payment proof submission gated by identity and order ownership", () => {

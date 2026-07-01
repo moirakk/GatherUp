@@ -67,6 +67,7 @@ export default async function OrganizerEventPage({ params, searchParams }: Organ
             eventId={event.id}
             eventName={event.name}
             publicCode={event.publicCode}
+            status={event.status}
             registrations={registrations}
             variant="header"
           />

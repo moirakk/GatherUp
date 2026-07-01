@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Download, LinkIcon, QrCode } from "lucide-react";
+import { Download, LinkIcon, Megaphone, QrCode } from "lucide-react";
 
 import { getSupabaseBrowserClient, isSupabaseConfigured } from "@/lib/supabase/client";
 
@@ -9,6 +9,7 @@ type OrganizerEventActionsProps = {
   eventId: string;
   eventName: string;
   publicCode: string;
+  status?: string;
   registrations: Array<{
     orderNumber: string;
     nickname: string;
@@ -41,10 +42,13 @@ export function OrganizerEventActions({
   eventId,
   eventName,
   publicCode,
+  status,
   registrations,
   variant
 }: OrganizerEventActionsProps) {
   const [notice, setNotice] = useState("");
+  const [isPublishing, setIsPublishing] = useState(false);
+  const canOpenRegistration = status === "草稿配置" || status === "数调中" || status === "待开放报名";
 
   async function copyPublicLink(label = "活动链接") {
     const url = getEventUrl(eventId);
@@ -91,6 +95,44 @@ export function OrganizerEventActions({
     void exportFile("finance");
   }
 
+  async function publishEvent() {
+    const accessToken = isSupabaseConfigured()
+      ? (await getSupabaseBrowserClient().auth.getSession()).data.session?.access_token
+      : "";
+
+    if (!accessToken) {
+      setNotice("请先使用 Supabase 账号登录，再开放真实报名。");
+      return;
+    }
+
+    setIsPublishing(true);
+    setNotice("");
+
+    try {
+      const response = await fetch("/api/events/publish", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          Authorization: `Bearer ${accessToken}`
+        },
+        body: JSON.stringify({ event_id: eventId })
+      });
+      const result = (await response.json().catch(() => ({}))) as { ok?: boolean; message?: string };
+
+      if (!response.ok || !result.ok) {
+        setNotice(result.message ?? "开放报名失败，请稍后重试。");
+        return;
+      }
+
+      setNotice(`${eventName} 已开放报名。`);
+      window.location.reload();
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "开放报名失败，请稍后重试。");
+    } finally {
+      setIsPublishing(false);
+    }
+  }
+
   if (variant === "setup") {
     return (
       <>
@@ -111,6 +153,12 @@ export function OrganizerEventActions({
 
   return (
     <>
+      {canOpenRegistration && (
+        <button className="button primary" disabled={isPublishing} type="button" onClick={publishEvent}>
+          <Megaphone size={16} />
+          {isPublishing ? "开放中" : "开放报名"}
+        </button>
+      )}
       <button className="button secondary" type="button" onClick={() => copyPublicLink()}>
         <LinkIcon size={16} />
         复制链接
