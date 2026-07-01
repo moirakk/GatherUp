@@ -104,6 +104,7 @@ Implemented prototype coverage:
 - Supabase client dependency, Auth adapter, user profile sync adapter, schema/seed/Storage SQL drafts, and contract tests.
 - Server-side Supabase read adapters for public event listing, public/link-only event detail, participant orders, organizer dashboard, organizer event workspaces, and organizer finance views, with mock fallback when Supabase is not configured or unavailable.
 - Initial guarded server APIs for event creation, registration orders, payment review, check-in verification, and Excel exports.
+- Event creation wizard now uses the authenticated `/api/events` path as the primary create action when Supabase is configured; local created-event records are retained only as demo fallback when Supabase is unavailable.
 - Organizer-sensitive APIs now use a shared Supabase auth helper that accepts verified Bearer tokens for API clients and Supabase SSR session cookies for same-origin browser requests; they no longer trust local prototype cookies.
 - Route protection now uses Supabase SSR middleware with verified `getUser()` session checks and cookie refresh support when Supabase is configured.
 - Atomic registration RPC draft for real Supabase order creation: user identity is resolved in PostgreSQL through `current_app_user_id()`, event capacity is checked under an event-row lock, order numbers are generated through `event_order_counters`, attendee and payment stub rows are created in the same database transaction path.
@@ -122,7 +123,7 @@ Not production-ready yet:
 
 - Several important surfaces are now backed by Supabase, but the product still keeps mock/local fallback paths for local demos and unavailable Supabase environments.
 - Real write APIs are still early product-integration endpoints, but their core database paths have passed the clean Supabase validation baseline: registration creation, payment proof upload, payment review, check-in, refund request/review/proof upload, seat-lock concurrency, announcement publishing, and private proof-file RLS.
-- Event creation, expense proof upload, venue intelligence, admin workflows, external notification delivery, and some edge-case UI flows are not yet fully backed by production-grade database services. The next risk is less about SQL/RPC correctness and more about finishing end-to-end product journeys on top of the verified backend paths.
+- Expense proof upload, venue intelligence, admin workflows, external notification delivery, and some edge-case UI flows are not yet fully backed by production-grade database services. The next risk is less about SQL/RPC correctness and more about finishing end-to-end product journeys on top of the verified backend paths.
 - Mutating API routes now have a shared in-process rate limiter and a contract test that blocks new write endpoints without rate limiting. This is an early abuse-control baseline for local and single-instance deployments; multi-instance production should replace the in-memory bucket store with a shared Redis/Upstash-backed limiter.
 - Supabase schema, seed, Storage policy, and validation scripts have been rebuilt in the clean dev/staging project `oxbrxkllftyevlzmiydt`; the live integration suite now passes 19/19 tests against that project.
 - Anonymous public-read grants for public event detail surfaces are included in the schema draft and local contract tests, and the clean validation project has passed the post-execution SQL summary plus RPC/Storage integration suite.
@@ -325,7 +326,7 @@ Every core feature should be implemented in this order:
 Recommended order:
 
 1. Wire the passing backend baseline into more complete participant and organizer UI flows: real order states, proof review, check-in, refund proof visibility, and seat selection feedback.
-2. Expand the real data service layer beyond public reads: event creation, draft/publish, organizer roles, visibility, capacity, and review gates.
+2. Expand the real data service layer beyond the current event creation baseline: draft/publish transitions, organizer roles, visibility, capacity, and review gates.
 3. Organizer-collected payment workflow: collection-code versions, review queues, top-up, overpayment/underpayment, and finance reconciliation.
 4. Continue refund completion: participant receipt confirmation, disputes, retention policy, and finance export evidence.
 5. Build the organizer dashboard metrics layer for pending reviews, check-in rate, refund exposure, seat progress, and revenue.

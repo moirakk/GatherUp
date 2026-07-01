@@ -54,6 +54,7 @@ describe("registration and payment proof API contracts", () => {
   const organizerPage = readSource("src/app/organizer/page.tsx");
   const organizerEventPage = readSource("src/app/organizer/events/[eventId]/page.tsx");
   const organizerFinancePage = readSource("src/app/organizer/events/[eventId]/finance/page.tsx");
+  const organizerNewEventPage = readSource("src/app/organizer/events/new/page.tsx");
   const registerPage = readSource("src/app/events/[eventId]/register/page.tsx");
   const devStatusPage = readSource("src/app/dev/status/page.tsx");
   const registrationFlow = readSource("src/components/registration-flow.tsx");
@@ -126,6 +127,15 @@ describe("registration and payment proof API contracts", () => {
     expectSource(eventRoute, 'keyPrefix: "events:create"');
     expectSource(eventRoute, '.from("events")');
     expectSource(eventRoute, '.insert({');
+  });
+
+  it("keeps the organizer event creation wizard on the real Supabase create path", () => {
+    expectSource(organizerNewEventPage, 'fetch("/api/events"');
+    expectSource(organizerNewEventPage, "getSupabaseBrowserClient().auth.getSession()");
+    expectSource(organizerNewEventPage, "router.push(`/organizer/events/${result.event_id}`)");
+    expectSource(organizerNewEventPage, "本地演示模式");
+    assert.doesNotMatch(organizerNewEventPage, /模拟发布检查/);
+    assert.doesNotMatch(organizerNewEventPage, /本地活动记录已生成/);
   });
 
   it("keeps participant payment proof submission gated by identity and order ownership", () => {

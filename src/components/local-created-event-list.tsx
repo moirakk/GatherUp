@@ -47,9 +47,9 @@ export function LocalCreatedEventList() {
     <section className="content-card local-created-events">
       <div className="section-heading">
         <div>
-          <p className="eyebrow">本地发布记录</p>
-          <h2>刚通过发布检查的活动</h2>
-          <p className="subtle">当前原型先保存在这台浏览器；接入数据库后会写入真实活动表。</p>
+          <p className="eyebrow">本地演示记录</p>
+          <h2>未连接 Supabase 时创建的活动</h2>
+          <p className="subtle">正式创建会写入真实活动表；这里只保留本地演示模式下的浏览器记录。</p>
         </div>
         <ClipboardCheck size={22} />
       </div>

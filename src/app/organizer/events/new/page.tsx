@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   AlertCircle,
   BadgeCheck,
@@ -235,9 +236,11 @@ function buildLocalCreatedEvent(form: EventDraftForm) {
 }
 
 export default function NewEventPage() {
+  const router = useRouter();
   const [activeStep, setActiveStep] = useState<StepId>("basic");
   const [form, setForm] = useState(initialForm);
   const [hasLoadedDraft, setHasLoadedDraft] = useState(false);
+  const [isPublishing, setIsPublishing] = useState(false);
   const [draftNotice, setDraftNotice] = useState("");
   const [shareCopied, setShareCopied] = useState(false);
   const [qrGenerated, setQrGenerated] = useState(false);
@@ -342,7 +345,7 @@ export default function NewEventPage() {
     setDraftNotice(`草稿已保存，保存时间：${savedAt}。`);
   }
 
-  async function simulatePublish() {
+  async function publishEvent() {
     if (!canPublish) {
       const firstIssue = publishChecks.find((item) => !item.ok);
       if (firstIssue) {
@@ -353,24 +356,25 @@ export default function NewEventPage() {
     }
 
     saveDraft();
-    const localEvent = buildLocalCreatedEvent(form);
-    saveLocalCreatedEvent(localEvent);
+
+    if (!isSupabaseConfigured()) {
+      const localEvent = buildLocalCreatedEvent(form);
+      saveLocalCreatedEvent(localEvent);
+      setDraftNotice("本地演示模式：发布检查已通过，活动已保存到这台浏览器。配置 Supabase 后会写入真实活动表。");
+      return;
+    }
+
+    setIsPublishing(true);
+    setDraftNotice("正在写入 Supabase 活动表...");
 
     try {
-      const accessToken = isSupabaseConfigured()
-        ? (await getSupabaseBrowserClient().auth.getSession()).data.session?.access_token
-        : "";
-
-      if (!accessToken) {
-        setDraftNotice("发布检查已通过，本地活动记录已生成；真实数据库创建需要先使用 Supabase 账号登录。");
-        return;
-      }
+      const accessToken = (await getSupabaseBrowserClient().auth.getSession()).data.session?.access_token;
 
       const response = await fetch("/api/events", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`
+          ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {})
         },
         body: JSON.stringify({
           ...draftPayload,
@@ -381,14 +385,20 @@ export default function NewEventPage() {
       });
       const result = (await response.json()) as { ok?: boolean; event_id?: string; message?: string };
 
-      if (response.ok && result.ok) {
-        setDraftNotice(`发布检查已通过，并已写入活动表：${result.event_id}。本地活动记录也已更新。`);
+      if (response.ok && result.ok && result.event_id) {
+        window.localStorage.removeItem(draftStorageKey);
+        window.localStorage.removeItem(draftSavedAtStorageKey);
+        setDraftNotice(`活动已写入 Supabase：${result.event_id}。正在打开管理台...`);
+        router.push(`/organizer/events/${result.event_id}`);
+        router.refresh();
         return;
       }
 
-      setDraftNotice(`发布检查已通过，本地活动记录已生成；数据库写入未完成：${result.message ?? "接口返回失败"}`);
+      setDraftNotice(`数据库写入未完成：${result.message ?? "接口返回失败"}`);
     } catch {
-      setDraftNotice("发布检查已通过，本地活动记录已生成；当前无法连接活动创建接口，稍后可重试发布。");
+      setDraftNotice("当前无法连接活动创建接口，稍后可重试发布。");
+    } finally {
+      setIsPublishing(false);
     }
   }
 
@@ -630,8 +640,8 @@ export default function NewEventPage() {
               {!isLastStep && <ChevronRight size={17} />}
             </button>
             {isLastStep && (
-              <button className="button primary" type="button" onClick={simulatePublish}>
-                模拟发布检查
+              <button className="button primary" disabled={isPublishing} type="button" onClick={publishEvent}>
+                {isPublishing ? "创建中" : "创建真实活动"}
               </button>
             )}
           </div>

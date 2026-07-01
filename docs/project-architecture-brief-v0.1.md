@@ -26,7 +26,7 @@ GatherUp is currently at the **commercial v0.1 foundation stage**:
 - Seat locking now has PostgreSQL RPC drafts, JWT API entry points, and an initial order-detail seat selection panel for expiring locks, creating locks, and confirming seat assignments.
 - Check-in now has an audited PostgreSQL RPC draft wired through the organizer verification API.
 - Organizer announcements now publish through a Supabase-authenticated API route into the `announcements` table, while external delivery channels remain future work.
-- The app still has prototype surfaces, especially event creation UX, expense proof upload, venue intelligence, admin review, and external notification delivery, so the next engineering phase is to complete end-to-end Supabase-backed product journeys rather than only adding more SQL.
+- The app still has prototype surfaces, especially expense proof upload, venue intelligence, admin review, external notification delivery, and richer event editing/publish transitions, so the next engineering phase is to complete end-to-end Supabase-backed product journeys rather than only adding more SQL.
 
 ```mermaid
 flowchart LR
@@ -148,7 +148,7 @@ Implemented stack:
 Current data source:
 
 - Core participant and organizer surfaces now use Supabase-backed services when configured: public event listing/detail, registration order creation, participant order list/detail, organizer dashboard, organizer event workspace, organizer finance workspace, finance export, proof-file workflows, and announcement publishing.
-- Local/mock data remains as explicit fallback for local demo mode, unavailable Supabase environments, event creation draft behavior, venue intelligence, and unfinished product modules.
+- Local/mock data remains as explicit fallback for local demo mode, unavailable Supabase environments, event creation draft behavior, venue intelligence, and unfinished product modules; the event creation wizard now uses `/api/events` as the primary create path when Supabase is configured.
 
 Target data source:
 
@@ -228,7 +228,7 @@ Most recent local verification:
 
 The main remaining gaps are engineering depth, not product concept:
 
-- Remaining mock/local surfaces need to be replaced intentionally rather than all at once: event creation persistence, expense proof upload/editing, venue intelligence, admin review, complaints, and some edge-case UI flows.
+- Remaining mock/local surfaces need to be replaced intentionally rather than all at once: expense proof upload/editing, venue intelligence, admin review, complaints, richer event editing/publish transitions, and some edge-case UI flows.
 - Payment proof upload, refund proof upload, payment review, seat selection, check-in, and refund request/review have passed clean-project user/session validation, but still need broader UI-level end-to-end testing.
 - Seat selection has atomic locking and integration coverage; realtime visual updates are still future work.
 - Announcement publishing now writes database records; external notification delivery still needs a real provider such as Resend and later WeChat integration.
@@ -238,7 +238,7 @@ The main remaining gaps are engineering depth, not product concept:
 
 ```mermaid
 flowchart LR
-  A["Keep docs and GitHub current"] --> B["Persist event creation"]
+  A["Keep docs and GitHub current"] --> B["Add event publish/edit flow"]
   B --> C["Add expense proofs"]
   C --> D["Add organizer verification"]
   D --> E["Add external notifications"]
@@ -249,7 +249,7 @@ flowchart LR
 Immediate order:
 
 1. Keep README, status docs, and GitHub profile copy aligned with the actual codebase after each major workflow migration.
-2. Persist event creation into Supabase instead of relying on local created-event records.
+2. Add event publish/edit flow on top of the current Supabase event creation baseline.
 3. Add organizer finance expense proof upload, editing, and voiding paths.
 4. Add organizer verification and minimum admin review.
 5. Add external notification delivery after the database notification/audit baseline remains stable.
