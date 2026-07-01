@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Copy, UserPlus } from "lucide-react";
+import { Copy, Trash2, UserPlus } from "lucide-react";
 
 import { type EventOrganizer } from "@/lib/mock-data";
 import { getSupabaseBrowserClient, isSupabaseConfigured } from "@/lib/supabase/client";
@@ -89,6 +89,46 @@ export function EventIdentityPanel({ eventId, publicCode, organizers }: EventIde
     }
   }
 
+  async function removeOrganizer(publicId: string) {
+    if (!isSupabaseConfigured()) {
+      setNotice("本地演示模式无法移除协作者，请配置 Supabase 后重试。");
+      return;
+    }
+
+    setIsSaving(true);
+    setNotice("");
+
+    try {
+      const supabase = getSupabaseBrowserClient();
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData.session?.access_token;
+      const response = await fetch("/api/events/organizers", {
+        method: "DELETE",
+        headers: {
+          "content-type": "application/json",
+          ...(accessToken ? { authorization: `Bearer ${accessToken}` } : {})
+        },
+        body: JSON.stringify({
+          event_id: eventId,
+          public_id: publicId
+        })
+      });
+      const payload = await response.json().catch(() => ({}));
+
+      if (!response.ok || !payload?.ok) {
+        setNotice(typeof payload?.message === "string" ? payload.message : "协作者移除失败，请稍后重试。");
+        return;
+      }
+
+      setNotice("协作者已移除。");
+      window.location.reload();
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "协作者移除失败，请稍后重试。");
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
   return (
     <div className="identity-stack">
       {notice && <p className="inline-notice">{notice}</p>}
@@ -116,7 +156,20 @@ export function EventIdentityPanel({ eventId, publicCode, organizers }: EventIde
         {organizers.map((organizer) => (
           <div className="result-row" key={`${organizer.eventId}-${organizer.publicId}`}>
             <span>{organizer.name} · {organizer.publicId}</span>
-            <strong>{organizer.role}</strong>
+            <span className="button-row">
+              <strong>{organizer.role}</strong>
+              {organizer.role !== "主办" && (
+                <button
+                  aria-label={`移除 ${organizer.name}`}
+                  className="tiny-icon-button"
+                  disabled={isSaving}
+                  type="button"
+                  onClick={() => removeOrganizer(organizer.publicId)}
+                >
+                  <Trash2 size={14} />
+                </button>
+              )}
+            </span>
           </div>
         ))}
       </div>

@@ -183,12 +183,18 @@ describe("registration and payment proof API contracts", () => {
     expectSource(eventOrganizerRoute, '.from("users")');
     expectSource(eventOrganizerRoute, '.from("event_organizers")');
     expectSource(eventOrganizerRoute, "invited_by: inviter.id");
+    expectSource(eventOrganizerRoute, "export async function DELETE(request: Request)");
+    expectSource(eventOrganizerRoute, "不能移除活动主办");
+    expectSource(eventOrganizerRoute, '.from("event_organizers").delete()');
+    expectSource(eventOrganizerRoute, '.neq("role", "owner")');
     assert.doesNotMatch(eventOrganizerRoute, /owner:\s*"owner"/);
 
     expectSource(eventIdentityPanel, 'fetch("/api/events/organizers"');
+    expectSource(eventIdentityPanel, 'method: "DELETE"');
     expectSource(eventIdentityPanel, "getSupabaseBrowserClient()");
     expectSource(eventIdentityPanel, "supabase.auth.getSession()");
     expectSource(eventIdentityPanel, "can_manage_payments");
+    expectSource(eventIdentityPanel, 'organizer.role !== "主办"');
   });
 
   it("keeps participant payment proof submission gated by identity and order ownership", () => {
