@@ -21,12 +21,57 @@ function normalizeRole(value: string) {
   return roleMap[value as keyof typeof roleMap] ?? "cohost";
 }
 
+function auditUserAgent(request: Request) {
+  return request.headers.get("user-agent") ?? "unknown";
+}
+
 async function readOrganizerRequestBody(request: Request) {
   try {
     return asRecord(await request.json());
   } catch {
     return null;
   }
+}
+
+async function writeOrganizerAuditLog({
+  action,
+  actorId,
+  after,
+  before,
+  eventId,
+  reason,
+  request,
+  service,
+  targetId
+}: {
+  action: string;
+  actorId: string;
+  after: Record<string, unknown> | null;
+  before: Record<string, unknown> | null;
+  eventId: string;
+  reason?: string;
+  request: Request;
+  service: ReturnType<typeof getSupabaseServiceClient>;
+  targetId: string;
+}) {
+  const { error } = await service.from("audit_logs").insert({
+    actor_id: actorId,
+    actor_role: "event_editor",
+    event_id: eventId,
+    target_type: "event_organizer",
+    target_id: targetId,
+    action,
+    risk_level: "medium",
+    reason: reason ?? null,
+    before_snapshot: before,
+    after_snapshot: after,
+    metadata: {
+      source: "api/events/organizers"
+    },
+    user_agent: auditUserAgent(request)
+  });
+
+  return error;
 }
 
 export async function POST(request: Request) {
@@ -84,6 +129,13 @@ export async function POST(request: Request) {
     return jsonError("没有找到这个 GatherUp ID 对应的用户。", 404);
   }
 
+  const { data: existingOrganizer } = await service
+    .from("event_organizers")
+    .select("id, role, permissions, user_id")
+    .eq("event_id", eventId)
+    .eq("user_id", invitedUser.id)
+    .maybeSingle();
+
   const permissions = role === "cohost" && canManagePayments ? { can_manage_payments: true } : {};
   const { data: organizer, error } = await service
     .from("event_organizers")
@@ -98,11 +150,36 @@ export async function POST(request: Request) {
       },
       { onConflict: "event_id,user_id" }
     )
-    .select("event_id, role, users(id, public_id, name)")
+    .select("id, event_id, user_id, role, permissions, users(id, public_id, name)")
     .single();
 
   if (error || !organizer) {
     return jsonError(error?.message ?? "协作者添加失败。", 500);
+  }
+
+  const auditError = await writeOrganizerAuditLog({
+    action: existingOrganizer?.id ? "event_organizer.updated" : "event_organizer.added",
+    actorId: inviter.id,
+    after: {
+      role: organizer.role,
+      permissions: organizer.permissions,
+      user_id: organizer.user_id
+    },
+    before: existingOrganizer
+      ? {
+          role: existingOrganizer.role,
+          permissions: existingOrganizer.permissions,
+          user_id: existingOrganizer.user_id
+        }
+      : null,
+    eventId,
+    request,
+    service,
+    targetId: organizer.id
+  });
+
+  if (auditError) {
+    return jsonError(auditError.message, 500);
   }
 
   return NextResponse.json({
@@ -148,6 +225,12 @@ export async function DELETE(request: Request) {
   }
 
   const service = getSupabaseServiceClient();
+  const actor = await findUserByAuthUserId(service, authContext.user.id);
+
+  if (!actor?.id) {
+    return jsonError("找不到当前用户资料，请先完成账号资料同步。", 404);
+  }
+
   const { data: targetUser, error: userError } = await service
     .from("users")
     .select("id, public_id")
@@ -170,7 +253,7 @@ export async function DELETE(request: Request) {
 
   const { data: organizer, error: organizerError } = await service
     .from("event_organizers")
-    .select("id, role")
+    .select("id, user_id, role, permissions")
     .eq("event_id", eventId)
     .eq("user_id", targetUser.id)
     .single();
@@ -181,6 +264,25 @@ export async function DELETE(request: Request) {
 
   if (organizer.role === "owner") {
     return jsonError("不能移除活动主办。", 409);
+  }
+
+  const auditError = await writeOrganizerAuditLog({
+    action: "event_organizer.removed",
+    actorId: actor.id,
+    after: null,
+    before: {
+      role: organizer.role,
+      permissions: organizer.permissions,
+      user_id: organizer.user_id
+    },
+    eventId,
+    request,
+    service,
+    targetId: organizer.id
+  });
+
+  if (auditError) {
+    return jsonError(auditError.message, 500);
   }
 
   const { error } = await service.from("event_organizers").delete().eq("id", organizer.id).neq("role", "owner");
@@ -233,6 +335,12 @@ export async function PATCH(request: Request) {
   }
 
   const service = getSupabaseServiceClient();
+  const actor = await findUserByAuthUserId(service, authContext.user.id);
+
+  if (!actor?.id) {
+    return jsonError("找不到当前用户资料，请先完成账号资料同步。", 404);
+  }
+
   const { data: targetUser, error: userError } = await service
     .from("users")
     .select("id, public_id")
@@ -278,11 +386,34 @@ export async function PATCH(request: Request) {
     })
     .eq("id", existingOrganizer.id)
     .neq("role", "owner")
-    .select("event_id, role, users(id, public_id, name)")
+    .select("id, event_id, user_id, role, permissions, users(id, public_id, name)")
     .single();
 
   if (error || !organizer) {
     return jsonError(error?.message ?? "协作者角色调整失败。", 500);
+  }
+
+  const auditError = await writeOrganizerAuditLog({
+    action: "event_organizer.role_updated",
+    actorId: actor.id,
+    after: {
+      role: organizer.role,
+      permissions: organizer.permissions,
+      user_id: organizer.user_id
+    },
+    before: {
+      role: existingOrganizer.role,
+      permissions: existingOrganizer.permissions,
+      user_id: targetUser.id
+    },
+    eventId,
+    request,
+    service,
+    targetId: organizer.id
+  });
+
+  if (auditError) {
+    return jsonError(auditError.message, 500);
   }
 
   return NextResponse.json({

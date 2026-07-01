@@ -180,6 +180,12 @@ describe("registration and payment proof API contracts", () => {
     expectSource(eventOrganizerRoute, 'keyPrefix: "events:organizers"');
     expectSource(eventOrganizerRoute, "canEditEvent(authContext.supabase, eventId)");
     expectSource(eventOrganizerRoute, "getSupabaseServiceClient()");
+    expectSource(eventOrganizerRoute, "writeOrganizerAuditLog");
+    expectSource(eventOrganizerRoute, '.from("audit_logs").insert');
+    expectSource(eventOrganizerRoute, 'target_type: "event_organizer"');
+    expectSource(eventOrganizerRoute, 'action: existingOrganizer?.id ? "event_organizer.updated" : "event_organizer.added"');
+    expectSource(eventOrganizerRoute, 'action: "event_organizer.removed"');
+    expectSource(eventOrganizerRoute, 'action: "event_organizer.role_updated"');
     expectSource(eventOrganizerRoute, '.from("users")');
     expectSource(eventOrganizerRoute, '.from("event_organizers")');
     expectSource(eventOrganizerRoute, "invited_by: inviter.id");
