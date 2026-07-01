@@ -255,7 +255,8 @@ describe("commercial schema contract", () => {
       "public.can_manage_event_finance(target_event_id uuid)",
       "public.can_manage_event_payments(target_event_id uuid)",
       "public.can_handle_event_refunds(target_event_id uuid)",
-      "public.is_platform_admin()"
+      "public.is_platform_admin()",
+      "public.manage_event_organizer_atomic("
     ];
 
     for (const fn of requiredFunctions) {
@@ -274,6 +275,21 @@ describe("commercial schema contract", () => {
     for (const policyName of requiredPolicyNames) {
       expectSql(schema, `create policy "${policyName}"`);
     }
+  });
+
+  it("keeps collaborator management atomic and audited in the database", () => {
+    expectSql(schema, "create or replace function public.manage_event_organizer_atomic");
+    expectSql(schema, "if not (public.can_edit_event(p_event_id) or public.is_platform_admin()) then");
+    expectSql(schema, "if p_role = 'owner' then");
+    expectSql(schema, "if v_event.organizer_id = v_target_user.id then");
+    expectSql(schema, "target_type,\n      target_id,\n      action,");
+    expectSql(schema, "'event_organizer.removed'");
+    expectSql(schema, "'event_organizer.role_updated'");
+    expectSql(schema, "'event_organizer.added'");
+    expectSql(schema, "insert into public.audit_logs");
+    expectSql(schema, "delete from public.event_organizers");
+    expectSql(schema, "update public.event_organizers");
+    expectSql(schema, "grant execute on function public.manage_event_organizer_atomic(uuid, text, text, event_organizer_role, jsonb, text, text) to authenticated;");
   });
 
   it("keeps notification deliveries able to store queued message content", () => {

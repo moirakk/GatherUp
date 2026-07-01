@@ -174,30 +174,20 @@ describe("registration and payment proof API contracts", () => {
     expectSource(eventBasicsEditor, "supabase.auth.getSession()");
   });
 
-  it("keeps organizer collaborator management on an authenticated edit-permission API path", () => {
+  it("keeps organizer collaborator management on the authenticated atomic RPC path", () => {
     expectSource(eventOrganizerRoute, "getAuthenticatedSupabaseClient(request)");
     expectSource(eventOrganizerRoute, "enforceRateLimit(request");
     expectSource(eventOrganizerRoute, 'keyPrefix: "events:organizers"');
-    expectSource(eventOrganizerRoute, "canEditEvent(authContext.supabase, eventId)");
-    expectSource(eventOrganizerRoute, "getSupabaseServiceClient()");
-    expectSource(eventOrganizerRoute, "writeOrganizerAuditLog");
-    expectSource(eventOrganizerRoute, '.from("audit_logs").insert');
-    expectSource(eventOrganizerRoute, 'target_type: "event_organizer"');
-    expectSource(eventOrganizerRoute, 'action: existingOrganizer?.id ? "event_organizer.updated" : "event_organizer.added"');
-    expectSource(eventOrganizerRoute, 'action: "event_organizer.removed"');
-    expectSource(eventOrganizerRoute, 'action: "event_organizer.role_updated"');
-    expectSource(eventOrganizerRoute, '.from("users")');
-    expectSource(eventOrganizerRoute, '.from("event_organizers")');
-    expectSource(eventOrganizerRoute, "invited_by: inviter.id");
+    expectSource(eventOrganizerRoute, 'authContext.supabase.rpc("manage_event_organizer_atomic"');
+    expectSource(eventOrganizerRoute, 'p_action: action');
+    expectSource(eventOrganizerRoute, 'p_permissions: permissions');
+    expectSource(eventOrganizerRoute, 'p_user_agent: request.headers.get("user-agent") ?? "unknown"');
     expectSource(eventOrganizerRoute, "export async function DELETE(request: Request)");
     expectSource(eventOrganizerRoute, "export async function PATCH(request: Request)");
-    expectSource(eventOrganizerRoute, "不能移除活动主办");
-    expectSource(eventOrganizerRoute, "不能调整活动主办角色");
-    expectSource(eventOrganizerRoute, '.from("event_organizers").delete()');
-    expectSource(eventOrganizerRoute, '.from("event_organizers")');
-    expectSource(eventOrganizerRoute, ".update({");
-    expectSource(eventOrganizerRoute, '.neq("role", "owner")');
     assert.doesNotMatch(eventOrganizerRoute, /owner:\s*"owner"/);
+    assert.doesNotMatch(eventOrganizerRoute, /getSupabaseServiceClient/);
+    assert.doesNotMatch(eventOrganizerRoute, /\.from\("event_organizers"\)/);
+    assert.doesNotMatch(eventOrganizerRoute, /\.from\("audit_logs"\)/);
 
     expectSource(eventIdentityPanel, 'fetch("/api/events/organizers"');
     expectSource(eventIdentityPanel, 'method: "DELETE"');

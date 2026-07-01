@@ -26,7 +26,7 @@ GatherUp is currently at the **commercial v0.1 foundation stage**:
 - Seat locking now has PostgreSQL RPC drafts, JWT API entry points, and an initial order-detail seat selection panel for expiring locks, creating locks, and confirming seat assignments.
 - Check-in now has an audited PostgreSQL RPC draft wired through the organizer verification API.
 - Organizer announcements now publish through a Supabase-authenticated API route into the `announcements` table, while external delivery channels remain future work.
-- Organizer collaborator management now has a controlled UI/API path: an authenticated editor can add a user by GatherUp ID, adjust non-owner collaborator roles, or remove a non-owner collaborator, while the API verifies `can_edit_event` before using service-role lookup to write/update/delete `event_organizers` and record `audit_logs`.
+- Organizer collaborator management now has a controlled UI/API path backed by `manage_event_organizer_atomic`: an authenticated editor can add a user by GatherUp ID, adjust non-owner collaborator roles, or remove a non-owner collaborator, while PostgreSQL verifies `can_edit_event`, protects owners, writes/updates/deletes `event_organizers`, and records `audit_logs` in the same transactional path.
 - The app still has prototype surfaces, especially venue intelligence, admin review, external notification delivery, richer event review transitions/post-publish edit constraints, and expense proof editing/voiding, so the next engineering phase is to complete end-to-end Supabase-backed product journeys rather than only adding more SQL.
 
 ```mermaid
@@ -229,7 +229,7 @@ Most recent local verification:
 
 The main remaining gaps are engineering depth, not product concept:
 
-- Remaining mock/local surfaces need to be replaced intentionally rather than all at once: expense proof editing/voiding, collaborator invite-acceptance and RPC transaction hardening, venue intelligence, admin review, complaints, richer event review transitions/post-publish edit constraints, and some edge-case UI flows.
+- Remaining mock/local surfaces need to be replaced intentionally rather than all at once: expense proof editing/voiding, collaborator invite-acceptance, venue intelligence, admin review, complaints, richer event review transitions/post-publish edit constraints, and some edge-case UI flows.
 - Payment proof upload, refund proof upload, payment review, seat selection, check-in, and refund request/review have passed clean-project user/session validation, but still need broader UI-level end-to-end testing.
 - Seat selection has atomic locking and integration coverage; realtime visual updates are still future work.
 - Announcement publishing now writes database records; external notification delivery still needs a real provider such as Resend and later WeChat integration.
@@ -250,7 +250,7 @@ flowchart LR
 Immediate order:
 
 1. Keep README, status docs, and GitHub profile copy aligned with the actual codebase after each major workflow migration.
-2. Add event review gates, collaborator invite-acceptance/RPC transaction hardening, and post-publish edit constraints on top of the current Supabase event creation/basic-edit/collaborator-management/open-registration baseline.
+2. Add event review gates, collaborator invite-acceptance, and post-publish edit constraints on top of the current Supabase event creation/basic-edit/collaborator-management/open-registration baseline.
 3. Harden organizer finance expense proof editing, voiding, and export evidence paths.
 4. Add organizer verification and minimum admin review.
 5. Add external notification delivery after the database notification/audit baseline remains stable.

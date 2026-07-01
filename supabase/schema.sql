@@ -3013,6 +3013,216 @@ returns boolean as $$
   );
 $$ language sql stable security definer set search_path = public;
 
+create or replace function public.manage_event_organizer_atomic(
+  p_event_id uuid,
+  p_public_id text,
+  p_action text,
+  p_role event_organizer_role default 'cohost',
+  p_permissions jsonb default '{}'::jsonb,
+  p_reason text default null,
+  p_user_agent text default null
+)
+returns jsonb as $$
+declare
+  v_actor_id uuid;
+  v_action text;
+  v_event record;
+  v_target_user record;
+  v_existing record;
+  v_organizer_id uuid;
+  v_permissions jsonb := '{}'::jsonb;
+  v_audit_action text;
+begin
+  v_actor_id := public.current_app_user_id();
+  v_action := lower(nullif(trim(p_action), ''));
+
+  if v_actor_id is null then
+    return jsonb_build_object('success', false, 'error_code', 'UNAUTHORIZED', 'message', 'Please sign in before managing event collaborators.');
+  end if;
+
+  if p_event_id is null or nullif(trim(coalesce(p_public_id, '')), '') is null then
+    return jsonb_build_object('success', false, 'error_code', 'MISSING_INPUT', 'message', 'Missing event id or GatherUp ID.');
+  end if;
+
+  if v_action not in ('add', 'update', 'remove') then
+    return jsonb_build_object('success', false, 'error_code', 'INVALID_ACTION', 'message', 'Action must be add, update, or remove.');
+  end if;
+
+  if p_role = 'owner' then
+    return jsonb_build_object('success', false, 'error_code', 'OWNER_ROLE_FORBIDDEN', 'message', 'Owner role cannot be assigned through collaborator management.');
+  end if;
+
+  select id, organizer_id
+  into v_event
+  from public.events
+  where id = p_event_id
+  for update;
+
+  if not found then
+    return jsonb_build_object('success', false, 'error_code', 'EVENT_NOT_FOUND', 'message', 'Event not found.');
+  end if;
+
+  if not (public.can_edit_event(p_event_id) or public.is_platform_admin()) then
+    return jsonb_build_object('success', false, 'error_code', 'FORBIDDEN', 'message', 'Only event editors can manage collaborators.');
+  end if;
+
+  select id, public_id, name
+  into v_target_user
+  from public.users
+  where public_id = upper(trim(p_public_id))
+  limit 1;
+
+  if not found then
+    return jsonb_build_object('success', false, 'error_code', 'USER_NOT_FOUND', 'message', 'GatherUp ID not found.');
+  end if;
+
+  if v_event.organizer_id = v_target_user.id then
+    return jsonb_build_object('success', false, 'error_code', 'OWNER_PROTECTED', 'message', 'Event owner cannot be changed through collaborator management.');
+  end if;
+
+  select id, user_id, role, permissions
+  into v_existing
+  from public.event_organizers
+  where event_id = p_event_id
+    and user_id = v_target_user.id
+  for update;
+
+  if found and v_existing.role = 'owner' then
+    return jsonb_build_object('success', false, 'error_code', 'OWNER_PROTECTED', 'message', 'Event owner cannot be changed through collaborator management.');
+  end if;
+
+  if p_role = 'cohost' and coalesce((p_permissions ->> 'can_manage_payments')::boolean, false) then
+    v_permissions := jsonb_build_object('can_manage_payments', true);
+  end if;
+
+  if v_action = 'remove' then
+    if not found then
+      return jsonb_build_object('success', false, 'error_code', 'COLLABORATOR_NOT_FOUND', 'message', 'This user is not an event collaborator.');
+    end if;
+
+    delete from public.event_organizers
+    where id = v_existing.id
+      and role <> 'owner';
+
+    insert into public.audit_logs (
+      actor_id,
+      actor_role,
+      event_id,
+      target_type,
+      target_id,
+      action,
+      risk_level,
+      reason,
+      before_snapshot,
+      after_snapshot,
+      metadata,
+      user_agent
+    ) values (
+      v_actor_id,
+      case when public.is_platform_admin() then 'admin' else 'event_editor' end,
+      p_event_id,
+      'event_organizer',
+      v_existing.id,
+      'event_organizer.removed',
+      'medium',
+      nullif(trim(coalesce(p_reason, '')), ''),
+      jsonb_build_object('role', v_existing.role, 'permissions', v_existing.permissions, 'user_id', v_existing.user_id),
+      null,
+      jsonb_build_object('source', 'rpc.manage_event_organizer_atomic', 'target_public_id', v_target_user.public_id),
+      nullif(trim(coalesce(p_user_agent, '')), '')
+    );
+
+    return jsonb_build_object('success', true, 'action', 'remove', 'removed_public_id', v_target_user.public_id);
+  end if;
+
+  if v_action = 'update' and not found then
+    return jsonb_build_object('success', false, 'error_code', 'COLLABORATOR_NOT_FOUND', 'message', 'This user is not an event collaborator.');
+  end if;
+
+  if found then
+    update public.event_organizers
+    set
+      role = p_role,
+      permissions = v_permissions,
+      updated_at = now()
+    where id = v_existing.id
+      and role <> 'owner'
+    returning id into v_organizer_id;
+
+    v_audit_action := case when v_action = 'add' then 'event_organizer.updated' else 'event_organizer.role_updated' end;
+  else
+    insert into public.event_organizers (
+      event_id,
+      user_id,
+      role,
+      permissions,
+      invited_by
+    ) values (
+      p_event_id,
+      v_target_user.id,
+      p_role,
+      v_permissions,
+      v_actor_id
+    )
+    returning id into v_organizer_id;
+
+    v_audit_action := 'event_organizer.added';
+  end if;
+
+  insert into public.audit_logs (
+    actor_id,
+    actor_role,
+    event_id,
+    target_type,
+    target_id,
+    action,
+    risk_level,
+    reason,
+    before_snapshot,
+    after_snapshot,
+    metadata,
+    user_agent
+  ) values (
+    v_actor_id,
+    case when public.is_platform_admin() then 'admin' else 'event_editor' end,
+    p_event_id,
+    'event_organizer',
+    v_organizer_id,
+    v_audit_action,
+    'medium',
+    nullif(trim(coalesce(p_reason, '')), ''),
+    case
+      when v_existing.id is null then null
+      else jsonb_build_object('role', v_existing.role, 'permissions', v_existing.permissions, 'user_id', v_existing.user_id)
+    end,
+    jsonb_build_object('role', p_role, 'permissions', v_permissions, 'user_id', v_target_user.id),
+    jsonb_build_object('source', 'rpc.manage_event_organizer_atomic', 'target_public_id', v_target_user.public_id),
+    nullif(trim(coalesce(p_user_agent, '')), '')
+  );
+
+  return jsonb_build_object(
+    'success', true,
+    'action', v_action,
+    'organizer_id', v_organizer_id,
+    'event_id', p_event_id,
+    'public_id', v_target_user.public_id,
+    'role', p_role,
+    'permissions', v_permissions
+  );
+exception
+  when deadlock_detected or serialization_failure then
+    return jsonb_build_object('success', false, 'error_code', 'CONCURRENT_CONFLICT', 'message', 'Collaborator management is busy. Please retry.');
+  when unique_violation then
+    return jsonb_build_object('success', false, 'error_code', 'DUPLICATE_COLLABORATOR', 'message', 'This collaborator already exists.');
+  when others then
+    raise warning '[GatherUp] manage_event_organizer_atomic: % | %', sqlstate, sqlerrm;
+    return jsonb_build_object('success', false, 'error_code', 'INTERNAL_ERROR', 'message', 'Collaborator management failed.');
+end;
+$$ language plpgsql security definer set search_path = public, auth, pg_temp;
+
+revoke all on function public.manage_event_organizer_atomic(uuid, text, text, event_organizer_role, jsonb, text, text) from public;
+grant execute on function public.manage_event_organizer_atomic(uuid, text, text, event_organizer_role, jsonb, text, text) to authenticated;
+
 create or replace function public.mark_notification_deliveries_read(
   p_notification_id uuid default null,
   p_mark_all boolean default false
