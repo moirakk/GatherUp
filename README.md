@@ -116,6 +116,7 @@ Implemented prototype coverage:
 - Organizer announcements now publish through a Supabase-authenticated API route into the `announcements` table; the UI still treats external delivery such as email, SMS, or WeChat as a later channel layer.
 - Organizer event consoles can now edit core event basics through an authenticated edit-permission API route, including name, city, venue, address, capacity, start time, registration deadline, and description. Capacity edits are blocked if they would fall below the current active registration count.
 - Organizer event consoles can now add, remove, or adjust non-owner collaborators by GatherUp ID through an authenticated API route backed by `manage_event_organizer_atomic`. The database RPC verifies edit permission, performs controlled user lookup, updates `event_organizers`, protects owners, and records collaborator changes in `audit_logs` in the same transactional path.
+- Organizer event consoles now surface a read-only audit timeline from `audit_logs`, so collaborator changes, payment review, refund, waitlist, and check-in operations have visible operational traceability instead of staying hidden in the database.
 - Organizer event consoles can now open registration through an authenticated edit-permission API route that advances eligible draft/scheduled events to `registration_open`.
 - Organizer finance export now requires finance-level event permission instead of broad event-management permission.
 - Organizer finance expenses can now be created through a Supabase-authenticated, finance-scoped API route and stored in `event_expenses`; optional expense proof upload writes to the private `expense-proofs` bucket and updates `event_expenses.proof_url`.
@@ -202,6 +203,7 @@ GatherUp is intentionally being moved from a prototype into a reliable product f
 - API route authentication is guarded by a directory-scanning contract test: every `src/app/api/**/route.ts` file must call the shared Supabase server auth helpers inside the handler because middleware intentionally lets `/api` requests reach route-level authorization.
 - Private Storage path contracts for sensitive proof files, including payment proofs and refund proofs, with integration coverage for owner/manager reads, participant upload boundaries, refund-role separation, malformed paths, and no update/delete policies.
 - Documentation-first runbooks for clean Supabase project execution, validation logging, and future service-layer expansion.
+- Organizer audit timeline contract coverage ensures the event workspace continues to read `audit_logs` and render before/after snapshots, action labels, and risk levels for sensitive operations.
 
 Current local verification:
 

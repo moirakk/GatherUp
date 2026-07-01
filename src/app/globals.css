@@ -1434,6 +1434,57 @@ h3 {
   gap: 12px;
 }
 
+.audit-log-timeline {
+  display: grid;
+  gap: 12px;
+}
+
+.audit-log-entry {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-soft);
+}
+
+.audit-log-entry-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.audit-log-entry-header strong {
+  color: var(--text);
+  font-size: 14px;
+}
+
+.audit-log-snapshot {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+}
+
+.audit-log-snapshot div {
+  display: grid;
+  gap: 2px;
+}
+
+.audit-log-snapshot dt {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.audit-log-snapshot dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: var(--text);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
 .summary-list dd {
   display: flex;
   align-items: center;

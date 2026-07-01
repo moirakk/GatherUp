@@ -66,6 +66,7 @@ describe("registration and payment proof API contracts", () => {
   const devStatusPage = readSource("src/app/dev/status/page.tsx");
   const registrationFlow = readSource("src/components/registration-flow.tsx");
   const announcementCenter = readSource("src/components/announcement-center.tsx");
+  const auditLogTimeline = readSource("src/components/audit-log-timeline.tsx");
   const expenseLedger = readSource("src/components/expense-ledger.tsx");
   const expenseProofList = readSource("src/components/expense-proof-list.tsx");
   const eventsData = readSource("src/lib/events-data.ts");
@@ -383,15 +384,25 @@ describe("registration and payment proof API contracts", () => {
 
   it("keeps the organizer event workspace on the authenticated Supabase organizer detail adapter", () => {
     expectSource(organizerEventPage, 'import { getOrganizerEventDetail } from "@/lib/organizer-data";');
+    expectSource(organizerEventPage, 'import { AuditLogTimeline } from "@/components/audit-log-timeline";');
     expectSource(organizerEventPage, "await getOrganizerEventDetail(eventId)");
-    expectSource(organizerEventPage, "const { announcements, event, organizers, registrations, setup } = eventDetail;");
+    expectSource(organizerEventPage, "const { announcements, auditLogs, event, organizers, registrations, setup } = eventDetail;");
+    expectSource(organizerEventPage, "<AuditLogTimeline logs={auditLogs} />");
     expectSource(organizerData, "export async function getOrganizerEventDetail(eventId: string)");
+    expectSource(organizerData, "auditLogs: EventAuditLog[];");
     expectSource(organizerData, "await createSupabaseServerClient()");
     expectSource(organizerData, "findUserByAuthUserId(supabase, user.id)");
     expectSource(organizerData, "await canManageEvent(supabase, eventRow.id)");
     expectSource(organizerData, '.from("announcements")');
     expectSource(organizerData, '.from("registrations")');
     expectSource(organizerData, '.from("event_organizers")');
+    expectSource(organizerData, '.from("audit_logs")');
+    expectSource(organizerData, '.select("id, actor_role, target_type, action, risk_level, reason, before_snapshot, after_snapshot, created_at")');
+    expectSource(organizerData, ".limit(12)");
+    expectSource(auditLogTimeline, "export function AuditLogTimeline");
+    expectSource(auditLogTimeline, "beforeSummary");
+    expectSource(auditLogTimeline, "afterSummary");
+    expectSource(auditLogTimeline, "riskLevel");
 
     assert.doesNotMatch(
       organizerEventPage,

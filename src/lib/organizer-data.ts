@@ -85,6 +85,18 @@ type ExpenseRow = {
   created_at: string;
 };
 
+type AuditLogRow = {
+  id: string;
+  actor_role: string | null;
+  target_type: string;
+  action: string;
+  risk_level: string;
+  reason: string | null;
+  before_snapshot: unknown;
+  after_snapshot: unknown;
+  created_at: string;
+};
+
 function firstRelation<T>(value: T | T[] | null | undefined) {
   return Array.isArray(value) ? value[0] : value;
 }
@@ -105,11 +117,24 @@ export type OrganizerDashboardData = {
 
 export type OrganizerEventDetailData = {
   announcements: EventAnnouncement[];
+  auditLogs: EventAuditLog[];
   event: GatherEvent;
   organizers: EventOrganizer[];
   registrations: Registration[];
   setup: EventSetup;
   source: "mock" | "supabase";
+};
+
+export type EventAuditLog = {
+  id: string;
+  action: string;
+  actorRole: string;
+  afterSummary: string;
+  beforeSummary: string;
+  createdAt: string;
+  reason: string;
+  riskLevel: string;
+  targetType: string;
 };
 
 export type OrganizerFinanceDetailData = {
@@ -172,6 +197,36 @@ function announcementRowToEventAnnouncement(row: AnnouncementRow): EventAnnounce
   };
 }
 
+function summarizeAuditSnapshot(value: unknown) {
+  if (!value || (typeof value === "object" && Object.keys(value as Record<string, unknown>).length === 0)) {
+    return "无";
+  }
+
+  if (typeof value === "string") {
+    return value;
+  }
+
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return "无法显示";
+  }
+}
+
+function auditLogRowToEventAuditLog(row: AuditLogRow): EventAuditLog {
+  return {
+    id: row.id,
+    action: row.action,
+    actorRole: row.actor_role ?? "system",
+    afterSummary: summarizeAuditSnapshot(row.after_snapshot),
+    beforeSummary: summarizeAuditSnapshot(row.before_snapshot),
+    createdAt: formatDateTime(row.created_at),
+    reason: row.reason ?? "未填写原因",
+    riskLevel: row.risk_level,
+    targetType: row.target_type
+  };
+}
+
 function mockOrganizerEventDetail(eventId: string): OrganizerEventDetailData | null {
   const event = findEvent(eventId);
 
@@ -181,6 +236,7 @@ function mockOrganizerEventDetail(eventId: string): OrganizerEventDetailData | n
 
   return {
     announcements: getEventAnnouncements(event.id),
+    auditLogs: [],
     event,
     organizers: getEventOrganizers(event.id),
     registrations: getEventRegistrations(event.id),
@@ -491,7 +547,7 @@ export async function getOrganizerEventDetail(eventId: string): Promise<Organize
       return null;
     }
 
-    const [announcementResult, registrationResult, organizerResult] = await Promise.all([
+    const [announcementResult, registrationResult, organizerResult, auditLogResult] = await Promise.all([
       supabase
         .from("announcements")
         .select("id, event_id, title, body, status, published_at")
@@ -504,10 +560,16 @@ export async function getOrganizerEventDetail(eventId: string): Promise<Organize
       supabase
         .from("event_organizers")
         .select("event_id, role, users(id, public_id, name)")
+        .eq("event_id", eventRow.id),
+      supabase
+        .from("audit_logs")
+        .select("id, actor_role, target_type, action, risk_level, reason, before_snapshot, after_snapshot, created_at")
         .eq("event_id", eventRow.id)
+        .order("created_at", { ascending: false })
+        .limit(12)
     ]);
 
-    if (announcementResult.error || registrationResult.error || organizerResult.error) {
+    if (announcementResult.error || registrationResult.error || organizerResult.error || auditLogResult.error) {
       return null;
     }
 
@@ -523,6 +585,7 @@ export async function getOrganizerEventDetail(eventId: string): Promise<Organize
 
     return {
       announcements: ((announcementResult.data ?? []) as AnnouncementRow[]).map(announcementRowToEventAnnouncement),
+      auditLogs: ((auditLogResult.data ?? []) as AuditLogRow[]).map(auditLogRowToEventAuditLog),
       event,
       organizers: organizerRowsToMap((organizerResult.data ?? []) as EventOrganizerRow[]).get(eventRow.id) ?? [],
       registrations: eventRegistrations,

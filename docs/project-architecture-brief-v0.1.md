@@ -27,6 +27,7 @@ GatherUp is currently at the **commercial v0.1 foundation stage**:
 - Check-in now has an audited PostgreSQL RPC draft wired through the organizer verification API.
 - Organizer announcements now publish through a Supabase-authenticated API route into the `announcements` table, while external delivery channels remain future work.
 - Organizer collaborator management now has a controlled UI/API path backed by `manage_event_organizer_atomic`: an authenticated editor can add a user by GatherUp ID, adjust non-owner collaborator roles, or remove a non-owner collaborator, while PostgreSQL verifies `can_edit_event`, protects owners, writes/updates/deletes `event_organizers`, and records `audit_logs` in the same transactional path.
+- Organizer event workspaces now include a read-only audit timeline sourced from `audit_logs`, exposing action labels, risk level, actor role, before/after snapshots, and reasons for sensitive operations.
 - The app still has prototype surfaces, especially venue intelligence, admin review, external notification delivery, richer event review transitions/post-publish edit constraints, and expense proof editing/voiding, so the next engineering phase is to complete end-to-end Supabase-backed product journeys rather than only adding more SQL.
 
 ```mermaid
@@ -233,7 +234,7 @@ The main remaining gaps are engineering depth, not product concept:
 - Payment proof upload, refund proof upload, payment review, seat selection, check-in, and refund request/review have passed clean-project user/session validation, but still need broader UI-level end-to-end testing.
 - Seat selection has atomic locking and integration coverage; realtime visual updates are still future work.
 - Announcement publishing now writes database records; external notification delivery still needs a real provider such as Resend and later WeChat integration.
-- Minimum admin review and broader audit tooling still need implementation.
+- Minimum admin review and broader platform audit tooling still need implementation; organizer-level event audit visibility now exists in the event workspace.
 
 ## 9. Recommended next steps
 

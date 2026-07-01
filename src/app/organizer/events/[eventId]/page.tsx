@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { ArrowLeft, AtSign, BellRing, CalendarCheck, CircleDollarSign, MapPinned, Megaphone, QrCode } from "lucide-react";
 
 import { AnnouncementCenter } from "@/components/announcement-center";
+import { AuditLogTimeline } from "@/components/audit-log-timeline";
 import { EventBasicsEditor } from "@/components/event-basics-editor";
 import { EventIdentityPanel } from "@/components/event-identity-panel";
 import { MetricCard } from "@/components/metric-card";
@@ -36,7 +37,7 @@ export default async function OrganizerEventPage({ params, searchParams }: Organ
     notFound();
   }
 
-  const { announcements, event, organizers, registrations, setup } = eventDetail;
+  const { announcements, auditLogs, event, organizers, registrations, setup } = eventDetail;
   const activePanel = getPanelId(panel);
   const totalSurveyVotes = setup.surveyOptions.reduce((sum, option) => sum + option.votes, 0);
   const totalVenueVotes = setup.venueOptions.reduce((sum, option) => sum + option.votes, 0);
@@ -208,6 +209,16 @@ export default async function OrganizerEventPage({ params, searchParams }: Organ
             <AtSign size={20} />
           </div>
           <EventIdentityPanel eventId={event.id} organizers={organizers} publicCode={event.publicCode} />
+        </article>
+
+        <article className="content-card" id="audit-logs">
+          <div className="section-heading">
+            <div>
+              <h2>审计日志</h2>
+              <p className="subtle">记录权限、付款、退款和核销等关键操作，便于复盘和纠纷举证。</p>
+            </div>
+          </div>
+          <AuditLogTimeline logs={auditLogs} />
         </article>
 
         <article className="content-card" id="survey-results">
