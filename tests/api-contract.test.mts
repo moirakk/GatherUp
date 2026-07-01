@@ -29,6 +29,7 @@ function listApiRouteFiles(dir = join(repoRoot, "src/app/api")): string[] {
 
 describe("registration and payment proof API contracts", () => {
   const eventRoute = readSource("src/app/api/events/route.ts");
+  const eventOrganizerRoute = readSource("src/app/api/events/organizers/route.ts");
   const eventPublishRoute = readSource("src/app/api/events/publish/route.ts");
   const eventUpdateRoute = readSource("src/app/api/events/update/route.ts");
   const orderRoute = readSource("src/app/api/orders/route.ts");
@@ -59,6 +60,7 @@ describe("registration and payment proof API contracts", () => {
   const organizerFinancePage = readSource("src/app/organizer/events/[eventId]/finance/page.tsx");
   const organizerNewEventPage = readSource("src/app/organizer/events/new/page.tsx");
   const organizerEventActions = readSource("src/components/organizer-event-actions.tsx");
+  const eventIdentityPanel = readSource("src/components/event-identity-panel.tsx");
   const eventBasicsEditor = readSource("src/components/event-basics-editor.tsx");
   const registerPage = readSource("src/app/events/[eventId]/register/page.tsx");
   const devStatusPage = readSource("src/app/dev/status/page.tsx");
@@ -170,6 +172,23 @@ describe("registration and payment proof API contracts", () => {
     expectSource(eventBasicsEditor, 'fetch("/api/events/update"');
     expectSource(eventBasicsEditor, "getSupabaseBrowserClient()");
     expectSource(eventBasicsEditor, "supabase.auth.getSession()");
+  });
+
+  it("keeps organizer collaborator management on an authenticated edit-permission API path", () => {
+    expectSource(eventOrganizerRoute, "getAuthenticatedSupabaseClient(request)");
+    expectSource(eventOrganizerRoute, "enforceRateLimit(request");
+    expectSource(eventOrganizerRoute, 'keyPrefix: "events:organizers"');
+    expectSource(eventOrganizerRoute, "canEditEvent(authContext.supabase, eventId)");
+    expectSource(eventOrganizerRoute, "getSupabaseServiceClient()");
+    expectSource(eventOrganizerRoute, '.from("users")');
+    expectSource(eventOrganizerRoute, '.from("event_organizers")');
+    expectSource(eventOrganizerRoute, "invited_by: inviter.id");
+    assert.doesNotMatch(eventOrganizerRoute, /owner:\s*"owner"/);
+
+    expectSource(eventIdentityPanel, 'fetch("/api/events/organizers"');
+    expectSource(eventIdentityPanel, "getSupabaseBrowserClient()");
+    expectSource(eventIdentityPanel, "supabase.auth.getSession()");
+    expectSource(eventIdentityPanel, "can_manage_payments");
   });
 
   it("keeps participant payment proof submission gated by identity and order ownership", () => {
