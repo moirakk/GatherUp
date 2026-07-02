@@ -88,7 +88,7 @@ GatherUp/
 
 ## Status
 
-Current status: **commercial v0.1 foundation with a passing real Supabase RPC and private Storage RLS validation baseline, plus the first real Supabase-backed participant and organizer workspaces**. Public event reads, event detail, registration order creation, participant order lists/details, organizer dashboard, organizer event operations, finance center, expense logging, announcement publishing, payment review, check-in, refunds, seat-lock concurrency, and sensitive proof-file access boundaries now have verified backend paths or UI wiring.
+Current status: **commercial v0.1 foundation with a passing real Supabase RPC and private Storage RLS validation baseline, plus the first real Supabase-backed participant, organizer, finance, and admin workspaces**. Public event reads, event detail, registration order creation, participant order lists/details, organizer dashboard, organizer event operations, finance center, expense logging, announcement publishing, admin review queues, payment review, check-in, refunds, seat-lock concurrency, and sensitive proof-file access boundaries now have verified backend paths or UI wiring.
 
 Implemented prototype coverage:
 
@@ -118,9 +118,9 @@ Implemented prototype coverage:
 - Organizer event consoles can now add, remove, or adjust non-owner collaborators by GatherUp ID through an authenticated API route backed by `manage_event_organizer_atomic`. The database RPC verifies edit permission, performs controlled user lookup, updates `event_organizers`, protects owners, and records collaborator changes in `audit_logs` in the same transactional path.
 - Organizer event consoles now surface a read-only audit timeline from `audit_logs`, so collaborator changes, payment review, refund, waitlist, and check-in operations have visible operational traceability instead of staying hidden in the database.
 - Organizer event consoles can now open registration through an authenticated edit-permission API route that advances eligible draft/scheduled events to `registration_open`.
-- The registration-open API now enforces a minimum paid-event gate: events with a price or organizer payment QR code require the event owner to have `light_verified` or `enhanced_verified` organizer verification and no forced re-review flag before paid registration can open.
+- The registration-open API now enforces minimum paid-event and platform-review gates: events with a price or organizer payment QR code require the event owner to have `light_verified` or `enhanced_verified` organizer verification and no forced re-review flag, and events with pending/rejected/suspended platform review status cannot open paid registration.
 - The organizer workspace now includes a Supabase-backed organizer verification application panel. Organizers can view their verification status and submit or update pending verification details before attempting to publish paid events.
-- The first admin review surface is now available at `/admin`: platform admins can review organizer verification applications, approve, reject, suspend, and write audit logs for those decisions.
+- The first admin review surface is now available at `/admin`: platform admins can review organizer verification applications and event review requests, approve, reject, suspend, request event changes, and write audit logs for those decisions.
 - Organizer finance export now requires finance-level event permission instead of broad event-management permission.
 - Organizer finance expenses can now be created through a Supabase-authenticated, finance-scoped API route and stored in `event_expenses`; optional expense proof upload writes to the private `expense-proofs` bucket and updates `event_expenses.proof_url`, and finance managers can soft-void the current proof without deleting the private Storage object.
 - Supabase SSR middleware login redirect foundation and safe internal `next` path handling.
@@ -130,12 +130,12 @@ Not production-ready yet:
 
 - Several important surfaces are now backed by Supabase, but the product still keeps mock/local fallback paths for local demos and unavailable Supabase environments.
 - Real write APIs are still early product-integration endpoints, but their core database paths have passed the clean Supabase validation baseline: registration creation, payment proof upload, payment review, check-in, refund request/review/proof upload, seat-lock concurrency, announcement publishing, and private proof-file RLS.
-- Venue intelligence, admin workflows, external notification delivery, and some edge-case UI flows are not yet fully backed by production-grade database services. The next risk is less about SQL/RPC correctness and more about finishing end-to-end product journeys on top of the verified backend paths.
+- Venue intelligence, complaints/platform settings, external notification delivery, and some edge-case UI flows are not yet fully backed by production-grade database services. The next risk is less about SQL/RPC correctness and more about finishing end-to-end product journeys on top of the verified backend paths.
 - Mutating API routes now have a shared in-process rate limiter and a contract test that blocks new write endpoints without rate limiting. This is an early abuse-control baseline for local and single-instance deployments; multi-instance production should replace the in-memory bucket store with a shared Redis/Upstash-backed limiter.
 - Supabase schema, seed, Storage policy, and validation scripts have been rebuilt in the clean dev/staging project `oxbrxkllftyevlzmiydt`; the live integration suite now passes 19/19 tests against that project.
 - Anonymous public-read grants for public event detail surfaces are included in the schema draft and local contract tests, and the clean validation project has passed the post-execution SQL summary plus RPC/Storage integration suite.
 - Permission enforcement and RLS still need to expand as new product workflows are added, but the commercial v0.1 registration/payment/check-in/refund/seat-lock/proof-file baseline is no longer unvalidated.
-- Broader transactional service functions, email business notifications, richer admin review surfaces, collaborator invite-acceptance, richer event review gates, expense proof audit RPCs, venue review flows, complaints, and data retention jobs are still planned.
+- Broader transactional service functions, email business notifications, richer admin review surfaces beyond organizer/event review, collaborator invite-acceptance, richer post-publish edit gates, expense proof audit RPCs, venue review flows, complaints, and data retention jobs are still planned.
 
 ## Commercial v0.1 Direction
 

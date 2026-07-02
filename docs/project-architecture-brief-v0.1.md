@@ -29,9 +29,9 @@ GatherUp is currently at the **commercial v0.1 foundation stage**:
 - Organizer collaborator management now has a controlled UI/API path backed by `manage_event_organizer_atomic`: an authenticated editor can add a user by GatherUp ID, adjust non-owner collaborator roles, or remove a non-owner collaborator, while PostgreSQL verifies `can_edit_event`, protects owners, writes/updates/deletes `event_organizers`, and records `audit_logs` in the same transactional path.
 - Organizer event workspaces now include a read-only audit timeline sourced from `audit_logs`, exposing action labels, risk level, actor role, before/after snapshots, and reasons for sensitive operations.
 - Organizer verification now has a first real application path: the organizer workspace reads the user's `organizer_verifications` row and lets organizers submit or update pending verification details through an authenticated, rate-limited API.
-- Platform admin review now has a first real surface: `/admin` lists organizer verification applications for platform admins and lets them approve, reject, suspend, or grant enhanced verification while writing audit logs.
-- Paid event publishing now has a minimum organizer-verification API gate: before `registration_open`, events with a price or organizer payment QR code require the event owner to be `light_verified` or `enhanced_verified` and not marked for forced re-review.
-- The app still has prototype surfaces, especially venue intelligence, broader admin review, external notification delivery, richer event review transitions/post-publish edit constraints, and expense proof audit evidence beyond the current upload/soft-void path, so the next engineering phase is to complete end-to-end Supabase-backed product journeys rather than only adding more SQL.
+- Platform admin review now has a first real surface: `/admin` lists organizer verification applications and event review requests for platform admins, lets them approve, reject, suspend, request event changes, or grant enhanced organizer verification, and writes audit logs.
+- Paid event publishing now has minimum organizer-verification and event-review API gates: before `registration_open`, events with a price or organizer payment QR code require the event owner to be `light_verified` or `enhanced_verified`, not marked for forced re-review, and not blocked by pending/rejected/suspended platform review status.
+- The app still has prototype surfaces, especially venue intelligence, broader admin review for complaints/settings, external notification delivery, richer event review transitions/post-publish edit constraints, and expense proof audit evidence beyond the current upload/soft-void path, so the next engineering phase is to complete end-to-end Supabase-backed product journeys rather than only adding more SQL.
 
 ```mermaid
 flowchart LR
@@ -233,18 +233,18 @@ Most recent local verification:
 
 The main remaining gaps are engineering depth, not product concept:
 
-- Remaining mock/local surfaces need to be replaced intentionally rather than all at once: expense proof audit RPCs and export evidence, collaborator invite-acceptance, venue intelligence, broader admin review, complaints, richer event review transitions/post-publish edit constraints, and some edge-case UI flows.
+- Remaining mock/local surfaces need to be replaced intentionally rather than all at once: expense proof audit RPCs and export evidence, collaborator invite-acceptance, venue intelligence, broader admin review for complaints/settings, richer event review transitions/post-publish edit constraints, and some edge-case UI flows.
 - Payment proof upload, refund proof upload, payment review, seat selection, check-in, and refund request/review have passed clean-project user/session validation, but still need broader UI-level end-to-end testing.
 - Seat selection has atomic locking and integration coverage; realtime visual updates are still future work.
 - Announcement publishing now writes database records; external notification delivery still needs a real provider such as Resend and later WeChat integration.
-- Broader platform audit tooling still needs implementation; organizer verification review and organizer-level event audit visibility now exist.
+- Broader platform audit tooling still needs implementation; organizer verification review, event review, and organizer-level event audit visibility now exist.
 
 ## 9. Recommended next steps
 
 ```mermaid
 flowchart LR
-  A["Keep docs and GitHub current"] --> B["Add event review and role gates"]
-  B --> C["Harden expense proofs"]
+  A["Keep docs and GitHub current"] --> B["Harden expense proofs"]
+  B --> C["Add invite acceptance"]
   C --> D["Broaden admin review"]
   D --> E["Add external notifications"]
   E --> F["UI-level beta QA"]
@@ -254,8 +254,8 @@ flowchart LR
 Immediate order:
 
 1. Keep README, status docs, and GitHub profile copy aligned with the actual codebase after each major workflow migration.
-2. Add event review queues, collaborator invite-acceptance, and post-publish edit constraints on top of the current Supabase event creation/basic-edit/collaborator-management/paid-publish-gate baseline.
+2. Add collaborator invite-acceptance and post-publish edit constraints on top of the current Supabase event creation/basic-edit/collaborator-management/paid-publish-gate/event-review baseline.
 3. Harden organizer finance expense proof audit RPCs and export evidence paths beyond the current upload/soft-void UI.
-4. Broaden admin review to event review, complaints, and platform settings.
+4. Broaden admin review to complaints and platform settings.
 5. Add external notification delivery after the database notification/audit baseline remains stable.
 6. Expand UI-level beta QA around participant registration, payment proof, organizer review, seat selection, check-in, refund, finance export, and announcement publishing.

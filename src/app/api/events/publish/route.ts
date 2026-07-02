@@ -47,7 +47,7 @@ export async function POST(request: Request) {
 
   const { data: event, error: eventError } = await authContext.supabase
     .from("events")
-    .select("id, organizer_id, price_cents, payment_code_img")
+    .select("id, organizer_id, price_cents, payment_code_img, review_status")
     .eq("id", eventId)
     .single();
 
@@ -73,6 +73,10 @@ export async function POST(request: Request) {
     ) {
       return jsonError("收费活动需要主办方完成认证，且当前账号未被要求重新审核。请先完成主办认证后再开放报名。", 403);
     }
+  }
+
+  if (["pending", "changes_requested", "rejected", "suspended"].includes(String(event.review_status))) {
+    return jsonError("该活动仍在平台审核中或未通过审核，暂不能开放报名。", 403);
   }
 
   const { data: updatedEvent, error } = await authContext.supabase

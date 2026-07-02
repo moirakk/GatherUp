@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 
-import { asRecord, findUserByAuthUserId, getString, jsonError, normalizeReviewDecision } from "@/lib/server/api";
+import { asRecord, getString, jsonError, normalizeReviewDecision } from "@/lib/server/api";
+import { hasPlatformAdminError, requirePlatformAdmin } from "@/lib/server/admin";
 import { enforceRateLimit } from "@/lib/server/rate-limit";
-import { getAuthenticatedSupabaseClient, getSupabaseServiceClient } from "@/lib/supabase/server";
+import { getSupabaseServiceClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
 
@@ -13,28 +14,6 @@ const reviewStatusMap: Record<string, string> = {
   REJECTED: "rejected",
   SUSPENDED: "suspended"
 };
-
-async function requirePlatformAdmin(request: Request) {
-  const authContext = await getAuthenticatedSupabaseClient(request);
-
-  if (!authContext) {
-    return { error: jsonError("请使用 Supabase 管理员账号登录。", 401) };
-  }
-
-  const { data: isAdmin, error } = await authContext.supabase.rpc("is_platform_admin");
-
-  if (error || isAdmin !== true) {
-    return { error: jsonError("只有平台管理员可以访问认证审核。", 403) };
-  }
-
-  const appUser = await findUserByAuthUserId(authContext.supabase, authContext.user.id);
-
-  if (!appUser?.id) {
-    return { error: jsonError("找不到当前 GatherUp 管理员资料。", 404) };
-  }
-
-  return { authContext, appUser };
-}
 
 function firstRelation<T>(value: T | T[] | null | undefined) {
   return Array.isArray(value) ? value[0] : value;
@@ -63,7 +42,7 @@ function toPublicVerification(row: Record<string, unknown>) {
 export async function GET(request: Request) {
   const adminCheck = await requirePlatformAdmin(request);
 
-  if (adminCheck.error) {
+  if (hasPlatformAdminError(adminCheck)) {
     return adminCheck.error;
   }
 
@@ -98,7 +77,7 @@ export async function POST(request: Request) {
 
   const adminCheck = await requirePlatformAdmin(request);
 
-  if (adminCheck.error) {
+  if (hasPlatformAdminError(adminCheck)) {
     return adminCheck.error;
   }
 

@@ -50,9 +50,12 @@ describe("registration and payment proof API contracts", () => {
   const announcementPublishRoute = readSource("src/app/api/announcements/route.ts");
   const expenseRoute = readSource("src/app/api/expenses/route.ts");
   const notificationRoute = readSource("src/app/api/notifications/route.ts");
+  const adminEventReviewRoute = readSource("src/app/api/admin/event-reviews/route.ts");
   const adminOrganizerVerificationRoute = readSource("src/app/api/admin/organizer-verifications/route.ts");
   const adminPage = readSource("src/app/admin/page.tsx");
+  const adminEventReviewPanel = readSource("src/components/admin-event-review-panel.tsx");
   const adminVerificationReviewPanel = readSource("src/components/admin-verification-review-panel.tsx");
+  const serverAdmin = readSource("src/lib/server/admin.ts");
   const organizerVerificationRoute = readSource("src/app/api/organizer/verification/route.ts");
   const appShell = readSource("src/components/app-shell.tsx");
   const notificationBell = readSource("src/components/notification-bell.tsx");
@@ -114,12 +117,12 @@ describe("registration and payment proof API contracts", () => {
     for (const { file, source } of apiRoutes) {
       assert.match(
         source,
-        /getAuthenticated(User|SupabaseClient)\(request\)/,
-        `${file} must authenticate the request because middleware intentionally lets /api routes reach their handlers.`
+        /getAuthenticated(User|SupabaseClient)\(request\)|requirePlatformAdmin\(request\)/,
+        `${file} must authenticate the request or require a platform admin because middleware intentionally lets /api routes reach their handlers.`
       );
       assert.ok(
-        source.includes('from "@/lib/supabase/server"'),
-        `${file} must use the shared Supabase server auth helpers instead of local cookie/session parsing.`
+        source.includes('from "@/lib/supabase/server"') || source.includes('from "@/lib/server/admin"'),
+        `${file} must use shared Supabase auth helpers instead of local cookie/session parsing.`
       );
     }
   });
@@ -158,10 +161,12 @@ describe("registration and payment proof API contracts", () => {
     expectSource(eventPublishRoute, "enforceRateLimit(request");
     expectSource(eventPublishRoute, 'keyPrefix: "events:publish"');
     expectSource(eventPublishRoute, "canEditEvent(authContext.supabase, eventId)");
-    expectSource(eventPublishRoute, '.select("id, organizer_id, price_cents, payment_code_img")');
+    expectSource(eventPublishRoute, '.select("id, organizer_id, price_cents, payment_code_img, review_status")');
     expectSource(eventPublishRoute, 'paidEventVerificationStatuses.includes(String(verification.status))');
     expectSource(eventPublishRoute, "verification.force_review_required === true");
     expectSource(eventPublishRoute, "收费活动需要主办方完成认证");
+    expectSource(eventPublishRoute, '["pending", "changes_requested", "rejected", "suspended"].includes(String(event.review_status))');
+    expectSource(eventPublishRoute, "该活动仍在平台审核中或未通过审核");
     expectSource(eventPublishRoute, 'status: "registration_open"');
     expectSource(eventPublishRoute, '.in("status", ["draft", "interest_collecting", "registration_scheduled"])');
 
@@ -412,8 +417,7 @@ describe("registration and payment proof API contracts", () => {
   it("keeps admin organizer verification review on a platform-admin-only path", () => {
     expectSource(adminOrganizerVerificationRoute, "export async function GET(request: Request)");
     expectSource(adminOrganizerVerificationRoute, "export async function POST(request: Request)");
-    expectSource(adminOrganizerVerificationRoute, "getAuthenticatedSupabaseClient(request)");
-    expectSource(adminOrganizerVerificationRoute, 'authContext.supabase.rpc("is_platform_admin"');
+    expectSource(adminOrganizerVerificationRoute, "requirePlatformAdmin(request)");
     expectSource(adminOrganizerVerificationRoute, "getSupabaseServiceClient()");
     expectSource(adminOrganizerVerificationRoute, "enforceRateLimit(request");
     expectSource(adminOrganizerVerificationRoute, 'keyPrefix: "admin:organizer-verifications"');
@@ -425,6 +429,29 @@ describe("registration and payment proof API contracts", () => {
     expectSource(adminVerificationReviewPanel, 'fetch("/api/admin/organizer-verifications"');
     expectSource(adminVerificationReviewPanel, 'method: "POST"');
     expectSource(adminVerificationReviewPanel, "主办认证审核");
+  });
+
+  it("keeps admin event review on the platform-admin review gate", () => {
+    expectSource(serverAdmin, "export async function requirePlatformAdmin(request: Request)");
+    expectSource(serverAdmin, "getAuthenticatedSupabaseClient(request)");
+    expectSource(serverAdmin, 'authContext.supabase.rpc("is_platform_admin"');
+    expectSource(adminEventReviewRoute, "export async function GET(request: Request)");
+    expectSource(adminEventReviewRoute, "export async function POST(request: Request)");
+    expectSource(adminEventReviewRoute, "requirePlatformAdmin(request)");
+    expectSource(adminEventReviewRoute, "getSupabaseServiceClient()");
+    expectSource(adminEventReviewRoute, "enforceRateLimit(request");
+    expectSource(adminEventReviewRoute, 'keyPrefix: "admin:event-reviews"');
+    expectSource(adminEventReviewRoute, '.from("review_requests")');
+    expectSource(adminEventReviewRoute, '.eq("target_type", "event")');
+    expectSource(adminEventReviewRoute, '.from("events")');
+    expectSource(adminEventReviewRoute, "review_status: nextStatus");
+    expectSource(adminEventReviewRoute, '.from("audit_logs").insert');
+    expectSource(adminEventReviewRoute, "event_review.");
+    expectSource(adminPage, 'import { AdminEventReviewPanel } from "@/components/admin-event-review-panel";');
+    expectSource(adminPage, "<AdminEventReviewPanel />");
+    expectSource(adminEventReviewPanel, 'fetch("/api/admin/event-reviews"');
+    expectSource(adminEventReviewPanel, 'method: "POST"');
+    expectSource(adminEventReviewPanel, "活动审核");
   });
 
   it("keeps the organizer event workspace on the authenticated Supabase organizer detail adapter", () => {
