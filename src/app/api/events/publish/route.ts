@@ -2,9 +2,11 @@ import { NextResponse } from "next/server";
 
 import { asRecord, canEditEvent, getString, jsonError } from "@/lib/server/api";
 import { enforceRateLimit } from "@/lib/server/rate-limit";
-import { getAuthenticatedSupabaseClient } from "@/lib/supabase/server";
+import { getAuthenticatedSupabaseClient, getSupabaseServiceClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
+
+const paidEventVerificationStatuses = ["light_verified", "enhanced_verified"];
 
 export async function POST(request: Request) {
   const rateLimitResponse = enforceRateLimit(request, {
@@ -41,6 +43,36 @@ export async function POST(request: Request) {
 
   if (!canEdit) {
     return jsonError("只有活动主办或具备编辑权限的协作者可以开放报名。", 403);
+  }
+
+  const { data: event, error: eventError } = await authContext.supabase
+    .from("events")
+    .select("id, organizer_id, price_cents, payment_code_img")
+    .eq("id", eventId)
+    .single();
+
+  if (eventError || !event?.id) {
+    return jsonError("找不到可开放报名的活动。", 404);
+  }
+
+  const isPaidEvent = Number(event.price_cents ?? 0) > 0 || Boolean(event.payment_code_img);
+
+  if (isPaidEvent) {
+    const serviceSupabase = getSupabaseServiceClient();
+    const { data: verification, error: verificationError } = await serviceSupabase
+      .from("organizer_verifications")
+      .select("status, force_review_required")
+      .eq("user_id", event.organizer_id)
+      .maybeSingle();
+
+    if (
+      verificationError ||
+      !verification ||
+      !paidEventVerificationStatuses.includes(String(verification.status)) ||
+      verification.force_review_required === true
+    ) {
+      return jsonError("收费活动需要主办方完成认证，且当前账号未被要求重新审核。请先完成主办认证后再开放报名。", 403);
+    }
   }
 
   const { data: updatedEvent, error } = await authContext.supabase

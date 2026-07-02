@@ -149,9 +149,14 @@ describe("registration and payment proof API contracts", () => {
 
   it("keeps event publishing on an authenticated edit-permission API path", () => {
     expectSource(eventPublishRoute, "getAuthenticatedSupabaseClient(request)");
+    expectSource(eventPublishRoute, "getSupabaseServiceClient");
     expectSource(eventPublishRoute, "enforceRateLimit(request");
     expectSource(eventPublishRoute, 'keyPrefix: "events:publish"');
     expectSource(eventPublishRoute, "canEditEvent(authContext.supabase, eventId)");
+    expectSource(eventPublishRoute, '.select("id, organizer_id, price_cents, payment_code_img")');
+    expectSource(eventPublishRoute, 'paidEventVerificationStatuses.includes(String(verification.status))');
+    expectSource(eventPublishRoute, "verification.force_review_required === true");
+    expectSource(eventPublishRoute, "收费活动需要主办方完成认证");
     expectSource(eventPublishRoute, 'status: "registration_open"');
     expectSource(eventPublishRoute, '.in("status", ["draft", "interest_collecting", "registration_scheduled"])');
 

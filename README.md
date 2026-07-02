@@ -118,6 +118,7 @@ Implemented prototype coverage:
 - Organizer event consoles can now add, remove, or adjust non-owner collaborators by GatherUp ID through an authenticated API route backed by `manage_event_organizer_atomic`. The database RPC verifies edit permission, performs controlled user lookup, updates `event_organizers`, protects owners, and records collaborator changes in `audit_logs` in the same transactional path.
 - Organizer event consoles now surface a read-only audit timeline from `audit_logs`, so collaborator changes, payment review, refund, waitlist, and check-in operations have visible operational traceability instead of staying hidden in the database.
 - Organizer event consoles can now open registration through an authenticated edit-permission API route that advances eligible draft/scheduled events to `registration_open`.
+- The registration-open API now enforces a minimum paid-event gate: events with a price or organizer payment QR code require the event owner to have `light_verified` or `enhanced_verified` organizer verification and no forced re-review flag before paid registration can open.
 - Organizer finance export now requires finance-level event permission instead of broad event-management permission.
 - Organizer finance expenses can now be created through a Supabase-authenticated, finance-scoped API route and stored in `event_expenses`; optional expense proof upload writes to the private `expense-proofs` bucket and updates `event_expenses.proof_url`, and finance managers can soft-void the current proof without deleting the private Storage object.
 - Supabase SSR middleware login redirect foundation and safe internal `next` path handling.
@@ -132,7 +133,7 @@ Not production-ready yet:
 - Supabase schema, seed, Storage policy, and validation scripts have been rebuilt in the clean dev/staging project `oxbrxkllftyevlzmiydt`; the live integration suite now passes 19/19 tests against that project.
 - Anonymous public-read grants for public event detail surfaces are included in the schema draft and local contract tests, and the clean validation project has passed the post-execution SQL summary plus RPC/Storage integration suite.
 - Permission enforcement and RLS still need to expand as new product workflows are added, but the commercial v0.1 registration/payment/check-in/refund/seat-lock/proof-file baseline is no longer unvalidated.
-- Broader transactional service functions, email business notifications, organizer verification UI, admin review UI, collaborator invite-acceptance, richer event review gates, expense proof audit RPCs, venue review flows, complaints, and data retention jobs are still planned.
+- Broader transactional service functions, email business notifications, organizer verification application/review UI, admin review UI, collaborator invite-acceptance, richer event review gates, expense proof audit RPCs, venue review flows, complaints, and data retention jobs are still planned.
 
 ## Commercial v0.1 Direction
 
