@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 
-import { asRecord, canManageEventFinance, getString, jsonError } from "@/lib/server/api";
+import { asRecord, canManageEventFinance, findUserByAuthUserId, getString, jsonError } from "@/lib/server/api";
 import { enforceRateLimit } from "@/lib/server/rate-limit";
-import { getAuthenticatedSupabaseClient } from "@/lib/supabase/server";
+import { getAuthenticatedSupabaseClient, getSupabaseServiceClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
 
@@ -14,6 +14,54 @@ function pathMatchesExpenseProof(path: string, eventId: string, expenseId: strin
   const parts = path.split("/");
 
   return parts.length >= 3 && parts[0] === eventId && parts[1] === expenseId && Boolean(parts[2]);
+}
+
+async function writeExpenseProofAudit({
+  action,
+  actorId,
+  eventId,
+  expenseId,
+  beforeProofUrl,
+  afterProofUrl,
+  request,
+  storagePath
+}: {
+  action: "expense_proof.uploaded" | "expense_proof.voided";
+  actorId: string;
+  eventId: string;
+  expenseId: string;
+  beforeProofUrl: string | null;
+  afterProofUrl: string | null;
+  request: Request;
+  storagePath: string;
+}) {
+  const serviceSupabase = getSupabaseServiceClient();
+
+  const { error } = await serviceSupabase.from("audit_logs").insert({
+    actor_id: actorId,
+    actor_role: "finance_manager",
+    event_id: eventId,
+    target_type: "event_expense",
+    target_id: expenseId,
+    action,
+    risk_level: "medium",
+    reason: action === "expense_proof.voided" ? "Expense proof voided by finance manager" : "Expense proof uploaded by finance manager",
+    before_snapshot: {
+      proof_url: beforeProofUrl
+    },
+    after_snapshot: {
+      proof_url: afterProofUrl
+    },
+    metadata: {
+      bucket: "expense-proofs",
+      storagePath
+    },
+    user_agent: request.headers.get("user-agent") ?? "unknown"
+  });
+
+  if (error) {
+    throw new Error(error.message);
+  }
 }
 
 export async function POST(request: Request) {
@@ -63,9 +111,15 @@ export async function POST(request: Request) {
     return jsonError("只有活动主办或财务协作者可以提交支出凭证。", 403);
   }
 
+  const appUser = await findUserByAuthUserId(authContext.supabase, authContext.user.id);
+
+  if (!appUser?.id) {
+    return jsonError("找不到当前用户资料，无法记录支出凭证审计。", 404);
+  }
+
   const { data: expense, error: expenseError } = await authContext.supabase
     .from("event_expenses")
-    .select("id, event_id")
+    .select("id, event_id, proof_url")
     .eq("id", expenseId)
     .eq("event_id", eventId)
     .single();
@@ -102,6 +156,21 @@ export async function POST(request: Request) {
 
   if (updateError || !updatedExpense?.id) {
     return jsonError(updateError?.message ?? "支出凭证已上传，但凭证状态更新失败。", 500);
+  }
+
+  try {
+    await writeExpenseProofAudit({
+      action: "expense_proof.uploaded",
+      actorId: appUser.id,
+      eventId,
+      expenseId: updatedExpense.id,
+      beforeProofUrl: typeof expense.proof_url === "string" ? expense.proof_url : null,
+      afterProofUrl: updatedExpense.proof_url,
+      request,
+      storagePath
+    });
+  } catch (error) {
+    return jsonError(error instanceof Error ? `支出凭证已更新，但审计日志写入失败：${error.message}` : "支出凭证已更新，但审计日志写入失败。", 500);
   }
 
   return NextResponse.json({
@@ -153,6 +222,12 @@ export async function DELETE(request: Request) {
     return jsonError("只有活动主办或财务协作者可以作废支出凭证。", 403);
   }
 
+  const appUser = await findUserByAuthUserId(authContext.supabase, authContext.user.id);
+
+  if (!appUser?.id) {
+    return jsonError("找不到当前用户资料，无法记录支出凭证审计。", 404);
+  }
+
   const { data: expense, error: expenseError } = await authContext.supabase
     .from("event_expenses")
     .select("id, event_id, proof_url")
@@ -181,6 +256,21 @@ export async function DELETE(request: Request) {
 
   if (updateError || !updatedExpense?.id) {
     return jsonError(updateError?.message ?? "支出凭证作废失败。", 500);
+  }
+
+  try {
+    await writeExpenseProofAudit({
+      action: "expense_proof.voided",
+      actorId: appUser.id,
+      eventId,
+      expenseId: updatedExpense.id,
+      beforeProofUrl: expense.proof_url,
+      afterProofUrl: null,
+      request,
+      storagePath: expense.proof_url
+    });
+  } catch (error) {
+    return jsonError(error instanceof Error ? `支出凭证已作废，但审计日志写入失败：${error.message}` : "支出凭证已作废，但审计日志写入失败。", 500);
   }
 
   return NextResponse.json({

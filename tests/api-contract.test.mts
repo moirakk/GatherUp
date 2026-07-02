@@ -524,17 +524,23 @@ describe("registration and payment proof API contracts", () => {
 
   it("keeps organizer expense proofs bound to the private Storage path and finance API", () => {
     expectSource(expenseProofRoute, "getAuthenticatedSupabaseClient(request)");
+    expectSource(expenseProofRoute, "getSupabaseServiceClient()");
     expectSource(expenseProofRoute, "enforceRateLimit(request");
     expectSource(expenseProofRoute, 'keyPrefix: "expenses:proof"');
     expectSource(expenseProofRoute, 'replace(/^expense-proofs\\//, "")');
     expectSource(expenseProofRoute, "canManageEventFinance(authContext.supabase, eventId)");
+    expectSource(expenseProofRoute, "findUserByAuthUserId(authContext.supabase, authContext.user.id)");
     expectSource(expenseProofRoute, '.eq("bucket_id", "expense-proofs")');
     expectSource(expenseProofRoute, '.from("event_expenses")');
     expectSource(expenseProofRoute, "proof_url: storagePath");
+    expectSource(expenseProofRoute, "writeExpenseProofAudit");
+    expectSource(expenseProofRoute, 'action: "expense_proof.uploaded"');
     expectSource(expenseProofRoute, "export async function DELETE(request: Request)");
     expectSource(expenseProofRoute, "只有活动主办或财务协作者可以作废支出凭证。");
     expectSource(expenseProofRoute, "proof_url: null");
     expectSource(expenseProofRoute, '.eq("proof_url", expense.proof_url)');
+    expectSource(expenseProofRoute, 'action: "expense_proof.voided"');
+    expectSource(expenseProofRoute, '.from("audit_logs").insert');
 
     expectSource(organizerFinancePage, "<ExpenseProofList eventId={event.id} expenses={expenses} />");
     expectSource(expenseProofList, '.from("expense-proofs")');

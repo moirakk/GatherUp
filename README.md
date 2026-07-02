@@ -123,7 +123,7 @@ Implemented prototype coverage:
 - The organizer workspace now includes a Supabase-backed organizer verification application panel. Organizers can view their verification status and submit or update pending verification details before attempting to publish paid events.
 - The first admin review surface is now available at `/admin`: platform admins can review organizer verification applications and event review requests, approve, reject, suspend, request event changes, and write audit logs for those decisions.
 - Organizer finance export now requires finance-level event permission instead of broad event-management permission.
-- Organizer finance expenses can now be created through a Supabase-authenticated, finance-scoped API route and stored in `event_expenses`; optional expense proof upload writes to the private `expense-proofs` bucket and updates `event_expenses.proof_url`, and finance managers can soft-void the current proof without deleting the private Storage object.
+- Organizer finance expenses can now be created through a Supabase-authenticated, finance-scoped API route and stored in `event_expenses`; optional expense proof upload writes to the private `expense-proofs` bucket and updates `event_expenses.proof_url`, and finance managers can soft-void the current proof without deleting the private Storage object. Proof upload and void actions now also write `audit_logs` entries with before/after proof paths.
 - Supabase SSR middleware login redirect foundation and safe internal `next` path handling.
 - Real Supabase live project preflight, read-only coverage audit logs, and clean dev/staging schema, seed, and Storage execution notes.
 
@@ -136,7 +136,7 @@ Not production-ready yet:
 - Supabase schema, seed, Storage policy, and validation scripts have been rebuilt in the clean dev/staging project `oxbrxkllftyevlzmiydt`; the live integration suite now passes 19/19 tests against that project.
 - Anonymous public-read grants for public event detail surfaces are included in the schema draft and local contract tests, and the clean validation project has passed the post-execution SQL summary plus RPC/Storage integration suite.
 - Permission enforcement and RLS still need to expand as new product workflows are added, but the commercial v0.1 registration/payment/check-in/refund/seat-lock/proof-file baseline is no longer unvalidated.
-- Broader transactional service functions, email business notifications, richer admin review surfaces beyond organizer/event review, collaborator invite-acceptance, expense proof audit RPCs, venue review flows, complaints, and data retention jobs are still planned.
+- Broader transactional service functions, email business notifications, richer admin review surfaces beyond organizer/event review, collaborator invite-acceptance, expense proof RPC/export evidence hardening, venue review flows, complaints, and data retention jobs are still planned.
 
 ## Commercial v0.1 Direction
 

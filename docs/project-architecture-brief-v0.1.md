@@ -32,7 +32,7 @@ GatherUp is currently at the **commercial v0.1 foundation stage**:
 - Platform admin review now has a first real surface: `/admin` lists organizer verification applications and event review requests for platform admins, lets them approve, reject, suspend, request event changes, or grant enhanced organizer verification, and writes audit logs.
 - Paid event publishing now has minimum organizer-verification and event-review API gates: before `registration_open`, events with a price or organizer payment QR code require the event owner to be `light_verified` or `enhanced_verified`, not marked for forced re-review, and not blocked by pending/rejected/suspended platform review status.
 - Post-open sensitive event edits now trigger platform review: changing city, venue, address, time, deadline, or capacity after registration/payment/seat operations have begun marks the event review status pending and creates an event review request.
-- The app still has prototype surfaces, especially venue intelligence, broader admin review for complaints/settings, external notification delivery, richer event review transitions, and expense proof audit evidence beyond the current upload/soft-void path, so the next engineering phase is to complete end-to-end Supabase-backed product journeys rather than only adding more SQL.
+- The app still has prototype surfaces, especially venue intelligence, broader admin review for complaints/settings, external notification delivery, richer event review transitions, and expense proof RPC/export evidence beyond the current audited upload/soft-void path, so the next engineering phase is to complete end-to-end Supabase-backed product journeys rather than only adding more SQL.
 
 ```mermaid
 flowchart LR
@@ -234,7 +234,7 @@ Most recent local verification:
 
 The main remaining gaps are engineering depth, not product concept:
 
-- Remaining mock/local surfaces need to be replaced intentionally rather than all at once: expense proof audit RPCs and export evidence, collaborator invite-acceptance, venue intelligence, broader admin review for complaints/settings, richer event review transitions, and some edge-case UI flows.
+- Remaining mock/local surfaces need to be replaced intentionally rather than all at once: expense proof RPCs and export evidence, collaborator invite-acceptance, venue intelligence, broader admin review for complaints/settings, richer event review transitions, and some edge-case UI flows.
 - Payment proof upload, refund proof upload, payment review, seat selection, check-in, and refund request/review have passed clean-project user/session validation, but still need broader UI-level end-to-end testing.
 - Seat selection has atomic locking and integration coverage; realtime visual updates are still future work.
 - Announcement publishing now writes database records; external notification delivery still needs a real provider such as Resend and later WeChat integration.
@@ -256,7 +256,7 @@ Immediate order:
 
 1. Keep README, status docs, and GitHub profile copy aligned with the actual codebase after each major workflow migration.
 2. Add collaborator invite-acceptance and richer event lifecycle transitions on top of the current Supabase event creation/basic-edit/sensitive-edit-review/collaborator-management/paid-publish-gate/event-review baseline.
-3. Harden organizer finance expense proof audit RPCs and export evidence paths beyond the current upload/soft-void UI.
+3. Harden organizer finance expense proof RPCs and export evidence paths beyond the current audited upload/soft-void UI.
 4. Broaden admin review to complaints and platform settings.
 5. Add external notification delivery after the database notification/audit baseline remains stable.
 6. Expand UI-level beta QA around participant registration, payment proof, organizer review, seat selection, check-in, refund, finance export, and announcement publishing.
