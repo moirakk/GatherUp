@@ -120,6 +120,7 @@ Implemented prototype coverage:
 - Organizer event consoles can now open registration through an authenticated edit-permission API route that advances eligible draft/scheduled events to `registration_open`.
 - The registration-open API now enforces a minimum paid-event gate: events with a price or organizer payment QR code require the event owner to have `light_verified` or `enhanced_verified` organizer verification and no forced re-review flag before paid registration can open.
 - The organizer workspace now includes a Supabase-backed organizer verification application panel. Organizers can view their verification status and submit or update pending verification details before attempting to publish paid events.
+- The first admin review surface is now available at `/admin`: platform admins can review organizer verification applications, approve, reject, suspend, and write audit logs for those decisions.
 - Organizer finance export now requires finance-level event permission instead of broad event-management permission.
 - Organizer finance expenses can now be created through a Supabase-authenticated, finance-scoped API route and stored in `event_expenses`; optional expense proof upload writes to the private `expense-proofs` bucket and updates `event_expenses.proof_url`, and finance managers can soft-void the current proof without deleting the private Storage object.
 - Supabase SSR middleware login redirect foundation and safe internal `next` path handling.
@@ -134,7 +135,7 @@ Not production-ready yet:
 - Supabase schema, seed, Storage policy, and validation scripts have been rebuilt in the clean dev/staging project `oxbrxkllftyevlzmiydt`; the live integration suite now passes 19/19 tests against that project.
 - Anonymous public-read grants for public event detail surfaces are included in the schema draft and local contract tests, and the clean validation project has passed the post-execution SQL summary plus RPC/Storage integration suite.
 - Permission enforcement and RLS still need to expand as new product workflows are added, but the commercial v0.1 registration/payment/check-in/refund/seat-lock/proof-file baseline is no longer unvalidated.
-- Broader transactional service functions, email business notifications, organizer verification review UI, admin review UI, collaborator invite-acceptance, richer event review gates, expense proof audit RPCs, venue review flows, complaints, and data retention jobs are still planned.
+- Broader transactional service functions, email business notifications, richer admin review surfaces, collaborator invite-acceptance, richer event review gates, expense proof audit RPCs, venue review flows, complaints, and data retention jobs are still planned.
 
 ## Commercial v0.1 Direction
 

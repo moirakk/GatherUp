@@ -50,6 +50,9 @@ describe("registration and payment proof API contracts", () => {
   const announcementPublishRoute = readSource("src/app/api/announcements/route.ts");
   const expenseRoute = readSource("src/app/api/expenses/route.ts");
   const notificationRoute = readSource("src/app/api/notifications/route.ts");
+  const adminOrganizerVerificationRoute = readSource("src/app/api/admin/organizer-verifications/route.ts");
+  const adminPage = readSource("src/app/admin/page.tsx");
+  const adminVerificationReviewPanel = readSource("src/components/admin-verification-review-panel.tsx");
   const organizerVerificationRoute = readSource("src/app/api/organizer/verification/route.ts");
   const appShell = readSource("src/components/app-shell.tsx");
   const notificationBell = readSource("src/components/notification-bell.tsx");
@@ -404,6 +407,24 @@ describe("registration and payment proof API contracts", () => {
     expectSource(organizerVerificationPanel, 'fetch("/api/organizer/verification"');
     expectSource(organizerVerificationPanel, 'method: "POST"');
     expectSource(organizerVerificationPanel, "收费活动开放报名前，主办方需要完成认证。");
+  });
+
+  it("keeps admin organizer verification review on a platform-admin-only path", () => {
+    expectSource(adminOrganizerVerificationRoute, "export async function GET(request: Request)");
+    expectSource(adminOrganizerVerificationRoute, "export async function POST(request: Request)");
+    expectSource(adminOrganizerVerificationRoute, "getAuthenticatedSupabaseClient(request)");
+    expectSource(adminOrganizerVerificationRoute, 'authContext.supabase.rpc("is_platform_admin"');
+    expectSource(adminOrganizerVerificationRoute, "getSupabaseServiceClient()");
+    expectSource(adminOrganizerVerificationRoute, "enforceRateLimit(request");
+    expectSource(adminOrganizerVerificationRoute, 'keyPrefix: "admin:organizer-verifications"');
+    expectSource(adminOrganizerVerificationRoute, '.from("organizer_verifications")');
+    expectSource(adminOrganizerVerificationRoute, '.from("audit_logs").insert');
+    expectSource(adminOrganizerVerificationRoute, "organizer_verification.");
+    expectSource(adminPage, 'import { AdminVerificationReviewPanel } from "@/components/admin-verification-review-panel";');
+    expectSource(adminPage, "<AdminVerificationReviewPanel />");
+    expectSource(adminVerificationReviewPanel, 'fetch("/api/admin/organizer-verifications"');
+    expectSource(adminVerificationReviewPanel, 'method: "POST"');
+    expectSource(adminVerificationReviewPanel, "主办认证审核");
   });
 
   it("keeps the organizer event workspace on the authenticated Supabase organizer detail adapter", () => {

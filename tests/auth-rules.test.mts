@@ -89,6 +89,7 @@ describe("route auth rules", () => {
     ]);
     const protectedRoutes = new Set([
       "/",
+      "/admin",
       "/dev/status",
       "/events/[eventId]/register",
       "/me",
