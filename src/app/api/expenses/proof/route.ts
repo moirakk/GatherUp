@@ -110,3 +110,82 @@ export async function POST(request: Request) {
     proof_url: updatedExpense.proof_url
   });
 }
+
+export async function DELETE(request: Request) {
+  const rateLimitResponse = enforceRateLimit(request, {
+    keyPrefix: "expenses:proof",
+    limit: 30,
+    windowMs: 60_000
+  });
+
+  if (rateLimitResponse) {
+    return rateLimitResponse;
+  }
+
+  const authContext = await getAuthenticatedSupabaseClient(request);
+
+  if (!authContext) {
+    return jsonError("请使用 Supabase 登录后再作废支出凭证。", 401);
+  }
+
+  let body: Record<string, unknown>;
+
+  try {
+    body = asRecord(await request.json());
+  } catch {
+    return jsonError("请求体不是合法 JSON。");
+  }
+
+  const eventId = getString(body, ["event_id", "eventId"]);
+  const expenseId = getString(body, ["expense_id", "expenseId"]);
+
+  if (!eventId) {
+    return jsonError("缺少 event_id。");
+  }
+
+  if (!expenseId) {
+    return jsonError("缺少 expense_id。");
+  }
+
+  const canManage = await canManageEventFinance(authContext.supabase, eventId);
+
+  if (!canManage) {
+    return jsonError("只有活动主办或财务协作者可以作废支出凭证。", 403);
+  }
+
+  const { data: expense, error: expenseError } = await authContext.supabase
+    .from("event_expenses")
+    .select("id, event_id, proof_url")
+    .eq("id", expenseId)
+    .eq("event_id", eventId)
+    .single();
+
+  if (expenseError || !expense?.id) {
+    return jsonError("找不到可处理的支出记录。", 404);
+  }
+
+  if (!expense.proof_url) {
+    return jsonError("该支出记录暂无可作废凭证。", 409);
+  }
+
+  const { data: updatedExpense, error: updateError } = await authContext.supabase
+    .from("event_expenses")
+    .update({
+      proof_url: null
+    })
+    .eq("id", expense.id)
+    .eq("event_id", eventId)
+    .eq("proof_url", expense.proof_url)
+    .select("id, proof_url")
+    .single();
+
+  if (updateError || !updatedExpense?.id) {
+    return jsonError(updateError?.message ?? "支出凭证作废失败。", 500);
+  }
+
+  return NextResponse.json({
+    ok: true,
+    expense_id: updatedExpense.id,
+    proof_url: updatedExpense.proof_url ?? "pending"
+  });
+}

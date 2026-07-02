@@ -452,10 +452,16 @@ describe("registration and payment proof API contracts", () => {
     expectSource(expenseProofRoute, '.eq("bucket_id", "expense-proofs")');
     expectSource(expenseProofRoute, '.from("event_expenses")');
     expectSource(expenseProofRoute, "proof_url: storagePath");
+    expectSource(expenseProofRoute, "export async function DELETE(request: Request)");
+    expectSource(expenseProofRoute, "只有活动主办或财务协作者可以作废支出凭证。");
+    expectSource(expenseProofRoute, "proof_url: null");
+    expectSource(expenseProofRoute, '.eq("proof_url", expense.proof_url)');
 
     expectSource(organizerFinancePage, "<ExpenseProofList eventId={event.id} expenses={expenses} />");
     expectSource(expenseProofList, '.from("expense-proofs")');
     expectSource(expenseProofList, 'fetch("/api/expenses/proof"');
+    expectSource(expenseProofList, 'method: "DELETE"');
+    expectSource(expenseProofList, "作废凭证");
     expectSource(expenseProofList, "`${eventId}/${expense.id}/${Date.now()}-${safeFileName(file.name)}`");
   });
 

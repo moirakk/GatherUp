@@ -2306,6 +2306,11 @@ h3 {
   gap: 2px;
 }
 
+.expense-proof-row .compact-actions {
+  justify-content: flex-end;
+  gap: 8px;
+}
+
 .expense-proof-row input[type="file"] {
   display: none;
 }

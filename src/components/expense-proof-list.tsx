@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { FileImage, Upload } from "lucide-react";
+import { FileImage, Trash2, Upload } from "lucide-react";
 
 import { type EventExpense } from "@/lib/mock-data";
 import { getSupabaseBrowserClient, isSupabaseConfigured } from "@/lib/supabase/client";
@@ -84,6 +84,50 @@ export function ExpenseProofList({ eventId, expenses }: ExpenseProofListProps) {
     }
   }
 
+  async function voidProof(expense: EventExpense) {
+    if (!isSupabaseConfigured()) {
+      setNotice("本地演示模式无法作废支出凭证，请配置 Supabase 后重试。");
+      return;
+    }
+
+    setBusyExpenseId(expense.id);
+    setNotice("");
+
+    try {
+      const supabase = getSupabaseBrowserClient();
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData.session?.access_token;
+      const response = await fetch("/api/expenses/proof", {
+        method: "DELETE",
+        headers: {
+          "content-type": "application/json",
+          ...(accessToken ? { authorization: `Bearer ${accessToken}` } : {})
+        },
+        body: JSON.stringify({
+          event_id: eventId,
+          expense_id: expense.id
+        })
+      });
+      const payload = await response.json().catch(() => ({}));
+
+      if (!response.ok || !payload?.ok) {
+        setNotice(typeof payload?.message === "string" ? payload.message : "支出凭证作废失败。");
+        return;
+      }
+
+      setProofsByExpenseId((current) => {
+        const next = new Map(current);
+        next.set(expense.id, "pending");
+        return next;
+      });
+      setNotice("支出凭证已作废，原始文件仍保留在私有 Storage 中。");
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "支出凭证作废失败。");
+    } finally {
+      setBusyExpenseId("");
+    }
+  }
+
   return (
     <div className="notice-list">
       {notice && <p className="inline-notice">{notice}</p>}
@@ -98,23 +142,31 @@ export function ExpenseProofList({ eventId, expenses }: ExpenseProofListProps) {
               <strong>{expense.title}</strong>
               <small>{hasProof ? proof : "待补充凭证"}</small>
             </span>
-            <label className={`button secondary compact ${isBusy ? "disabled" : ""}`}>
-              {hasProof ? <FileImage size={15} /> : <Upload size={15} />}
-              {isBusy ? "上传中" : hasProof ? "替换凭证" : "上传凭证"}
-              <input
-                type="file"
-                accept="image/png,image/jpeg,image/webp,application/pdf"
-                disabled={isBusy}
-                onChange={(event) => {
-                  const file = event.target.files?.[0];
-                  event.currentTarget.value = "";
+            <div className="button-row compact-actions">
+              {hasProof && (
+                <button className="button secondary compact" type="button" disabled={isBusy} onClick={() => void voidProof(expense)}>
+                  <Trash2 size={15} />
+                  作废凭证
+                </button>
+              )}
+              <label className={`button secondary compact ${isBusy ? "disabled" : ""}`}>
+                {hasProof ? <FileImage size={15} /> : <Upload size={15} />}
+                {isBusy ? "处理中" : hasProof ? "替换凭证" : "上传凭证"}
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp,application/pdf"
+                  disabled={isBusy}
+                  onChange={(event) => {
+                    const file = event.target.files?.[0];
+                    event.currentTarget.value = "";
 
-                  if (file) {
-                    void uploadProof(expense, file);
-                  }
-                }}
-              />
-            </label>
+                    if (file) {
+                      void uploadProof(expense, file);
+                    }
+                  }}
+                />
+              </label>
+            </div>
           </div>
         );
       })}
