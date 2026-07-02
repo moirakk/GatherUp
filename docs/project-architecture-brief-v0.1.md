@@ -28,6 +28,7 @@ GatherUp is currently at the **commercial v0.1 foundation stage**:
 - Organizer announcements now publish through a Supabase-authenticated API route into the `announcements` table, while external delivery channels remain future work.
 - Organizer collaborator management now has a controlled UI/API path backed by `manage_event_organizer_atomic`: an authenticated editor can add a user by GatherUp ID, adjust non-owner collaborator roles, or remove a non-owner collaborator, while PostgreSQL verifies `can_edit_event`, protects owners, writes/updates/deletes `event_organizers`, and records `audit_logs` in the same transactional path.
 - Organizer event workspaces now include a read-only audit timeline sourced from `audit_logs`, exposing action labels, risk level, actor role, before/after snapshots, and reasons for sensitive operations.
+- Organizer verification now has a first real application path: the organizer workspace reads the user's `organizer_verifications` row and lets organizers submit or update pending verification details through an authenticated, rate-limited API.
 - Paid event publishing now has a minimum organizer-verification API gate: before `registration_open`, events with a price or organizer payment QR code require the event owner to be `light_verified` or `enhanced_verified` and not marked for forced re-review.
 - The app still has prototype surfaces, especially venue intelligence, admin review, external notification delivery, richer event review transitions/post-publish edit constraints, and expense proof audit evidence beyond the current upload/soft-void path, so the next engineering phase is to complete end-to-end Supabase-backed product journeys rather than only adding more SQL.
 
@@ -254,6 +255,6 @@ Immediate order:
 1. Keep README, status docs, and GitHub profile copy aligned with the actual codebase after each major workflow migration.
 2. Add event review queues, collaborator invite-acceptance, and post-publish edit constraints on top of the current Supabase event creation/basic-edit/collaborator-management/paid-publish-gate baseline.
 3. Harden organizer finance expense proof audit RPCs and export evidence paths beyond the current upload/soft-void UI.
-4. Add organizer verification application/review UI and minimum admin review.
+4. Add organizer verification review UI and minimum admin review.
 5. Add external notification delivery after the database notification/audit baseline remains stable.
 6. Expand UI-level beta QA around participant registration, payment proof, organizer review, seat selection, check-in, refund, finance export, and announcement publishing.

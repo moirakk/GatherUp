@@ -4,6 +4,7 @@ import { CalendarCheck, CircleDollarSign, MapPinned, Plus, QrCode, ServerCog } f
 import { LocalCreatedEventList } from "@/components/local-created-event-list";
 import { MetricCard } from "@/components/metric-card";
 import { getNextActions } from "@/components/next-action-card";
+import { OrganizerVerificationPanel } from "@/components/organizer-verification-panel";
 import type { EventSetup, GatherEvent, Registration } from "@/lib/mock-data";
 import { getOrganizerDashboard } from "@/lib/organizer-data";
 
@@ -53,6 +54,10 @@ export default async function OrganizerPage() {
         <MetricCard label="筹备中活动" value={activeSetups.length} href={setupHref} />
         <MetricCard label="已配置收款" value={`${paymentReadyCount}/${eventSetups.length}`} href={paymentHref} />
         <MetricCard label="待审核付款" value={pendingPaymentCount} href={pendingPaymentHref} />
+      </section>
+
+      <section className="setup-grid">
+        <OrganizerVerificationPanel />
       </section>
 
       <LocalCreatedEventList />

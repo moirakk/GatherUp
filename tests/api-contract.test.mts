@@ -50,6 +50,7 @@ describe("registration and payment proof API contracts", () => {
   const announcementPublishRoute = readSource("src/app/api/announcements/route.ts");
   const expenseRoute = readSource("src/app/api/expenses/route.ts");
   const notificationRoute = readSource("src/app/api/notifications/route.ts");
+  const organizerVerificationRoute = readSource("src/app/api/organizer/verification/route.ts");
   const appShell = readSource("src/components/app-shell.tsx");
   const notificationBell = readSource("src/components/notification-bell.tsx");
   const orderSeatSelectionPanel = readSource("src/components/order-seat-selection-panel.tsx");
@@ -60,6 +61,7 @@ describe("registration and payment proof API contracts", () => {
   const organizerFinancePage = readSource("src/app/organizer/events/[eventId]/finance/page.tsx");
   const organizerNewEventPage = readSource("src/app/organizer/events/new/page.tsx");
   const organizerEventActions = readSource("src/components/organizer-event-actions.tsx");
+  const organizerVerificationPanel = readSource("src/components/organizer-verification-panel.tsx");
   const eventIdentityPanel = readSource("src/components/event-identity-panel.tsx");
   const eventBasicsEditor = readSource("src/components/event-basics-editor.tsx");
   const registerPage = readSource("src/app/events/[eventId]/register/page.tsx");
@@ -371,7 +373,9 @@ describe("registration and payment proof API contracts", () => {
 
   it("keeps the organizer dashboard on the authenticated Supabase organizer adapter", () => {
     expectSource(organizerPage, 'import { getOrganizerDashboard } from "@/lib/organizer-data";');
+    expectSource(organizerPage, 'import { OrganizerVerificationPanel } from "@/components/organizer-verification-panel";');
     expectSource(organizerPage, "await getOrganizerDashboard()");
+    expectSource(organizerPage, "<OrganizerVerificationPanel />");
     expectSource(organizerPage, "organizersByEventId.get(event.id)");
     expectSource(organizerPage, 'href="/organizer/events/new"');
     expectSource(organizerData, "export async function getOrganizerDashboard()");
@@ -385,6 +389,21 @@ describe("registration and payment proof API contracts", () => {
     expectSource(organizerData, "rowToRegistration");
 
     assert.doesNotMatch(organizerPage, /import\s+\{[^}]*eventSetups|import\s+\{[^}]*registrations|getEventOrganizers/);
+  });
+
+  it("keeps organizer verification applications on an authenticated Supabase path", () => {
+    expectSource(organizerVerificationRoute, "export async function GET(request: Request)");
+    expectSource(organizerVerificationRoute, "export async function POST(request: Request)");
+    expectSource(organizerVerificationRoute, "getAuthenticatedSupabaseClient(request)");
+    expectSource(organizerVerificationRoute, "enforceRateLimit(request");
+    expectSource(organizerVerificationRoute, 'keyPrefix: "organizer:verification"');
+    expectSource(organizerVerificationRoute, "findUserByAuthUserId(authContext.supabase, authContext.user.id)");
+    expectSource(organizerVerificationRoute, '.from("organizer_verifications")');
+    expectSource(organizerVerificationRoute, 'status: "pending"');
+    expectSource(organizerVerificationRoute, "approvedStatuses.has(String(existing?.status))");
+    expectSource(organizerVerificationPanel, 'fetch("/api/organizer/verification"');
+    expectSource(organizerVerificationPanel, 'method: "POST"');
+    expectSource(organizerVerificationPanel, "收费活动开放报名前，主办方需要完成认证。");
   });
 
   it("keeps the organizer event workspace on the authenticated Supabase organizer detail adapter", () => {
