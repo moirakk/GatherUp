@@ -77,7 +77,7 @@ export function EventBasicsEditor({ event }: EventBasicsEditorProps) {
         return;
       }
 
-      setNotice("活动基础信息已保存。");
+      setNotice(payload.review_required ? "活动基础信息已保存，关键变更已提交平台复审。" : "活动基础信息已保存。");
       setIsOpen(false);
       window.location.reload();
     } catch (error) {

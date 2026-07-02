@@ -115,6 +115,7 @@ Supabase live 状态：
 - 主办财务支出已接入真实写入路径：登录主办或财务协作者通过 `/api/expenses` 写入 `event_expenses`，API 会统一认证、限流、校验 `can_manage_event_finance`，并将支出分类/状态映射到数据库 enum。
 - 活动协作者管理已接入真实事务路径：登录主办或具备编辑权限的协作者可在管理台通过 GatherUp ID 添加联合主办、财务、现场协作或只读角色，也可调整角色或移除非主办协作者；API 使用用户 Supabase session 调用 `manage_event_organizer_atomic`，由数据库函数验证 `can_edit_event`、保护 owner、查找用户、写入/更新/删除 `event_organizers`，并在同一事务路径中写入 `audit_logs`。
 - 活动管理台已新增审计日志时间线：`getOrganizerEventDetail()` 会读取当前活动最近的 `audit_logs`，页面展示操作类型、风险级别、执行角色、前后快照和原因，让协作者变更、付款审核、退款、候补、核销等关键动作可被主办复盘。
+- 活动开放报名后关键字段编辑已接入平台复审触发：当活动处于报名/付款/选座/ready 阶段，主办修改城市、场地、地址、活动时间、报名截止或容量时，`/api/events/update` 会把 `events.review_status` 置为 `pending`，并创建 `review_requests(target_type='event')` 供 `/admin` 活动审核队列处理。
 - 收费活动开放报名已新增最小认证和平台审核门槛：`/api/events/publish` 在通过编辑权限后，会检查活动是否有价格或收款码；若是收费活动，则要求活动 owner 的组织者认证状态为 `light_verified` 或 `enhanced_verified`，且没有 `force_review_required` 标记；若活动处于 `pending`、`changes_requested`、`rejected` 或 `suspended` 平台审核状态，也会拒绝开放报名。
 - 组织工作台已新增主办认证申请入口：登录用户可以读取自己的 `organizer_verifications` 状态，并通过 `/api/organizer/verification` 提交或更新待审核资料；已通过或暂停状态会被 API 阻止重复提交。
 - 平台后台已新增第一版 `/admin` 审核工作台：平台管理员通过 `is_platform_admin()` 校验后，可查看待审核/已驳回主办认证，执行轻量通过、强化通过、驳回或暂停；也可处理活动审核请求，执行通过、要求修改、驳回或暂停，并把主办认证/活动审核决策写入 `audit_logs`。
@@ -335,7 +336,7 @@ Supabase 接入：
 
 第一优先级：
 
-- 继续补齐活动创建后的协作者邀请确认、更细的发布状态流和发布后编辑约束；当前已支持基础信息编辑、协作者添加/调整/移除、事务化审计日志记录、主办台审计时间线、主办认证申请入口、后台活动审核队列、收费活动发布前认证/活动审核门槛，并支持从草稿/数调/待开放报名推进到 `registration_open`。
+- 继续补齐活动创建后的协作者邀请确认和更细的发布状态流；当前已支持基础信息编辑、开放后关键编辑触发平台复审、协作者添加/调整/移除、事务化审计日志记录、主办台审计时间线、主办认证申请入口、后台活动审核队列、收费活动发布前认证/活动审核门槛，并支持从草稿/数调/待开放报名推进到 `registration_open`。
 - 补齐财务支出凭证导出证据链、支出编辑、作废审计 RPC 和更多 UI 级验证；当前已支持支出凭证上传/替换以及软作废当前凭证。
 - 围绕参与者报名、付款截图、主办审核、选座、核销、退款、财务导出和公告发布补 UI 级端到端验证。
 - 继续保持 README、GitHub profile copy、当前状态文档和真实代码同步。

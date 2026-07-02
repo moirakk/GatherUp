@@ -182,12 +182,19 @@ describe("registration and payment proof API contracts", () => {
     expectSource(eventUpdateRoute, "canEditEvent(authContext.supabase, eventId)");
     expectSource(eventUpdateRoute, ".not(\"status\", \"in\", \"(cancelled,expired,refunded)\")");
     expectSource(eventUpdateRoute, "capacity < activeRegistrationCount");
+    expectSource(eventUpdateRoute, "reviewSensitiveStatuses");
+    expectSource(eventUpdateRoute, "reviewSensitiveChanges");
+    expectSource(eventUpdateRoute, "review_status: requiresReview ? \"pending\" : currentEvent.review_status");
+    expectSource(eventUpdateRoute, '.from("review_requests")');
+    expectSource(eventUpdateRoute, 'target_type: "event"');
+    expectSource(eventUpdateRoute, "review_required: requiresReview");
     expectSource(eventUpdateRoute, '.from("events")');
 
     expectSource(organizerEventPage, "<EventBasicsEditor event={event} />");
     expectSource(eventBasicsEditor, 'fetch("/api/events/update"');
     expectSource(eventBasicsEditor, "getSupabaseBrowserClient()");
     expectSource(eventBasicsEditor, "supabase.auth.getSession()");
+    expectSource(eventBasicsEditor, "关键变更已提交平台复审");
   });
 
   it("keeps organizer collaborator management on the authenticated atomic RPC path", () => {
