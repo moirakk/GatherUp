@@ -38,14 +38,7 @@ function downloadBlob(blob: Blob, filename: string) {
   URL.revokeObjectURL(url);
 }
 
-export function OrganizerEventActions({
-  eventId,
-  eventName,
-  publicCode,
-  status,
-  registrations,
-  variant
-}: OrganizerEventActionsProps) {
+export function OrganizerEventActions({ eventId, eventName, publicCode, status, variant }: OrganizerEventActionsProps) {
   const [notice, setNotice] = useState("");
   const [isPublishing, setIsPublishing] = useState(false);
   const canOpenRegistration = status === "草稿配置" || status === "数调中" || status === "待开放报名";
@@ -137,7 +130,11 @@ export function OrganizerEventActions({
     return (
       <>
         <div className="button-row">
-          <button className="button primary" type="button" onClick={() => setNotice("请进入财务页上传或更换收款二维码。")}>
+          <button
+            className="button primary"
+            type="button"
+            onClick={() => setNotice("请进入财务页上传或更换收款二维码。")}
+          >
             <QrCode size={16} />
             更新收款码
           </button>

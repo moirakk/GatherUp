@@ -7,11 +7,14 @@
     "dev": "next dev",
     "dev:webpack": "next dev --webpack",
     "build": "next build",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "lint": "eslint . --max-warnings=0",
     "test": "node --test tests/*.test.mts",
     "test:auth": "node --test tests/auth-rules.test.mts",
     "test:integration:rpc": "node --test tests/integration/rpc/*.test.mts",
     "test:schema": "node --test tests/schema-contract.test.mts",
-    "verify": "npm test && npm run typecheck",
+    "verify": "npm run lint && npm test && npm run typecheck",
     "start": "next start",
     "typecheck": "tsc --noEmit"
   },
@@ -25,9 +28,16 @@
     "react-dom": "19.2.6"
   },
   "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@next/eslint-plugin-next": "16.2.10",
     "@types/node": "25.8.0",
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
-    "typescript": "6.0.3"
+    "eslint": "10.6.0",
+    "eslint-config-prettier": "10.1.8",
+    "eslint-plugin-react-hooks": "7.1.1",
+    "prettier": "3.9.4",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.62.1"
   }
 }

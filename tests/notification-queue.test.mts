@@ -32,7 +32,7 @@ function extractSchemaNotificationTemplateKeys() {
 }
 
 function extractSchemaNotificationInsertBlocks() {
-  return schema.match(/insert into public\.notification_deliveries \([\s\S]*?\n  \);/g) ?? [];
+  return schema.match(/insert into public\.notification_deliveries \([\s\S]*?\n {2}\);/g) ?? [];
 }
 
 describe("notification queue contract", () => {
@@ -67,11 +67,16 @@ describe("notification queue contract", () => {
     });
 
     assert.equal(items.length, 4);
-    assert.deepEqual(
-      items.map((item) => `${item.recipientId}:${item.channel}`).sort(),
-      ["finance-1:email", "finance-1:in_app", "owner-1:email", "owner-1:in_app"]
+    assert.deepEqual(items.map((item) => `${item.recipientId}:${item.channel}`).sort(), [
+      "finance-1:email",
+      "finance-1:in_app",
+      "owner-1:email",
+      "owner-1:in_app"
+    ]);
+    assert.equal(
+      items.every((item) => item.templateKey === "payment_proof_submitted"),
+      true
     );
-    assert.equal(items.every((item) => item.templateKey === "payment_proof_submitted"), true);
   });
 
   it("does not queue notifications for auditable but silent transitions", () => {
