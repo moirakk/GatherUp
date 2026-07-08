@@ -1,6 +1,6 @@
 import { events, findRegistration, registrations, type GatherEvent, type Registration } from "@/lib/mock-data";
 import { findUserByAuthUserId, toPublicCheckInStatus } from "@/lib/server/api";
-import { isSupabaseConfigured } from "@/lib/supabase/client";
+import { reportDataAccessFailure, shouldUseMockData } from "@/lib/data-mode";
 import { createSupabaseServerClient, getSupabaseServerClient } from "@/lib/supabase/server";
 
 export type RegistrationRow = {
@@ -166,7 +166,7 @@ function emptySupabaseMyOrders(): MyOrdersData {
 }
 
 export async function getMyOrders(): Promise<MyOrdersData> {
-  if (!isSupabaseConfigured()) {
+  if (shouldUseMockData()) {
     return mockMyOrders();
   }
 
@@ -224,7 +224,7 @@ export async function getMyOrders(): Promise<MyOrdersData> {
 }
 
 export async function getOrderDetail(orderNumber: string): Promise<OrderDetailData | null> {
-  if (!isSupabaseConfigured()) {
+  if (shouldUseMockData()) {
     return mockOrderDetail(orderNumber);
   }
 
@@ -237,7 +237,11 @@ export async function getOrderDetail(orderNumber: string): Promise<OrderDetailDa
       .single();
 
     if (registrationError || !registrationData) {
-      return mockOrderDetail(orderNumber);
+      if (registrationError && registrationError.code !== "PGRST116") {
+        reportDataAccessFailure("getOrderDetail", registrationError);
+      }
+
+      return null;
     }
 
     const registration = rowToRegistration(registrationData as RegistrationRow);
@@ -259,7 +263,11 @@ export async function getOrderDetail(orderNumber: string): Promise<OrderDetailDa
       .single();
 
     if (eventError || !eventData) {
-      return mockOrderDetail(orderNumber);
+      if (eventError) {
+        reportDataAccessFailure("getOrderDetail", eventError);
+      }
+
+      return null;
     }
 
     let seatSelection: OrderDetailData["seatSelection"];
@@ -305,7 +313,9 @@ export async function getOrderDetail(orderNumber: string): Promise<OrderDetailDa
       seatSelection,
       source: "supabase"
     };
-  } catch {
-    return mockOrderDetail(orderNumber);
+  } catch (error) {
+    reportDataAccessFailure("getOrderDetail", error);
+
+    return null;
   }
 }

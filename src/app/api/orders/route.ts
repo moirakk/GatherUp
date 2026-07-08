@@ -23,7 +23,7 @@ function contactTypeFromValue(value: string) {
 }
 
 export async function POST(request: Request) {
-  const rateLimitResponse = enforceRateLimit(request, {
+  const rateLimitResponse = await enforceRateLimit(request, {
     keyPrefix: "orders:create",
     limit: 30,
     windowMs: 60_000

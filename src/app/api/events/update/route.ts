@@ -44,7 +44,7 @@ const reviewSensitiveStatuses = new Set([
 ]);
 
 export async function POST(request: Request) {
-  const rateLimitResponse = enforceRateLimit(request, {
+  const rateLimitResponse = await enforceRateLimit(request, {
     keyPrefix: "events:update",
     limit: 30,
     windowMs: 60_000

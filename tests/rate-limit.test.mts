@@ -1,11 +1,24 @@
 import assert from "node:assert/strict";
-import { describe, it } from "node:test";
+import { after, before, describe, it } from "node:test";
 
 import {
   enforceRateLimit,
   getRateLimitBucketCount,
   pruneExpiredRateLimitBuckets
 } from "../src/lib/server/rate-limit.ts";
+
+let previousServiceRoleKey: string | undefined;
+
+before(() => {
+  previousServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+});
+
+after(() => {
+  if (previousServiceRoleKey) {
+    process.env.SUPABASE_SERVICE_ROLE_KEY = previousServiceRoleKey;
+  }
+});
 
 function requestFrom(ip: string) {
   return new Request("https://gatherup.local/api/orders", {
@@ -23,10 +36,10 @@ describe("server rate limiting", () => {
       windowMs: 60_000
     };
 
-    assert.equal(enforceRateLimit(requestFrom("203.0.113.10"), options), null);
-    assert.equal(enforceRateLimit(requestFrom("203.0.113.10"), options), null);
+    assert.equal(await enforceRateLimit(requestFrom("203.0.113.10"), options), null);
+    assert.equal(await enforceRateLimit(requestFrom("203.0.113.10"), options), null);
 
-    const response = enforceRateLimit(requestFrom("203.0.113.10"), options);
+    const response = await enforceRateLimit(requestFrom("203.0.113.10"), options);
 
     assert.ok(response);
     assert.equal(response.status, 429);
@@ -40,19 +53,22 @@ describe("server rate limiting", () => {
     });
   });
 
-  it("keeps separate buckets per client address", () => {
+  it("keeps separate buckets per client address", async () => {
     const options = {
       keyPrefix: "test:isolated",
       limit: 1,
       windowMs: 60_000
     };
 
-    assert.equal(enforceRateLimit(requestFrom("203.0.113.11"), options), null);
-    assert.equal(enforceRateLimit(requestFrom("203.0.113.12"), options), null);
-    assert.equal(enforceRateLimit(requestFrom("203.0.113.11"), options)?.status, 429);
+    assert.equal(await enforceRateLimit(requestFrom("203.0.113.11"), options), null);
+    assert.equal(await enforceRateLimit(requestFrom("203.0.113.12"), options), null);
+
+    const limited = await enforceRateLimit(requestFrom("203.0.113.11"), options);
+
+    assert.equal(limited?.status, 429);
   });
 
-  it("prunes expired buckets to avoid unbounded memory growth", () => {
+  it("prunes expired buckets to avoid unbounded memory growth", async () => {
     const options = {
       keyPrefix: "test:prune",
       limit: 1,
@@ -60,12 +76,24 @@ describe("server rate limiting", () => {
     };
     const before = getRateLimitBucketCount();
 
-    assert.equal(enforceRateLimit(requestFrom("203.0.113.13"), options), null);
+    assert.equal(await enforceRateLimit(requestFrom("203.0.113.13"), options), null);
     assert.equal(getRateLimitBucketCount(), before + 1);
 
     pruneExpiredRateLimitBuckets(Date.now() + 11);
 
     assert.equal(getRateLimitBucketCount(), before);
-    assert.equal(enforceRateLimit(requestFrom("203.0.113.13"), options), null);
+    assert.equal(await enforceRateLimit(requestFrom("203.0.113.13"), options), null);
+  });
+
+  it("stays on the in-memory limiter when the service role key is absent", async () => {
+    const options = {
+      keyPrefix: "test:memory-only",
+      limit: 1,
+      windowMs: 60_000
+    };
+    const before = getRateLimitBucketCount();
+
+    assert.equal(await enforceRateLimit(requestFrom("203.0.113.14"), options), null);
+    assert.equal(getRateLimitBucketCount(), before + 1, "in-memory bucket should be used");
   });
 });

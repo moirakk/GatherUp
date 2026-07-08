@@ -7,7 +7,7 @@ import { getAuthenticatedSupabaseClient } from "@/lib/supabase/server";
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
-  const rateLimitResponse = enforceRateLimit(request, {
+  const rateLimitResponse = await enforceRateLimit(request, {
     keyPrefix: "orders:refund",
     limit: 30,
     windowMs: 60_000

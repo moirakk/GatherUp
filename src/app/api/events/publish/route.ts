@@ -9,7 +9,7 @@ export const runtime = "nodejs";
 const paidEventVerificationStatuses = ["light_verified", "enhanced_verified"];
 
 export async function POST(request: Request) {
-  const rateLimitResponse = enforceRateLimit(request, {
+  const rateLimitResponse = await enforceRateLimit(request, {
     keyPrefix: "events:publish",
     limit: 20,
     windowMs: 60_000

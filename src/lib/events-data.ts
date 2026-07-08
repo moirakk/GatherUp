@@ -14,7 +14,7 @@ import {
   type EventTemplate,
   type GatherEvent
 } from "@/lib/mock-data";
-import { isSupabaseConfigured } from "@/lib/supabase/client";
+import { reportDataAccessFailure, shouldUseMockData } from "@/lib/data-mode";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 
 export type EventRow = {
@@ -215,7 +215,7 @@ function fallbackEvents() {
 }
 
 export async function getPublicEvents(): Promise<GatherEvent[]> {
-  if (!isSupabaseConfigured()) {
+  if (shouldUseMockData()) {
     return fallbackEvents();
   }
 
@@ -227,18 +227,22 @@ export async function getPublicEvents(): Promise<GatherEvent[]> {
       .eq("visibility", "public")
       .order("starts_at", { ascending: true });
 
-    if (error || !data || data.length === 0) {
-      return fallbackEvents();
+    if (error) {
+      reportDataAccessFailure("getPublicEvents", error);
+
+      return [];
     }
 
-    return data.map((row) => eventRowToGatherEvent(row as EventRow));
-  } catch {
-    return fallbackEvents();
+    return (data ?? []).map((row) => eventRowToGatherEvent(row as EventRow));
+  } catch (error) {
+    reportDataAccessFailure("getPublicEvents", error);
+
+    return [];
   }
 }
 
 export async function getPublicEventDetail(eventId: string): Promise<EventDetailData | null> {
-  if (!isSupabaseConfigured()) {
+  if (shouldUseMockData()) {
     return mockEventDetail(eventId);
   }
 
@@ -252,7 +256,11 @@ export async function getPublicEventDetail(eventId: string): Promise<EventDetail
       : eventQuery.eq("public_code", eventId).single());
 
     if (eventError || !eventData) {
-      return mockEventDetail(eventId);
+      if (eventError && eventError.code !== "PGRST116") {
+        reportDataAccessFailure("getPublicEventDetail", eventError);
+      }
+
+      return null;
     }
 
     const event = eventRowToGatherEvent(eventData as EventRow);
@@ -271,8 +279,10 @@ export async function getPublicEventDetail(eventId: string): Promise<EventDetail
       setup,
       source: "supabase"
     };
-  } catch {
-    return mockEventDetail(eventId);
+  } catch (error) {
+    reportDataAccessFailure("getPublicEventDetail", error);
+
+    return null;
   }
 }
 

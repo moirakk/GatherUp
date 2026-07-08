@@ -65,7 +65,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const rateLimitResponse = enforceRateLimit(request, {
+  const rateLimitResponse = await enforceRateLimit(request, {
     keyPrefix: "admin:organizer-verifications",
     limit: 30,
     windowMs: 60_000

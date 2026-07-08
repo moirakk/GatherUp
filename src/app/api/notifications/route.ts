@@ -82,7 +82,7 @@ export async function GET(request: Request) {
 }
 
 export async function PATCH(request: Request) {
-  const rateLimitResponse = enforceRateLimit(request, {
+  const rateLimitResponse = await enforceRateLimit(request, {
     keyPrefix: "notifications:read",
     limit: 120,
     windowMs: 60_000

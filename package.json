@@ -16,7 +16,10 @@
     "test:schema": "node --test tests/schema-contract.test.mts",
     "verify": "npm run lint && npm test && npm run typecheck",
     "start": "next start",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "db:diff": "supabase db diff",
+    "db:push": "supabase db push",
+    "db:types": "supabase gen types typescript --project-id \"$GATHERUP_SUPABASE_PROJECT_REF\" --schema public > src/lib/supabase/database.types.ts"
   },
   "dependencies": {
     "@supabase/ssr": "0.12.0",

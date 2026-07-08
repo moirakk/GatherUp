@@ -23,7 +23,7 @@ function toAnnouncementResponse(item: Record<string, unknown>) {
 }
 
 export async function POST(request: Request) {
-  const rateLimitResponse = enforceRateLimit(request, {
+  const rateLimitResponse = await enforceRateLimit(request, {
     keyPrefix: "announcements:create",
     limit: 30,
     windowMs: 60_000

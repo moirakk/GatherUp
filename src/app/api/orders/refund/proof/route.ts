@@ -25,7 +25,7 @@ function getRelationRecord(value: unknown) {
 }
 
 export async function POST(request: Request) {
-  const rateLimitResponse = enforceRateLimit(request, {
+  const rateLimitResponse = await enforceRateLimit(request, {
     keyPrefix: "orders:refund-proof",
     limit: 30,
     windowMs: 60_000

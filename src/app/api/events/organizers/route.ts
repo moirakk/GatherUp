@@ -48,7 +48,7 @@ function statusForErrorCode(code: unknown) {
 }
 
 async function manageOrganizer(request: Request, action: "add" | "remove" | "update") {
-  const rateLimitResponse = enforceRateLimit(request, {
+  const rateLimitResponse = await enforceRateLimit(request, {
     keyPrefix: "events:organizers",
     limit: 20,
     windowMs: 60_000

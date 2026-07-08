@@ -23,7 +23,7 @@ function pathMatchesProof(path: string, eventId: string, registrationId: string,
 }
 
 export async function POST(request: Request) {
-  const rateLimitResponse = enforceRateLimit(request, {
+  const rateLimitResponse = await enforceRateLimit(request, {
     keyPrefix: "orders:payment-proof",
     limit: 30,
     windowMs: 60_000

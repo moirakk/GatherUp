@@ -49,7 +49,7 @@ function toExpenseResponse(item: Record<string, unknown>, paidBy: string) {
 }
 
 export async function POST(request: Request) {
-  const rateLimitResponse = enforceRateLimit(request, {
+  const rateLimitResponse = await enforceRateLimit(request, {
     keyPrefix: "expenses:create",
     limit: 30,
     windowMs: 60_000

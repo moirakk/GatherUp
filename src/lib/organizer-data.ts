@@ -23,8 +23,8 @@ import {
   type Registration
 } from "@/lib/mock-data";
 import { eventRowToGatherEvent, eventRowToSetup, type EventRow } from "@/lib/events-data";
+import { shouldUseMockData } from "@/lib/data-mode";
 import { canManageEvent, findUserByAuthUserId } from "@/lib/server/api";
-import { isSupabaseConfigured } from "@/lib/supabase/client";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { rowToRegistration, type RegistrationRow } from "@/lib/orders-data";
 
@@ -400,7 +400,7 @@ function organizerRowsToMap(rows: EventOrganizerRow[]) {
 }
 
 export async function getOrganizerDashboard(): Promise<OrganizerDashboardData> {
-  if (!isSupabaseConfigured()) {
+  if (shouldUseMockData()) {
     return mockOrganizerDashboard();
   }
 
@@ -508,7 +508,7 @@ export async function getOrganizerDashboard(): Promise<OrganizerDashboardData> {
 }
 
 export async function getOrganizerEventDetail(eventId: string): Promise<OrganizerEventDetailData | null> {
-  if (!isSupabaseConfigured()) {
+  if (shouldUseMockData()) {
     return mockOrganizerEventDetail(eventId);
   }
 
@@ -598,7 +598,7 @@ export async function getOrganizerEventDetail(eventId: string): Promise<Organize
 }
 
 export async function getOrganizerFinanceDetail(eventId: string): Promise<OrganizerFinanceDetailData | null> {
-  if (!isSupabaseConfigured()) {
+  if (shouldUseMockData()) {
     return mockOrganizerFinanceDetail(eventId);
   }
 

@@ -65,7 +65,7 @@ async function writeExpenseProofAudit({
 }
 
 export async function POST(request: Request) {
-  const rateLimitResponse = enforceRateLimit(request, {
+  const rateLimitResponse = await enforceRateLimit(request, {
     keyPrefix: "expenses:proof",
     limit: 30,
     windowMs: 60_000
@@ -181,7 +181,7 @@ export async function POST(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-  const rateLimitResponse = enforceRateLimit(request, {
+  const rateLimitResponse = await enforceRateLimit(request, {
     keyPrefix: "expenses:proof",
     limit: 30,
     windowMs: 60_000

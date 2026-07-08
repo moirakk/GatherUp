@@ -48,7 +48,7 @@ function mapEnum(value: string, values: Record<string, string>, fallback: string
 }
 
 export async function POST(request: Request) {
-  const rateLimitResponse = enforceRateLimit(request, {
+  const rateLimitResponse = await enforceRateLimit(request, {
     keyPrefix: "events:create",
     limit: 20,
     windowMs: 60_000
