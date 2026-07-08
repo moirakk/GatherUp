@@ -80,6 +80,7 @@ describe("registration and payment proof API contracts", () => {
   const eventsData = readSource("src/lib/events-data.ts");
   const organizerData = readSource("src/lib/organizer-data.ts");
   const ordersData = readSource("src/lib/orders-data.ts");
+  const dataMode = readSource("src/lib/data-mode.ts");
   const serverApi = readSource("src/lib/server/api.ts");
   const supabaseServer = readSource("src/lib/supabase/server.ts");
 
@@ -90,6 +91,31 @@ describe("registration and payment proof API contracts", () => {
     expectSource(supabaseServer, "getSupabaseUserClient(accessToken)");
     expectSource(supabaseServer, "createSupabaseServerClient()");
     expectSource(supabaseServer, "supabase.auth.getUser()");
+  });
+
+  it("keeps mock data behind explicit local or demo mode only", () => {
+    expectSource(dataMode, 'process.env.NEXT_PUBLIC_GATHERUP_DEMO_MODE === "1"');
+    expectSource(dataMode, "return !isSupabaseConfigured() || isDemoModeEnabled()");
+    expectSource(dataMode, 'console.error(`[gatherup:data] ${scope} failed`, error)');
+
+    for (const source of [eventsData, ordersData, organizerData]) {
+      expectSource(source, 'from "@/lib/data-mode"');
+      expectSource(source, "shouldUseMockData()");
+      assert.doesNotMatch(source, /if \(!isSupabaseConfigured\(\)\)/);
+    }
+
+    expectSource(eventsData, 'reportDataAccessFailure("getPublicEvents", error)');
+    expectSource(eventsData, 'reportDataAccessFailure("getPublicEventDetail", eventError)');
+    expectSource(eventsData, 'reportDataAccessFailure("getPublicEventDetail", error)');
+    assert.doesNotMatch(eventsData, /catch \([^)]*\)\s*{\s*return fallbackEvents\(\);/);
+    assert.doesNotMatch(eventsData, /eventError \|\| !eventData\) {\s*return mockEventDetail/);
+
+    expectSource(ordersData, 'reportDataAccessFailure("getOrderDetail", registrationError)');
+    expectSource(ordersData, 'reportDataAccessFailure("getOrderDetail", eventError)');
+    expectSource(ordersData, 'reportDataAccessFailure("getOrderDetail", error)');
+    assert.doesNotMatch(ordersData, /catch \([^)]*\)\s*{\s*return mockOrderDetail/);
+    assert.doesNotMatch(ordersData, /registrationError \|\| !registrationData\) {\s*return mockOrderDetail/);
+    assert.doesNotMatch(ordersData, /eventError \|\| !eventData\) {\s*return mockOrderDetail/);
   });
 
   it("requires every mutating API route to enforce rate limiting", () => {
