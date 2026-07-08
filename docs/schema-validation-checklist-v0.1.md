@@ -260,9 +260,9 @@ Verify:
 
 After SQL execution succeeds:
 
-1. Convert schema changes into migrations if using Supabase migrations.
-2. Add service-layer functions for transaction-heavy workflows.
-3. Add RLS test fixtures.
-4. Add Storage bucket creation and policies.
-5. Update frontend data access away from mock data.
+1. Add every new DDL change as a timestamped file under `supabase/migrations/`.
+2. Execute new migrations in the clean validation project before relying on them from app code.
+3. Add or update service-layer functions for transaction-heavy workflows.
+4. Add RLS test fixtures and live integration coverage for new sensitive access paths.
+5. Keep frontend data access on real Supabase paths; use mock data only for unconfigured local mode or explicit demo mode.
 6. Update `/dev/status` to check commercial schema readiness.

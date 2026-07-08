@@ -1,6 +1,6 @@
 # GatherUp v0.1 documentation index
 
-Last updated: 2026-06-12
+Last updated: 2026-07-08
 
 This index organizes the GatherUp documents by how they should be used. The commercial v0.1 documents are the current source of truth for product direction.
 
@@ -16,6 +16,7 @@ This index organizes the GatherUp documents by how they should be used. The comm
 - [Clean Supabase validation checklist](./supabase-clean-project-validation-v0.1.md): step-by-step clean dev/staging SQL execution checklist.
 - [RPC integration testing guide](./rpc-integration-testing-v0.1.md): opt-in real Supabase RPC integration test setup and failure logging guide.
 - [Supabase live validation log](./supabase-live-validation-log-v0.1.md): real Supabase project checks and findings.
+- [Infrastructure hardening record](./infra-hardening-2026-07.md): migrations baseline, Postgres-backed rate limiting, and demo/mock boundaries.
 - [Service-layer contract](./service-layer-contract-v0.1.md): required server-side operations and invariants.
 - [GitHub repository profile copy](./github-repository-profile-v0.1.md): suggested GitHub About, description, topics, and public-facing intro.
 - [Contributing guide](../CONTRIBUTING.md): collaboration rules, verification expectations, and PR standards.
@@ -34,6 +35,7 @@ This index organizes the GatherUp documents by how they should be used. The comm
 
 - [Current project state](./current-state-v0.1.md): implemented code, limits, and next steps.
 - [Schema validation checklist](./schema-validation-checklist-v0.1.md): how to validate the commercial schema draft.
+- [Infrastructure hardening record](./infra-hardening-2026-07.md): current infrastructure guardrails and remaining validation work.
 - [Commercial engineering plan](./commercial-v0.1-engineering-plan.md): implementation order from auth to launch readiness.
 - [Service-layer contract](./service-layer-contract-v0.1.md): service operations, invariants, and current implementation gap.
 
@@ -46,6 +48,7 @@ This index organizes the GatherUp documents by how they should be used. The comm
 - [Schema SQL draft](../supabase/schema.sql): PostgreSQL/Supabase schema draft.
 - [Seed SQL draft](../supabase/seed.sql): sample data draft.
 - [Storage SQL draft](../supabase/storage.sql): Supabase Storage buckets and RLS policy draft.
+- [Supabase migrations](../supabase/migrations): frozen schema/storage baselines and timestamped database changes.
 - [Supabase validation SQL files](../supabase/validation): copy-ready SQL checks for Supabase SQL Editor.
 
 ## Code Artifacts

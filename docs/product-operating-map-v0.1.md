@@ -114,13 +114,13 @@ These parts cannot remain surface UI:
 | Profile sync | In progress | Supabase Auth user id is the durable identity anchor. |
 | Dev status page | In progress | Checks cookie session, Supabase Auth session, profile sync, and commercial schema table existence. |
 | Commercial docs | In progress | PRD, decision log, engineering plan, README, schema checklist, and this product map exist. |
-| SQL schema draft | In progress | Expanded commercial v0.1 schema draft exists but has not been executed against PostgreSQL in this workspace. |
+| SQL schema and migrations | In progress | Commercial v0.1 schema/storage have been executed in a clean Supabase validation project and frozen into initial migration baselines. New DDL now belongs in timestamped migrations. |
 | Seed data | In progress | Seed reflects commercial enums and organizer-collected payment setup. |
-| Storage policies | In progress | Storage bucket and `storage.objects` policy draft exists but has not been executed in Supabase. |
-| Service-layer contract | In progress | Required server-side operations and invariants are documented; implementation has not started. |
-| Real event services | Not started | Event creation still uses prototype/local behavior. |
-| Real registration services | Not started | Orders, capacity holds, waitlist, and attendees are not yet backed by service transactions. |
-| Admin backend | Not started | Tables exist in draft; UI/service layer not implemented. |
+| Storage policies | In progress | Private proof Storage policies have been executed and validated in clean Supabase; payment/refund proof RLS has opt-in live integration coverage. |
+| Service-layer contract | In progress | Key workflows now use authenticated API routes plus PostgreSQL RPCs; remaining gaps are mostly richer UI completion and edge-case flows. |
+| Real event services | In progress | Event creation, editing, collaborator management, publish gates, and admin review queues have authenticated Supabase paths. |
+| Real registration services | In progress | Atomic registration, capacity locking, payment proof, review, check-in, refunds, seat locks, waitlist joins, and notifications have database-backed paths or RPC contracts. |
+| Admin backend | In progress | `/admin` includes organizer verification and event review queues with platform-admin checks and audit logs. |
 
 ## 6. Reliability Standard
 
@@ -141,15 +141,12 @@ A workflow is not considered complete until all of these are true:
 The professional build order from here:
 
 1. Finish Auth foundation.
-2. Execute and fix commercial SQL schema in a real Supabase/PostgreSQL environment.
-3. Convert schema draft into migrations.
-4. Implement organizer verification and minimum admin bootstrap.
-5. Implement real event creation and publish gates.
-6. Implement registration/order/capacity service transactions.
-7. Implement organizer-collected payment proof workflow with private Storage.
-8. Implement refunds and finance.
-9. Implement seat locks, seat assignment, and check-in.
-10. Implement notifications, exports, complaints, audit logs, and readiness checks.
+2. Keep migrations as the database change entry point and execute new migrations in the clean validation project.
+3. Finish UI-level end-to-end QA for registration, proof upload, review, seat selection, check-in, and refunds.
+4. Complete participant receipt confirmation, refund disputes, and retention jobs.
+5. Build dashboard metrics for pending reviews, check-in rate, refund exposure, seat progress, and revenue.
+6. Add external notification delivery channels after in-app notification reliability is proven.
+7. Implement complaints, venue review flows, richer platform settings, and readiness checks.
 
 ## 8. Current Non-Negotiables
 

@@ -102,7 +102,7 @@ Implemented prototype coverage:
 - Organizer promotion center, notification center, payment review prototype, seat management prototype.
 - Venue intelligence prototype.
 - Supabase client dependency, Auth adapter, user profile sync adapter, schema/seed/Storage SQL drafts, and contract tests.
-- Server-side Supabase read adapters for public event listing, public/link-only event detail, participant orders, organizer dashboard, organizer event workspaces, and organizer finance views, with mock fallback when Supabase is not configured or unavailable.
+- Server-side Supabase read adapters for public event listing, public/link-only event detail, participant orders, organizer dashboard, organizer event workspaces, and organizer finance views. Mock data is now limited to unconfigured local prototype mode or explicit `NEXT_PUBLIC_GATHERUP_DEMO_MODE=1`; configured Supabase failures surface as empty/not-found states with `[gatherup:data]` logs instead of silently showing fake data.
 - Initial guarded server APIs for event creation, registration orders, payment review, check-in verification, and Excel exports.
 - Event creation wizard now uses the authenticated `/api/events` path as the primary create action when Supabase is configured; local created-event records are retained only as demo fallback when Supabase is unavailable.
 - Organizer-sensitive APIs now use a shared Supabase auth helper that accepts verified Bearer tokens for API clients and Supabase SSR session cookies for same-origin browser requests; they no longer trust local prototype cookies.
@@ -129,11 +129,11 @@ Implemented prototype coverage:
 
 Not production-ready yet:
 
-- Several important surfaces are now backed by Supabase, but the product still keeps mock/local fallback paths for local demos and unavailable Supabase environments.
+- Several important surfaces are now backed by Supabase. Mock/local fallback paths remain for local demos and explicit demo mode only; configured Supabase deployments no longer hide query failures behind mock content.
 - Real write APIs are still early product-integration endpoints, but their core database paths have passed the clean Supabase validation baseline: registration creation, payment proof upload, payment review, check-in, refund request/review/proof upload, seat-lock concurrency, announcement publishing, and private proof-file RLS.
 - Venue intelligence, complaints/platform settings, external notification delivery, and some edge-case UI flows are not yet fully backed by production-grade database services. The next risk is less about SQL/RPC correctness and more about finishing end-to-end product journeys on top of the verified backend paths.
-- Mutating API routes now have a shared in-process rate limiter and a contract test that blocks new write endpoints without rate limiting. This is an early abuse-control baseline for local and single-instance deployments; multi-instance production should replace the in-memory bucket store with a shared Redis/Upstash-backed limiter.
-- Supabase schema, seed, Storage policy, and validation scripts have been rebuilt in the clean dev/staging project `oxbrxkllftyevlzmiydt`; the live integration suite now passes 19/19 tests against that project.
+- Mutating API routes now share an async rate limiter and a contract test that blocks new write endpoints without rate limiting. When `SUPABASE_SERVICE_ROLE_KEY` is configured, rate-limit counters are stored through the service-role-only `consume_rate_limit` Postgres RPC so limits hold across serverless instances; local/dev environments fall back to the in-memory limiter.
+- Supabase schema, seed, Storage policy, and validation scripts have been rebuilt in the clean dev/staging project `oxbrxkllftyevlzmiydt`; the live integration suite now passes 19/19 tests against that project. `supabase/migrations/` now contains the frozen schema/storage baseline plus the API rate-limit RPC migration.
 - Anonymous public-read grants for public event detail surfaces are included in the schema draft and local contract tests, and the clean validation project has passed the post-execution SQL summary plus RPC/Storage integration suite.
 - Permission enforcement and RLS still need to expand as new product workflows are added, but the commercial v0.1 registration/payment/check-in/refund/seat-lock/proof-file baseline is no longer unvalidated.
 - Broader transactional service functions, email business notifications, richer admin review surfaces beyond organizer/event review, collaborator invite-acceptance, expense proof RPC/export evidence hardening, venue review flows, complaints, and data retention jobs are still planned.
@@ -208,6 +208,7 @@ GatherUp is intentionally being moved from a prototype into a reliable product f
 - Private Storage path contracts for sensitive proof files, including payment proofs and refund proofs, with integration coverage for owner/manager reads, participant upload boundaries, refund-role separation, malformed paths, and no update/delete policies.
 - Documentation-first runbooks for clean Supabase project execution, validation logging, and future service-layer expansion.
 - Organizer audit timeline contract coverage ensures the event workspace continues to read `audit_logs` and render before/after snapshots, action labels, and risk levels for sensitive operations.
+- Supabase migration contract tests keep the frozen `schema.sql` and `storage.sql` baselines aligned with `supabase/migrations/`, and verify the service-role-only boundary for the API rate-limit table/RPC.
 
 Current local verification:
 
@@ -339,7 +340,7 @@ Recommended order:
 3. Organizer-collected payment workflow: collection-code versions, review queues, top-up, overpayment/underpayment, and finance reconciliation.
 4. Continue refund completion: participant receipt confirmation, disputes, retention policy, and finance export evidence.
 5. Build the organizer dashboard metrics layer for pending reviews, check-in rate, refund exposure, seat progress, and revenue.
-6. Move rate limiting from in-process memory to shared Redis/Upstash before multi-instance deployment.
+6. Execute the API rate-limit migration in the clean validation project and add a live RPC integration check for `consume_rate_limit`.
 
 ## Repository Notes
 
