@@ -32,5 +32,5 @@
 ## 后续
 
 - 在 clean validation Supabase 项目执行 `20260705000100_api_rate_limits.sql`。
-- 给 `consume_rate_limit` 补真实 RPC 集成测试。
+- 运行 `tests/integration/rpc/rate-limit.test.mts`，确认 `consume_rate_limit` 在真实 Supabase 中通过 service-role 调用、拒绝匿名调用。
 - 生成 Supabase 类型文件后，为 Supabase client 补 `Database` 泛型。

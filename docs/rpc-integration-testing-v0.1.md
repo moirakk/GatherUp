@@ -15,6 +15,7 @@ tests/integration/rpc/_helpers.mts
 tests/integration/rpc/registration.test.mts
 tests/integration/rpc/concurrency.test.mts
 tests/integration/rpc/storage-proof-access.test.mts
+tests/integration/rpc/rate-limit.test.mts
 ```
 
 `_helpers.mts` contains shared setup and cleanup helpers. It is not matched by the `*.test.mts` runner glob.
@@ -72,6 +73,13 @@ It also validates the audited refund RPC chain after payment confirmation:
 
 Each Storage test creates its own temporary event so registration idempotency and order state from one case cannot leak into another.
 
+`rate-limit.test.mts` validates the distributed API limiter RPC introduced by `supabase/migrations/20260705000100_api_rate_limits.sql`:
+
+- the service-role client can call `consume_rate_limit`;
+- fixed-window counters return two allowed decisions and one typed rejection when the limit is exceeded;
+- the `api_rate_limits` row is persisted for the bucket key;
+- anonymous clients cannot execute the RPC.
+
 ## Required Environment
 
 Use a clean dev/staging Supabase project, not production.
@@ -111,6 +119,7 @@ supabase/validation/06-public-read-grants.sql
 supabase/validation/09-service-role-grants.sql
 supabase/validation/08-create-registration-rpc-contract.sql
 supabase/validation/07-clean-dev-post-execution-summary.sql
+supabase/migrations/20260705000100_api_rate_limits.sql
 ```
 
 Also run local checks:
@@ -159,6 +168,9 @@ GatherUp Storage RLS
   ✔ rejects malformed proof paths before they can match a Storage policy
   ✔ keeps payment-proof objects immutable for authenticated participants
   ✔ keeps refund-proof objects immutable for authenticated refund managers
+GatherUp distributed rate-limit RPC
+  ✔ counts requests atomically and returns a typed rejection after the limit
+  ✔ does not expose the rate-limit RPC to anonymous clients
 ```
 
 Expected database side effects after cleanup:
