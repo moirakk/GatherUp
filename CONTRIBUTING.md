@@ -29,7 +29,7 @@ Before proposing a change, run:
 
 ```bash
 npm test
-npm run typecheck
+npm run verify
 git diff --check
 ```
 
@@ -42,7 +42,7 @@ npm run build
 Real Supabase RPC tests are opt-in and should only run against a clean dev/staging project:
 
 ```bash
-GATHERUP_RUN_RPC_INTEGRATION=1 npm run test:integration:rpc
+GATHERUP_RUN_RPC_INTEGRATION=1 GATHERUP_RPC_INTEGRATION_TARGET=clean-dev GATHERUP_RPC_INTEGRATION_ALLOWED_REF=<clean-dev-project-ref> npm run test:integration:rpc
 ```
 
 ## Pull Request Expectations

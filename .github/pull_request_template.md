@@ -32,10 +32,12 @@
 ## Verification
 
 - [ ] `npm test`
+- [ ] `npm run lint`
+- [ ] `npm run verify`
 - [ ] `npm run typecheck`
 - [ ] `npm run build`
 - [ ] `git diff --check`
-- [ ] `GATHERUP_RUN_RPC_INTEGRATION=1 npm run test:integration:rpc`
+- [ ] `GATHERUP_RUN_RPC_INTEGRATION=1 GATHERUP_RPC_INTEGRATION_TARGET=clean-dev GATHERUP_RPC_INTEGRATION_ALLOWED_REF=<clean-dev-project-ref> npm run test:integration:rpc`
 - [ ] Manual browser check
 
 ## Data, Permission, And Security Notes

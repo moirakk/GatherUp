@@ -76,12 +76,14 @@ GatherUp/
 │   ├── components/                  Shared UI and workflow components
 │   └── lib/                         Auth, data access, Supabase, and server helpers
 ├── supabase/
+│   ├── migrations/                  Frozen schema, Storage, and infrastructure migrations
 │   ├── schema.sql                   Commercial v0.1 database schema and RPCs
 │   ├── seed.sql                     Demo seed data
 │   ├── storage.sql                  Private Storage buckets and policies
 │   └── validation/                  Copy-ready SQL validation scripts
 ├── tests/
 │   └── integration/rpc/             Opt-in real Supabase RPC integration tests
+├── .github/                         CI workflow plus issue and PR templates
 ├── docs/                            Product, architecture, runbooks, and status docs
 └── prototype/                       Earlier reference/prototype artifacts
 ```
@@ -201,7 +203,7 @@ GatherUp is intentionally being moved from a prototype into a reliable product f
 - Refund request RPC writes in-app review notifications for event refund managers.
 - Refund review RPC writes participant in-app notifications when refund requests are approved or rejected.
 - Refund proof upload RPC writes participant in-app notifications after transfer proof is recorded.
-- Opt-in real Supabase RPC integration tests for registration creation, duplicate protection, capacity contention, payment review, check-in, refund request/review/proof upload, concurrent payment/check-in/seat races, and private Storage proof access including cross-user path isolation, post-confirmation upload denial, malformed path denial, and proof immutability.
+- Opt-in real Supabase RPC integration tests for registration creation, duplicate protection, capacity contention, payment review, check-in, refund request/review/proof upload, concurrent payment/check-in/seat races, private Storage proof access including cross-user path isolation, post-confirmation upload denial, malformed path denial, proof immutability, and the service-role-only distributed rate-limit RPC.
 - Database-first transactional design for sensitive workflows: registration, payment review, seat locking, check-in, and refunds are represented as PostgreSQL RPC paths rather than loose client-side state changes.
 - Supabase SSR middleware and Bearer-token API support so browser sessions and external API calls share the same verified identity model.
 - API route authentication is guarded by a directory-scanning contract test: every `src/app/api/**/route.ts` file must call the shared Supabase server auth helpers inside the handler because middleware intentionally lets `/api` requests reach route-level authorization.
@@ -215,7 +217,6 @@ Current local verification:
 ```bash
 npm test
 npm run verify
-npm run typecheck
 npm run build
 ```
 
@@ -225,7 +226,7 @@ Opt-in live Supabase verification:
 GATHERUP_RUN_RPC_INTEGRATION=1 GATHERUP_RPC_INTEGRATION_TARGET=clean-dev GATHERUP_RPC_INTEGRATION_ALLOWED_REF=<clean-dev-project-ref> npm run test:integration:rpc
 ```
 
-Latest clean validation result: **19/19 real Supabase RPC and Storage RLS integration tests passed** against `gatherup-commercial-v01-validation` (`oxbrxkllftyevlzmiydt`) on 2026-06-28.
+Latest clean validation result: **19/19 real Supabase RPC and Storage RLS integration tests passed** against `gatherup-commercial-v01-validation` (`oxbrxkllftyevlzmiydt`) on 2026-06-28. The newer `consume_rate_limit` integration coverage is ready to run after applying `supabase/migrations/20260705000100_api_rate_limits.sql` to the clean validation project.
 
 ## Local Development
 
@@ -252,7 +253,6 @@ Recommended checks:
 ```bash
 npm test
 npm run verify
-npm run typecheck
 npm run build
 ```
 

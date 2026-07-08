@@ -1,6 +1,6 @@
 # GatherUp GitHub repository profile copy
 
-Last updated: 2026-06-29
+Last updated: 2026-07-08
 
 Use this document when updating the GitHub repository About section, README summary, social preview copy, or public project introduction.
 
@@ -39,14 +39,17 @@ Suggested GitHub topics:
 
 ```text
 nextjs
-react
+app-router
 typescript
 supabase
+postgresql
+row-level-security
+storage
+audit-log
 event-management
 event-registration
 offline-events
 community-events
-ticketing
 seat-selection
 check-in
 payment-proof
@@ -63,15 +66,15 @@ GatherUp brings those workflows into one product while keeping the data model ge
 
 ## Current Status Copy
 
-Current status: commercial v0.1 Supabase integration foundation, contract tests, organizer workflow UX improvements, clean Supabase dev/staging execution validation, Supabase SSR middleware auth, Bearer/SSR-cookie API auth, atomic registration order creation, private Storage-backed proof flows, audited payment/check-in/refund RPC paths, organizer audit timeline UI, organizer verification application and admin review UI/API, admin event review queue UI/API, post-open sensitive edit review triggers, paid-event organizer-verification and event-review publish gates, seat-lock concurrency validation, organizer finance permission hardening, Supabase-backed announcement publishing, and a passing opt-in real Supabase RPC/Storage integration suite.
+Current status: commercial v0.1 Supabase integration foundation, contract tests, organizer workflow UX improvements, clean Supabase dev/staging execution validation, committed Supabase migration baselines, Supabase SSR middleware auth, Bearer/SSR-cookie API auth, explicit demo/local data boundaries, atomic registration order creation, private Storage-backed proof flows, audited payment/check-in/refund RPC paths, organizer audit timeline UI, organizer verification application and admin review UI/API, admin event review queue UI/API, post-open sensitive edit review triggers, paid-event organizer-verification and event-review publish gates, seat-lock concurrency validation, organizer finance permission hardening, Supabase-backed announcement publishing, Postgres-backed API rate limiting, and a passing opt-in real Supabase RPC/Storage integration suite.
 
-The codebase already includes the Next.js app skeleton, mock fallback workflows for local/demo mode, Supabase Auth/profile adapters, Supabase SSR route protection middleware, Bearer/SSR-cookie API auth helpers, commercial schema/seed/Storage SQL, auth/schema/storage/API contract tests, Supabase-backed event creation, public event Supabase reads, participant registration/order Supabase paths, organizer dashboard and event workspace Supabase reads, organizer finance Supabase reads and exports, organizer workflow stepper, dynamic next-action guidance, atomic registration RPC integration, JWT-protected organizer APIs, private payment-proof and refund-proof Storage paths, audited payment-review/check-in/refund RPCs, organizer-facing audit log timeline, organizer verification application panel/API, admin verification review panel/API, admin event review panel/API, paid-event publish gating against organizer verification and event review status, post-open sensitive event edit review triggers, seat-lock RPC/API paths with a real order-detail seat selection panel, notification domain contracts, in-app notification API/UI, Supabase-backed announcement publishing, controlled and audited collaborator-management RPC, seat management prototype, venue intelligence prototype, architecture briefing docs, committed README screenshots, and real Supabase validation runbooks/logs.
+The codebase already includes the Next.js app skeleton, explicit mock fallback workflows for unconfigured local/demo mode, Supabase Auth/profile adapters, Supabase SSR route protection middleware, Bearer/SSR-cookie API auth helpers, commercial schema/seed/Storage SQL, Supabase migrations, auth/schema/storage/API/migration contract tests, Supabase-backed event creation, public event Supabase reads, participant registration/order Supabase paths, organizer dashboard and event workspace Supabase reads, organizer finance Supabase reads and exports, organizer workflow stepper, dynamic next-action guidance, atomic registration RPC integration, JWT-protected organizer APIs, private payment-proof and refund-proof Storage paths, audited payment-review/check-in/refund RPCs, organizer-facing audit log timeline, organizer verification application panel/API, admin verification review panel/API, admin event review panel/API, paid-event publish gating against organizer verification and event review status, post-open sensitive event edit review triggers, seat-lock RPC/API paths with a real order-detail seat selection panel, notification domain contracts, in-app notification API/UI, Supabase-backed announcement publishing, controlled and audited collaborator-management RPC, Postgres-backed API rate-limit infrastructure, seat management prototype, venue intelligence prototype, architecture briefing docs, committed README screenshots, and real Supabase validation runbooks/logs.
 
-The original live Supabase project has been restored and audited. It is partially initialized, not empty and not complete, so the full schema draft must not be run against it as-is. A clean dev/staging Supabase project executed `schema.sql`, `seed.sql`, corrected `storage.sql`, post-execution validation scripts, and the opt-in RPC/Storage integration suite. The latest clean validation baseline passed 19/19 real Supabase integration tests against project ref `oxbrxkllftyevlzmiydt`. The next engineering phase is to keep replacing remaining prototype surfaces with real Supabase-backed workflows, harden event review beyond the current basic-edit/collaborator-management/organizer-verification/paid-publish-gate/admin-event-review baseline, harden expense proof RPC/export evidence beyond the current audited upload/soft-void path, connect external notification delivery, and broaden admin review toward complaints and platform settings.
+The original live Supabase project has been restored and audited. It is partially initialized, not empty and not complete, so the full schema draft must not be run against it as-is. A clean dev/staging Supabase project executed `schema.sql`, `seed.sql`, corrected `storage.sql`, post-execution validation scripts, and the opt-in RPC/Storage integration suite. The latest clean validation baseline passed 19/19 real Supabase integration tests against project ref `oxbrxkllftyevlzmiydt`; the newer service-role-only `consume_rate_limit` integration test should run after applying `supabase/migrations/20260705000100_api_rate_limits.sql` to that clean validation project. The next engineering phase is to keep replacing remaining prototype surfaces with real Supabase-backed workflows, harden event review beyond the current basic-edit/collaborator-management/organizer-verification/paid-publish-gate/admin-event-review baseline, harden expense proof RPC/export evidence beyond the current audited upload/soft-void path, connect external notification delivery, and broaden admin review toward complaints and platform settings.
 
 ## One-paragraph README Summary
 
-GatherUp is an offline event operations platform focused first on community/fandom activities such as screenings, birthday cafes, and small fan gatherings. It helps organizers manage activity creation, registration, organizer-collected payment proof review, refunds, seat selection, notifications, lightweight check-in, finance, venue knowledge, audit trails, and exports in one place. The current repository contains the commercial v0.1 product decisions, Supabase schema/Storage/RLS foundation, atomic registration and audited workflow RPCs, JWT/SSR-cookie-gated APIs, private Storage-backed proof submission paths, Supabase-backed participant and organizer workspaces, organizer-visible audit timeline UI, static contract tests, opt-in real Supabase RPC/Storage integration tests, committed product screenshots, and validation notes for finishing the move from prototype fallback paths to real database-backed workflows.
+GatherUp is an offline event operations platform focused first on community/fandom activities such as screenings, birthday cafes, and small fan gatherings. It helps organizers manage activity creation, registration, organizer-collected payment proof review, refunds, seat selection, notifications, lightweight check-in, finance, venue knowledge, audit trails, and exports in one place. The current repository contains the commercial v0.1 product decisions, Supabase schema/Storage/RLS foundation, migration baselines, atomic registration and audited workflow RPCs, JWT/SSR-cookie-gated APIs, private Storage-backed proof submission paths, Postgres-backed API rate limiting, Supabase-backed participant and organizer workspaces, organizer-visible audit timeline UI, static contract tests, opt-in real Supabase RPC/Storage integration tests, committed product screenshots, and validation notes for finishing the move from prototype fallback paths to real database-backed workflows.
 
 ## Social Preview Caption
 

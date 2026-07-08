@@ -30,4 +30,4 @@ Report security concerns directly to the repository owner with:
 
 ## Known Pre-Production Limits
 
-GatherUp is not production-ready yet. Some workflows still use mock or local prototype data while the real Supabase service layer is being completed and validated.
+GatherUp is not production-ready yet. Mock/local fallback paths are intended only for unconfigured local development and explicit `NEXT_PUBLIC_GATHERUP_DEMO_MODE=1` demos. Configured Supabase deployments should surface query or permission failures instead of silently replacing real data with mock content.

@@ -1,8 +1,33 @@
+# macOS and editor noise
 .DS_Store
-node_modules
-.next
+.idea/
+.vscode/
+
+# Dependencies
+node_modules/
+
+# Next.js and build output
+.next/
+out/
+dist/
+build/
 *.tsbuildinfo
-out
+
+# Logs and coverage
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+coverage/
+
+# Local environment and deployment state
 .env
-.env.local
-.vercel
+.env.*
+!.env.example
+.vercel/
+.netlify/
+
+# Supabase local runtime artifacts
+supabase/.branches/
+supabase/.temp/
