@@ -34,3 +34,16 @@
 - 在 clean validation Supabase 项目执行 `20260705000100_api_rate_limits.sql`。
 - 运行 `tests/integration/rpc/rate-limit.test.mts`，确认 `consume_rate_limit` 在真实 Supabase 中通过 service-role 调用、拒绝匿名调用。
 - 生成 Supabase 类型文件后，为 Supabase client 补 `Database` 泛型。
+
+## 2026-07-16 验证补记
+
+- 默认 `npm run test:integration:rpc` 仍然安全跳过真实 Supabase 写入，说明 `GATHERUP_RUN_RPC_INTEGRATION` / `GATHERUP_RPC_INTEGRATION_TARGET` / `GATHERUP_RPC_INTEGRATION_ALLOWED_REF` 防误跑保护有效。
+- 使用 clean-dev 保护变量尝试运行真实 RPC/Storage 集成测试时，Codex 当前网络环境无法稳定完成到 `oxbrxkllftyevlzmiydt.supabase.co:443` 的 TLS 握手：
+  - 沙箱内失败为 `getaddrinfo ENOTFOUND`；
+  - 提权网络运行失败为 `ECONNRESET`；
+  - `curl -I https://oxbrxkllftyevlzmiydt.supabase.co` 同样失败为 `LibreSSL SSL_connect: SSL_ERROR_SYSCALL`。
+- 该结果不能证明 `consume_rate_limit` RPC 或既有 RPC/Storage RLS 失败，只能说明本次 Codex 环境无法触达 Supabase。下一次需要在用户本机浏览器/终端网络可达时，重新运行：
+
+```bash
+GATHERUP_RUN_RPC_INTEGRATION=1 GATHERUP_RPC_INTEGRATION_TARGET=clean-dev GATHERUP_RPC_INTEGRATION_ALLOWED_REF=oxbrxkllftyevlzmiydt npm run test:integration:rpc
+```

@@ -678,3 +678,31 @@ Remaining:
 
 - Page-level route protection still uses the prototype cookie bridge and should be replaced by a durable Supabase SSR/session strategy before production.
 - The clean Supabase project still needs live execution of the new RPC and validation scripts.
+
+## 2026-07-16 Clean Dev RPC Integration Retest Attempt
+
+Reason:
+
+- `supabase/migrations/20260705000100_api_rate_limits.sql` added the service-role-only `consume_rate_limit` RPC.
+- `tests/integration/rpc/rate-limit.test.mts` is ready to verify that the RPC counts requests atomically for the service role and rejects anonymous callers.
+- README and repository docs still mark the newer rate-limit integration coverage as ready to run after the clean validation project has the migration applied.
+
+Commands attempted:
+
+```bash
+GATHERUP_RUN_RPC_INTEGRATION=1 GATHERUP_RPC_INTEGRATION_TARGET=clean-dev GATHERUP_RPC_INTEGRATION_ALLOWED_REF=oxbrxkllftyevlzmiydt npm run test:integration:rpc
+curl -I https://oxbrxkllftyevlzmiydt.supabase.co
+```
+
+Observed result:
+
+- In the Codex sandbox, Supabase DNS lookup failed with `getaddrinfo ENOTFOUND`.
+- With escalated network access, DNS resolved but TLS failed before a secure connection was established:
+  - Node/Supabase client: `ECONNRESET`
+  - curl: `LibreSSL SSL_connect: SSL_ERROR_SYSCALL`
+- Default `npm run test:integration:rpc` without the live switches still skipped all live suites successfully, confirming the accidental-live-run guard remains active.
+
+Conclusion:
+
+- This was a network reachability failure from the Codex execution environment, not a database assertion failure.
+- The live status of the newer `consume_rate_limit` integration test remains pending until the clean dev/staging Supabase project is reachable from a normal terminal or browser network.
