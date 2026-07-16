@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Check, Upload, X } from "lucide-react";
+import { Check, RefreshCcw, Upload, X } from "lucide-react";
 
 import type { EventRefundRequest } from "@/lib/organizer-data";
 import { getSupabaseBrowserClient, isSupabaseConfigured } from "@/lib/supabase/client";
@@ -174,12 +174,61 @@ export function RefundReviewPanel({ eventId, refundRequests }: RefundReviewPanel
     }
   }
 
+  async function resolveDispute(refundRequest: EventRefundRequest, resolution: "CONFIRM_REFUNDED" | "REOPEN_PROOF") {
+    setBusyId(refundRequest.id);
+    setNotice("");
+
+    try {
+      const accessToken = await getAccessToken();
+
+      if (!accessToken) return;
+
+      const response = await fetch("/api/orders/refund/dispute", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`
+        },
+        body: JSON.stringify({
+          refund_request_id: refundRequest.id,
+          resolution,
+          note: resolution === "CONFIRM_REFUNDED" ? "主办方确认争议已解决" : "主办方重新处理打款凭证"
+        })
+      });
+      const payload = (await response.json().catch(() => ({}))) as RefundReviewResult;
+
+      if (!response.ok || !payload.ok) {
+        setNotice(payload.message ?? "退款争议处理失败。");
+        return;
+      }
+
+      setRows((current) =>
+        current.map((item) =>
+          item.id === refundRequest.id
+            ? {
+                ...item,
+                proofPath: resolution === "REOPEN_PROOF" ? null : item.proofPath,
+                reviewNote: resolution === "CONFIRM_REFUNDED" ? "主办方确认争议已解决" : "主办方重新处理打款凭证",
+                status: String(payload.status ?? (resolution === "CONFIRM_REFUNDED" ? "confirmed" : "approved"))
+              }
+            : item
+        )
+      );
+      setNotice(resolution === "CONFIRM_REFUNDED" ? `${refundRequest.orderNumber} 争议已解决。` : `${refundRequest.orderNumber} 已重新进入打款凭证上传。`);
+    } catch {
+      setNotice("退款争议处理接口暂时不可用，请稍后重试。");
+    } finally {
+      setBusyId("");
+    }
+  }
+
   const pendingCount = rows.filter((item) => item.status === "requested").length;
+  const disputeCount = rows.filter((item) => item.status === "disputed").length;
 
   return (
     <div className="review-table-stack">
       <div className="review-toolbar">
-        <strong>{pendingCount} 笔退款待审核</strong>
+        <strong>{pendingCount} 笔退款待审核 · {disputeCount} 笔争议</strong>
         <span>同意后请在线下完成打款，并上传退款凭证留档。</span>
       </div>
       {notice && <p className="inline-notice">{notice}</p>}
@@ -194,6 +243,7 @@ export function RefundReviewPanel({ eventId, refundRequests }: RefundReviewPanel
             const isBusy = busyId === refundRequest.id;
             const canReview = refundRequest.status === "requested";
             const canUploadProof = refundRequest.status === "approved" && !refundRequest.proofPath;
+            const canResolveDispute = refundRequest.status === "disputed";
 
             return (
               <div className="table-row" key={refundRequest.id}>
@@ -235,6 +285,16 @@ export function RefundReviewPanel({ eventId, refundRequests }: RefundReviewPanel
                         }}
                       />
                     </label>
+                  )}
+                  {canResolveDispute && (
+                    <>
+                      <button className="mini-action approve" disabled={isBusy} type="button" onClick={() => void resolveDispute(refundRequest, "CONFIRM_REFUNDED")}>
+                        <Check size={14} />确认解决
+                      </button>
+                      <button className="mini-action reject" disabled={isBusy} type="button" onClick={() => void resolveDispute(refundRequest, "REOPEN_PROOF")}>
+                        <RefreshCcw size={14} />重新打款
+                      </button>
+                    </>
                   )}
                   {refundRequest.proofPath && <small>{refundRequest.proofPath}</small>}
                 </span>

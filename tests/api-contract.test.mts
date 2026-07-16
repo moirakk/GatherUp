@@ -37,6 +37,7 @@ describe("registration and payment proof API contracts", () => {
   const paymentReviewRoute = readSource("src/app/api/orders/review/route.ts");
   const orderRefundRoute = readSource("src/app/api/orders/refund/route.ts");
   const orderRefundConfirmRoute = readSource("src/app/api/orders/refund/confirm/route.ts");
+  const orderRefundDisputeRoute = readSource("src/app/api/orders/refund/dispute/route.ts");
   const orderRefundReviewRoute = readSource("src/app/api/orders/refund/review/route.ts");
   const orderRefundProofRoute = readSource("src/app/api/orders/refund/proof/route.ts");
   const expenseProofRoute = readSource("src/app/api/expenses/proof/route.ts");
@@ -413,6 +414,23 @@ describe("registration and payment proof API contracts", () => {
     assert.doesNotMatch(orderRefundConfirmRoute, /\.from\("refund_requests"\)\s*\n\s*\.update/);
     assert.doesNotMatch(orderRefundConfirmRoute, /\.from\("registrations"\)\s*\n\s*\.update/);
     assert.doesNotMatch(orderRefundConfirmRoute, /\.from\("payments"\)\s*\n\s*\.update/);
+  });
+
+  it("keeps organizer refund dispute resolution on the authenticated Supabase RPC path", () => {
+    expectSource(orderRefundDisputeRoute, "getAuthenticatedSupabaseClient(request)");
+    expectSource(orderRefundDisputeRoute, "enforceRateLimit(request");
+    expectSource(orderRefundDisputeRoute, 'keyPrefix: "orders:refund-dispute"');
+    expectSource(orderRefundDisputeRoute, 'authContext.supabase.rpc("resolve_refund_dispute_atomic"');
+    expectSource(orderRefundDisputeRoute, "p_refund_request_id: refundRequestId");
+    expectSource(orderRefundDisputeRoute, "p_resolution: resolution");
+    expectSource(refundReviewPanel, 'fetch("/api/orders/refund/dispute"');
+    expectSource(refundReviewPanel, 'resolveDispute(refundRequest, "CONFIRM_REFUNDED")');
+    expectSource(refundReviewPanel, 'resolveDispute(refundRequest, "REOPEN_PROOF")');
+
+    assert.doesNotMatch(orderRefundDisputeRoute, /getSupabaseServiceClient/);
+    assert.doesNotMatch(orderRefundDisputeRoute, /\.from\("refund_requests"\)\s*\n\s*\.update/);
+    assert.doesNotMatch(orderRefundDisputeRoute, /\.from\("registrations"\)\s*\n\s*\.update/);
+    assert.doesNotMatch(orderRefundDisputeRoute, /\.from\("payments"\)\s*\n\s*\.update/);
   });
 
   it("keeps payment proof files bound to the private Storage object path", () => {

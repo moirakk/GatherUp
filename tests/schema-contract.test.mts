@@ -563,6 +563,24 @@ describe("commercial schema contract", () => {
     assert.doesNotMatch(schema, /grant execute on function public\.confirm_refund_receipt_atomic\(uuid, text, text\) to anon/);
   });
 
+  it("keeps refund dispute resolution atomic and audited", () => {
+    expectSql(schema, "create or replace function public.resolve_refund_dispute_atomic(");
+    expectSql(schema, "v_resolution not in ('CONFIRM_REFUNDED', 'REOPEN_PROOF')");
+    expectSql(schema, "from public.refund_requests rr");
+    expectSql(schema, "join public.registrations r on r.id = rr.registration_id");
+    expectSql(schema, "join public.payments p on p.id = rr.payment_id");
+    expectSql(schema, "for update of rr, r, p;");
+    expectSql(schema, "public.can_handle_event_refunds(v_refund.event_id)");
+    expectSql(schema, "v_refund.refund_status <> 'disputed'");
+    expectSql(schema, "when v_resolution = 'CONFIRM_REFUNDED' then 'confirmed'::refund_status");
+    expectSql(schema, "else 'approved'::refund_status");
+    expectSql(schema, "'refund.dispute_resolved'");
+    expectSql(schema, "'refund.dispute_reopened'");
+    expectSql(schema, "'workflow', 'refund_dispute_resolution'");
+    expectSql(schema, "grant execute on function public.resolve_refund_dispute_atomic(uuid, text, text) to authenticated;");
+    assert.doesNotMatch(schema, /grant execute on function public\.resolve_refund_dispute_atomic\(uuid, text, text\) to anon/);
+  });
+
   it("defines helper and trigger functions before they are used", () => {
     const firstPolicyIndex = schema.indexOf("create policy");
     assert.notEqual(firstPolicyIndex, -1, "Missing RLS policies");

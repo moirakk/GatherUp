@@ -3352,6 +3352,192 @@ $$ language plpgsql security definer set search_path = public, auth, pg_temp;
 revoke all on function public.confirm_refund_receipt_atomic(uuid, text, text) from public;
 grant execute on function public.confirm_refund_receipt_atomic(uuid, text, text) to authenticated;
 
+create or replace function public.resolve_refund_dispute_atomic(
+  p_refund_request_id uuid,
+  p_resolution text,
+  p_note text default null
+)
+returns jsonb as $$
+declare
+  v_actor_id uuid;
+  v_refund record;
+  v_resolution text;
+  v_next_refund_status refund_status;
+  v_next_registration_status registration_status;
+  v_next_payment_status payment_status;
+  v_now timestamptz := now();
+begin
+  v_actor_id := public.current_app_user_id();
+
+  if v_actor_id is null then
+    return jsonb_build_object('success', false, 'error_code', 'UNAUTHORIZED', 'message', 'Please sign in before resolving refund disputes.');
+  end if;
+
+  v_resolution := upper(trim(coalesce(p_resolution, '')));
+
+  if v_resolution not in ('CONFIRM_REFUNDED', 'REOPEN_PROOF') then
+    return jsonb_build_object('success', false, 'error_code', 'INVALID_RESOLUTION', 'message', 'Refund dispute resolution must be CONFIRM_REFUNDED or REOPEN_PROOF.');
+  end if;
+
+  select
+    rr.id as refund_request_id,
+    rr.registration_id,
+    rr.payment_id,
+    rr.status as refund_status,
+    rr.requested_by,
+    rr.requested_amount_cents,
+    rr.approved_amount_cents,
+    r.event_id,
+    r.order_number,
+    r.status as registration_status,
+    p.status as payment_status
+  into v_refund
+  from public.refund_requests rr
+  join public.registrations r on r.id = rr.registration_id
+  join public.payments p on p.id = rr.payment_id
+  where rr.id = p_refund_request_id
+  for update of rr, r, p;
+
+  if not found then
+    return jsonb_build_object('success', false, 'error_code', 'REFUND_REQUEST_NOT_FOUND', 'message', 'Refund request not found.');
+  end if;
+
+  if not (public.can_handle_event_refunds(v_refund.event_id) or public.is_platform_admin()) then
+    return jsonb_build_object('success', false, 'error_code', 'FORBIDDEN', 'message', 'Only refund managers can resolve refund disputes.');
+  end if;
+
+  if v_refund.refund_status <> 'disputed' then
+    return jsonb_build_object('success', false, 'error_code', 'INVALID_REFUND_STATUS', 'message', 'Only disputed refunds can be resolved here.');
+  end if;
+
+  v_next_refund_status := case
+    when v_resolution = 'CONFIRM_REFUNDED' then 'confirmed'::refund_status
+    else 'approved'::refund_status
+  end;
+  v_next_registration_status := case
+    when v_resolution = 'CONFIRM_REFUNDED' then 'refunded'::registration_status
+    else 'refunding'::registration_status
+  end;
+  v_next_payment_status := case
+    when v_resolution = 'CONFIRM_REFUNDED' then 'refunded'::payment_status
+    else 'refunding'::payment_status
+  end;
+
+  update public.refund_requests
+  set
+    status = v_next_refund_status,
+    organizer_note = coalesce(nullif(trim(p_note), ''), organizer_note),
+    confirmed_at = case when v_resolution = 'CONFIRM_REFUNDED' then v_now else confirmed_at end,
+    updated_at = v_now
+  where id = v_refund.refund_request_id;
+
+  update public.registrations
+  set
+    status = v_next_registration_status,
+    updated_at = v_now
+  where id = v_refund.registration_id;
+
+  update public.payments
+  set
+    status = v_next_payment_status,
+    updated_at = v_now
+  where id = v_refund.payment_id;
+
+  insert into public.audit_logs (
+    actor_id,
+    actor_role,
+    event_id,
+    target_type,
+    target_id,
+    action,
+    risk_level,
+    reason,
+    before_snapshot,
+    after_snapshot,
+    metadata
+  ) values (
+    v_actor_id,
+    case when public.is_platform_admin() then 'admin' else 'refund_manager' end,
+    v_refund.event_id,
+    'refund_request',
+    v_refund.refund_request_id,
+    case when v_resolution = 'CONFIRM_REFUNDED' then 'refund.dispute_resolved' else 'refund.dispute_reopened' end,
+    case when v_resolution = 'CONFIRM_REFUNDED' then 'medium' else 'high' end,
+    nullif(trim(coalesce(p_note, '')), ''),
+    jsonb_build_object(
+      'refund_status', v_refund.refund_status,
+      'registration_status', v_refund.registration_status,
+      'payment_status', v_refund.payment_status
+    ),
+    jsonb_build_object(
+      'refund_status', v_next_refund_status,
+      'registration_status', v_next_registration_status,
+      'payment_status', v_next_payment_status
+    ),
+    jsonb_build_object(
+      'registration_id', v_refund.registration_id,
+      'payment_id', v_refund.payment_id,
+      'order_number', v_refund.order_number,
+      'resolution', v_resolution
+    )
+  );
+
+  insert into public.notification_deliveries (
+    event_id,
+    recipient_id,
+    channel,
+    status,
+    template_key,
+    title,
+    body,
+    metadata,
+    sent_at
+  ) values (
+    v_refund.event_id,
+    v_refund.requested_by,
+    'in_app',
+    'sent',
+    case when v_resolution = 'CONFIRM_REFUNDED' then 'refund_confirmed' else 'refund_proof_uploaded' end,
+    case when v_resolution = 'CONFIRM_REFUNDED' then 'Refund confirmed' else 'Refund proof needs update' end,
+    case
+      when v_resolution = 'CONFIRM_REFUNDED' then 'Your refund dispute for order ' || v_refund.order_number || ' has been resolved.'
+      else 'The organizer will upload a new refund proof for order ' || v_refund.order_number || '.'
+    end,
+    jsonb_build_object(
+      'workflow', 'refund_dispute_resolution',
+      'eventId', v_refund.event_id,
+      'registrationId', v_refund.registration_id,
+      'paymentId', v_refund.payment_id,
+      'refundRequestId', v_refund.refund_request_id,
+      'orderNumber', v_refund.order_number,
+      'from', v_refund.refund_status,
+      'to', v_next_refund_status,
+      'resolution', v_resolution
+    ),
+    v_now
+  );
+
+  return jsonb_build_object(
+    'success', true,
+    'refund_request_id', v_refund.refund_request_id,
+    'registration_id', v_refund.registration_id,
+    'order_number', v_refund.order_number,
+    'status', v_next_refund_status,
+    'registration_status', v_next_registration_status,
+    'payment_status', v_next_payment_status
+  );
+exception
+  when deadlock_detected or serialization_failure then
+    return jsonb_build_object('success', false, 'error_code', 'CONCURRENT_CONFLICT', 'message', 'Refund dispute resolution is busy. Please retry.');
+  when others then
+    raise warning '[GatherUp] resolve_refund_dispute_atomic: % | %', sqlstate, sqlerrm;
+    return jsonb_build_object('success', false, 'error_code', 'INTERNAL_ERROR', 'message', 'Refund dispute resolution failed.');
+end;
+$$ language plpgsql security definer set search_path = public, auth, pg_temp;
+
+revoke all on function public.resolve_refund_dispute_atomic(uuid, text, text) from public;
+grant execute on function public.resolve_refund_dispute_atomic(uuid, text, text) to authenticated;
+
 create or replace function public.sync_seat_status_on_assignment()
 returns trigger as $$
 begin
