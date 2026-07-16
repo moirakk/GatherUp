@@ -182,13 +182,13 @@ export function AppShell({ children }: { children: ReactNode }) {
             <Plus size={19} />
           </Link>
           <NotificationBell enabled={session.sessionType === "supabase"} />
-          <span className="account-pill" title={`${session.email} · ${session.gatherUpId}`}>
+          <span className="account-pill mobile-hidden-action" title={`${session.email} · ${session.gatherUpId}`}>
             已登录
           </span>
           <Link className="avatar-button" href="/me" aria-label="个人中心">
             {session.name.slice(0, 1)}
           </Link>
-          <button className="icon-button" type="button" aria-label="退出登录" onClick={logout}>
+          <button className="icon-button mobile-hidden-action" type="button" aria-label="退出登录" onClick={logout}>
             <LogOut size={18} />
           </button>
         </div>

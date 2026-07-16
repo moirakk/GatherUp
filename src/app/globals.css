@@ -2551,6 +2551,33 @@ h3 {
 }
 
 @media (max-width: 620px) {
+  .mobile-hidden-action {
+    display: none;
+  }
+
+  .topbar {
+    gap: 12px;
+    padding-right: 12px;
+    padding-left: 12px;
+  }
+
+  .topbar-actions {
+    gap: 7px;
+  }
+
+  .brand {
+    gap: 9px;
+  }
+
+  .brand-mark {
+    width: 38px;
+    height: 38px;
+  }
+
+  .brand small {
+    display: none;
+  }
+
   h1 {
     font-size: 24px;
   }
@@ -2613,53 +2640,6 @@ h3 {
   width: min(1240px, calc(100% - 40px));
 }
 
-.discovery-header {
-  min-height: 176px;
-  align-items: flex-end;
-  padding: 26px 0 24px;
-  border-bottom: 1px solid var(--line);
-}
-
-.discovery-copy {
-  max-width: 650px;
-}
-
-.discovery-copy h1 {
-  max-width: 620px;
-  margin-bottom: 12px;
-  font-size: clamp(30px, 4vw, 46px);
-  line-height: 1.12;
-  font-weight: 720;
-}
-
-.discovery-copy .subtle {
-  max-width: 610px;
-  margin-bottom: 0;
-  font-size: 15px;
-}
-
-.discovery-stats {
-  display: flex;
-  gap: 0;
-  align-items: center;
-  padding-bottom: 4px;
-}
-
-.discovery-stats span {
-  display: grid;
-  min-width: 92px;
-  gap: 3px;
-  padding: 0 18px;
-  border-left: 1px solid var(--line);
-  color: var(--muted);
-  font-size: 12px;
-}
-
-.discovery-stats strong {
-  color: var(--text);
-  font-size: 20px;
-}
-
 .community-shell .filter-bar {
   gap: 8px;
   margin: 24px 0 20px;
@@ -2680,92 +2660,6 @@ h3 {
   border-color: var(--sage-deep);
   background: var(--sage-deep);
   color: #fff;
-}
-
-.community-shell .event-grid {
-  gap: 20px;
-}
-
-.discovery-event-card {
-  min-height: 360px;
-  overflow: hidden;
-  padding: 0;
-  border-color: #d9ddd7;
-  background: #fff;
-  box-shadow: none;
-  transition: border-color 160ms ease, transform 160ms ease, box-shadow 160ms ease;
-}
-
-.discovery-event-card:hover {
-  border-color: #aab6af;
-  box-shadow: 0 12px 30px rgba(31, 36, 33, 0.08);
-  transform: translateY(-2px);
-}
-
-.event-card-visual {
-  display: flex;
-  min-height: 112px;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 18px;
-  background: #dfe8e3;
-  color: #315442;
-}
-
-.event-card-visual[data-category="校园活动"] {
-  background: #e8e3d8;
-  color: #675638;
-}
-
-.event-card-visual[data-category="会议会务"] {
-  background: #dfe6ec;
-  color: #405f76;
-}
-
-.event-card-visual[data-category="好友聚会"] {
-  background: #eee0dc;
-  color: #7a4f48;
-}
-
-.event-card-visual > div {
-  display: grid;
-  gap: 16px;
-  font-size: 13px;
-  font-weight: 760;
-}
-
-.event-card-visual .status-badge {
-  border: 1px solid rgba(255, 255, 255, 0.7);
-  background: rgba(255, 255, 255, 0.78);
-}
-
-.event-card-content {
-  padding: 18px 18px 8px;
-}
-
-.event-card-content h3 {
-  min-height: 46px;
-  margin-bottom: 8px;
-  font-size: 18px;
-  line-height: 1.42;
-}
-
-.event-kicker {
-  margin-bottom: 7px;
-  color: var(--sage-deep);
-  font-size: 12px;
-  font-weight: 720;
-}
-
-.event-card-cta {
-  min-height: 72px;
-  padding: 14px 18px 18px;
-  border-top: 1px solid #eceeea;
-}
-
-.event-card-cta .button {
-  min-height: 38px;
 }
 
 .workspace-header {
@@ -2985,19 +2879,6 @@ h3 {
     width: min(100% - 24px, 720px);
   }
 
-  .discovery-header {
-    min-height: auto;
-  }
-
-  .discovery-stats {
-    width: 100%;
-  }
-
-  .discovery-stats span:first-child {
-    padding-left: 0;
-    border-left: 0;
-  }
-
   .dashboard-primary-metrics,
   .workspace-shell .setup-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -3005,19 +2886,6 @@ h3 {
 }
 
 @media (max-width: 620px) {
-  .discovery-copy h1 {
-    font-size: 30px;
-  }
-
-  .discovery-stats {
-    justify-content: space-between;
-  }
-
-  .discovery-stats span {
-    min-width: 0;
-    padding: 0 12px;
-  }
-
   .dashboard-primary-metrics,
   .dashboard-health-strip,
   .workspace-shell .setup-grid {

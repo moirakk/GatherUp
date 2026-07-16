@@ -1,5 +1,6 @@
 import { EventBrowser } from "@/components/event-browser";
 import { getPublicEvents } from "@/lib/events-data";
+import styles from "./home.module.css";
 
 export default async function HomePage() {
   const events = await getPublicEvents();
@@ -8,16 +9,18 @@ export default async function HomePage() {
 
   return (
     <>
-      <section className="page-header discovery-header">
-        <div className="discovery-copy">
-          <p className="eyebrow">GatherUp 活动广场</p>
-          <h1>把线上同好，带到真实见面</h1>
-          <p className="subtle">发现可信的线下活动，从报名、付款到现场签到，都在一个清楚的流程里完成。</p>
+      <section className={styles.intro}>
+        <div>
+          <p className={styles.eyebrow}>活动发现 · 2026 夏季</p>
+          <h1>找到下一次值得出门的见面</h1>
         </div>
-        <div className="discovery-stats" aria-label="活动广场概况">
-          <span><strong>{events.length}</strong> 场活动</span>
-          <span><strong>{cityCount}</strong> 座城市</span>
-          <span><strong>{availableSeats}</strong> 个余位</span>
+        <div>
+          <p className={styles.summary}>从小型同好聚会到城市论坛，查看真实余位、报名阶段和场地信息，选择适合你的活动。</p>
+          <dl className={styles.stats} aria-label="活动广场概况">
+            <div><dt>正在招募</dt><dd>{events.length} 场</dd></div>
+            <div><dt>覆盖城市</dt><dd>{cityCount} 座</dd></div>
+            <div><dt>当前余位</dt><dd>{availableSeats} 个</dd></div>
+          </dl>
         </div>
       </section>
 
