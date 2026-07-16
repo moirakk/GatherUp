@@ -375,6 +375,19 @@ describe("commercial schema contract", () => {
     expectSql(schema, "'waitlist_invited'");
     expectSql(schema, "grant execute on function public.invite_waitlist_entry_atomic(uuid) to authenticated;");
     assert.doesNotMatch(schema, /grant execute on function public\.invite_waitlist_entry_atomic\(uuid\) to anon/);
+
+    expectSql(schema, "create or replace function public.convert_waitlist_entry_atomic(");
+    expectSql(schema, "v_entry.waitlist_status <> 'invited'");
+    expectSql(schema, "v_entry.invitation_expires_at is not null and v_entry.invitation_expires_at < now()");
+    expectSql(schema, "v_active_quantity + v_entry.desired_quantity > v_entry.capacity");
+    expectSql(schema, "insert into public.registrations");
+    expectSql(schema, "update public.waitlist_entries");
+    expectSql(schema, "status = 'converted'");
+    expectSql(schema, "converted_registration_id = v_registration_id");
+    expectSql(schema, "'waitlist.converted'");
+    expectSql(schema, "'waitlist_converted'");
+    expectSql(schema, "grant execute on function public.convert_waitlist_entry_atomic(uuid, text, contact_type, text, jsonb, text) to authenticated;");
+    assert.doesNotMatch(schema, /grant execute on function public\.convert_waitlist_entry_atomic\(uuid, text, contact_type, text, jsonb, text\) to anon/);
   });
 
   it("keeps payment review atomic and audited", () => {

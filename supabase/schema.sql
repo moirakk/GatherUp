@@ -1519,6 +1519,270 @@ $$ language plpgsql security definer set search_path = public, auth, pg_temp;
 revoke all on function public.invite_waitlist_entry_atomic(uuid) from public;
 grant execute on function public.invite_waitlist_entry_atomic(uuid) to authenticated;
 
+create or replace function public.convert_waitlist_entry_atomic(
+  p_waitlist_entry_id uuid,
+  p_nickname text,
+  p_contact_type contact_type,
+  p_contact_value text,
+  p_form_answers jsonb default '{}'::jsonb,
+  p_participant_note text default null
+)
+returns jsonb as $$
+declare
+  v_actor_id uuid;
+  v_user_public_id text;
+  v_entry record;
+  v_active_quantity integer;
+  v_next_number integer;
+  v_order_prefix text;
+  v_order_number text;
+  v_registration_id uuid;
+  v_status registration_status;
+begin
+  v_actor_id := public.current_app_user_id();
+
+  if v_actor_id is null then
+    return jsonb_build_object('success', false, 'error_code', 'UNAUTHORIZED', 'message', 'Please sign in before accepting a waitlist invitation.');
+  end if;
+
+  select public_id
+  into v_user_public_id
+  from public.users
+  where id = v_actor_id;
+
+  if nullif(trim(coalesce(p_contact_value, '')), '') is null then
+    return jsonb_build_object('success', false, 'error_code', 'MISSING_CONTACT', 'message', 'Contact value is required.');
+  end if;
+
+  select
+    wl.id as waitlist_entry_id,
+    wl.event_id,
+    wl.user_id,
+    wl.status as waitlist_status,
+    wl.desired_quantity,
+    wl.priority_position,
+    wl.invitation_expires_at,
+    e.public_code,
+    e.order_number_prefix,
+    e.capacity,
+    e.price_cents,
+    e.status as event_status,
+    e.name as event_name
+  into v_entry
+  from public.waitlist_entries wl
+  join public.events e on e.id = wl.event_id
+  where wl.id = p_waitlist_entry_id
+  for update of wl, e;
+
+  if not found then
+    return jsonb_build_object('success', false, 'error_code', 'WAITLIST_ENTRY_NOT_FOUND', 'message', 'Waitlist entry not found.');
+  end if;
+
+  if v_entry.user_id <> v_actor_id then
+    return jsonb_build_object('success', false, 'error_code', 'FORBIDDEN', 'message', 'You can only accept your own waitlist invitation.');
+  end if;
+
+  if v_entry.waitlist_status <> 'invited' then
+    return jsonb_build_object('success', false, 'error_code', 'INVALID_WAITLIST_STATUS', 'message', 'Only invited waitlist entries can be converted.');
+  end if;
+
+  if v_entry.invitation_expires_at is not null and v_entry.invitation_expires_at < now() then
+    update public.waitlist_entries
+    set status = 'expired', updated_at = now()
+    where id = v_entry.waitlist_entry_id;
+
+    return jsonb_build_object('success', false, 'error_code', 'WAITLIST_INVITATION_EXPIRED', 'message', 'This waitlist invitation has expired.');
+  end if;
+
+  if v_entry.event_status <> 'registration_open' then
+    return jsonb_build_object('success', false, 'error_code', 'REGISTRATION_CLOSED', 'message', 'This event is not accepting converted waitlist registrations.');
+  end if;
+
+  if exists (
+    select 1
+    from public.registrations r
+    where r.event_id = v_entry.event_id
+      and r.user_id = v_actor_id
+      and r.status not in ('cancelled', 'expired', 'refunded', 'waitlisted')
+  ) then
+    return jsonb_build_object('success', false, 'error_code', 'ALREADY_REGISTERED', 'message', 'You already have an active registration for this event.');
+  end if;
+
+  select coalesce(sum(r.quantity), 0)
+  into v_active_quantity
+  from public.registrations r
+  where r.event_id = v_entry.event_id
+    and r.status not in ('cancelled', 'expired', 'refunded', 'waitlisted');
+
+  if v_active_quantity + v_entry.desired_quantity > v_entry.capacity then
+    return jsonb_build_object(
+      'success', false,
+      'error_code', 'CAPACITY_EXCEEDED',
+      'message', 'Event capacity has been reached again.',
+      'capacity', v_entry.capacity,
+      'registered_quantity', v_active_quantity
+    );
+  end if;
+
+  insert into public.event_order_counters (event_id, current_number)
+  values (v_entry.event_id, 1)
+  on conflict (event_id)
+  do update set
+    current_number = public.event_order_counters.current_number + 1,
+    updated_at = now()
+  returning current_number into v_next_number;
+
+  v_order_prefix := coalesce(
+    nullif(trim(v_entry.order_number_prefix), ''),
+    regexp_replace(v_entry.public_code, '^GU-', '')
+  );
+  v_order_number := upper(v_order_prefix) || '-' || lpad(v_next_number::text, 4, '0');
+  v_registration_id := gen_random_uuid();
+  v_status := case when v_entry.price_cents > 0 then 'awaiting_payment'::registration_status else 'confirmed'::registration_status end;
+
+  insert into public.registrations (
+    id,
+    event_id,
+    user_id,
+    order_number,
+    nickname,
+    contact_type,
+    contact_value,
+    quantity,
+    amount_due_cents,
+    status,
+    registration_answers,
+    form_answers,
+    participant_note,
+    accepted_terms_at
+  ) values (
+    v_registration_id,
+    v_entry.event_id,
+    v_actor_id,
+    v_order_number,
+    coalesce(nullif(trim(p_nickname), ''), v_user_public_id),
+    p_contact_type,
+    trim(p_contact_value),
+    v_entry.desired_quantity,
+    v_entry.price_cents * v_entry.desired_quantity,
+    v_status,
+    coalesce(p_form_answers, '{}'::jsonb),
+    coalesce(p_form_answers, '{}'::jsonb),
+    nullif(trim(p_participant_note), ''),
+    now()
+  );
+
+  insert into public.registration_attendees (
+    registration_id,
+    user_id,
+    public_id,
+    display_name,
+    is_primary,
+    is_temporary,
+    check_in_status
+  ) values (
+    v_registration_id,
+    v_actor_id,
+    v_user_public_id,
+    coalesce(nullif(trim(p_nickname), ''), v_user_public_id),
+    true,
+    false,
+    'not_arrived'
+  );
+
+  update public.waitlist_entries
+  set
+    status = 'converted',
+    converted_registration_id = v_registration_id,
+    updated_at = now()
+  where id = v_entry.waitlist_entry_id;
+
+  insert into public.audit_logs (
+    actor_id,
+    actor_role,
+    event_id,
+    target_type,
+    target_id,
+    action,
+    risk_level,
+    before_snapshot,
+    after_snapshot,
+    metadata
+  ) values (
+    v_actor_id,
+    'participant',
+    v_entry.event_id,
+    'waitlist_entry',
+    v_entry.waitlist_entry_id,
+    'waitlist.converted',
+    'medium',
+    jsonb_build_object('status', v_entry.waitlist_status),
+    jsonb_build_object('status', 'converted', 'registration_status', v_status),
+    jsonb_build_object(
+      'waitlistEntryId', v_entry.waitlist_entry_id,
+      'registrationId', v_registration_id,
+      'orderNumber', v_order_number,
+      'desiredQuantity', v_entry.desired_quantity,
+      'priorityPosition', v_entry.priority_position
+    )
+  );
+
+  insert into public.notification_deliveries (
+    event_id,
+    recipient_id,
+    channel,
+    status,
+    template_key,
+    title,
+    body,
+    metadata,
+    sent_at
+  ) values (
+    v_entry.event_id,
+    v_actor_id,
+    'in_app',
+    'sent',
+    'waitlist_converted',
+    'Waitlist spot converted',
+    'Your waitlist invitation for ' || v_entry.event_name || ' has been converted into order ' || v_order_number || '.',
+    jsonb_build_object(
+      'workflow', 'waitlist_conversion',
+      'eventId', v_entry.event_id,
+      'waitlistEntryId', v_entry.waitlist_entry_id,
+      'registrationId', v_registration_id,
+      'orderNumber', v_order_number,
+      'status', v_status,
+      'amountDueCents', v_entry.price_cents * v_entry.desired_quantity,
+      'quantity', v_entry.desired_quantity
+    ),
+    now()
+  );
+
+  return jsonb_build_object(
+    'success', true,
+    'waitlist_entry_id', v_entry.waitlist_entry_id,
+    'registration_id', v_registration_id,
+    'order_number', v_order_number,
+    'status', v_status,
+    'payment_status', case when v_entry.price_cents > 0 then 'unpaid' else 'confirmed' end,
+    'amount_due_cents', v_entry.price_cents * v_entry.desired_quantity,
+    'quantity', v_entry.desired_quantity,
+    'event_name', v_entry.event_name
+  );
+exception
+  when deadlock_detected or serialization_failure then
+    return jsonb_build_object('success', false, 'error_code', 'CONCURRENT_CONFLICT', 'message', 'The waitlist conversion is busy. Please retry.');
+  when unique_violation then
+    return jsonb_build_object('success', false, 'error_code', 'DUPLICATE_REGISTRATION', 'message', 'A registration conflict occurred. Please refresh and retry.');
+  when others then
+    raise warning '[GatherUp] convert_waitlist_entry_atomic: % | %', sqlstate, sqlerrm;
+    return jsonb_build_object('success', false, 'error_code', 'INTERNAL_ERROR', 'message', 'Converting waitlist invitation failed.');
+end;
+$$ language plpgsql security definer set search_path = public, auth, pg_temp;
+
+revoke all on function public.convert_waitlist_entry_atomic(uuid, text, contact_type, text, jsonb, text) from public;
+grant execute on function public.convert_waitlist_entry_atomic(uuid, text, contact_type, text, jsonb, text) to authenticated;
+
 create or replace function public.mark_payment_submitted_from_proof()
 returns trigger as $$
 begin

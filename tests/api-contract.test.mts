@@ -47,6 +47,7 @@ describe("registration and payment proof API contracts", () => {
   const seatLockRoute = readSource("src/app/api/seats/lock/route.ts");
   const seatConfirmRoute = readSource("src/app/api/seats/confirm/route.ts");
   const waitlistRoute = readSource("src/app/api/waitlist/route.ts");
+  const waitlistConvertRoute = readSource("src/app/api/waitlist/convert/route.ts");
   const waitlistInviteRoute = readSource("src/app/api/waitlist/invite/route.ts");
   const announcementPublishRoute = readSource("src/app/api/announcements/route.ts");
   const expenseRoute = readSource("src/app/api/expenses/route.ts");
@@ -64,6 +65,7 @@ describe("registration and payment proof API contracts", () => {
   const orderSeatSelectionPanel = readSource("src/components/order-seat-selection-panel.tsx");
   const participantOrderActions = readSource("src/components/participant-order-actions.tsx");
   const refundReviewPanel = readSource("src/components/refund-review-panel.tsx");
+  const waitlistInvitationActions = readSource("src/components/waitlist-invitation-actions.tsx");
   const waitlistPanel = readSource("src/components/waitlist-panel.tsx");
   const orderPage = readSource("src/app/me/orders/[orderNumber]/page.tsx");
   const myOrdersPage = readSource("src/app/me/page.tsx");
@@ -704,12 +706,24 @@ describe("registration and payment proof API contracts", () => {
     expectSource(waitlistInviteRoute, 'authContext.supabase.rpc("invite_waitlist_entry_atomic"');
     expectSource(waitlistInviteRoute, "p_waitlist_entry_id: waitlistEntryId");
     expectSource(waitlistInviteRoute, "INVALID_WAITLIST_STATUS");
+    expectSource(waitlistConvertRoute, "getAuthenticatedSupabaseClient(request)");
+    expectSource(waitlistConvertRoute, "enforceRateLimit(request");
+    expectSource(waitlistConvertRoute, 'keyPrefix: "waitlist:convert"');
+    expectSource(waitlistConvertRoute, 'authContext.supabase.rpc("convert_waitlist_entry_atomic"');
+    expectSource(waitlistConvertRoute, "p_waitlist_entry_id: waitlistEntryId");
+    expectSource(waitlistConvertRoute, "WAITLIST_INVITATION_EXPIRED");
     expectSource(registrationFlow, 'fetch("/api/waitlist"');
     expectSource(registrationFlow, "capacityFull");
     expectSource(registrationFlow, "event.acceptWaitlist !== false");
     expectSource(registrationFlow, "加入候补");
     expectSource(waitlistPanel, 'fetch("/api/waitlist/invite"');
     expectSource(waitlistPanel, "waitlist_entry_id: entry.id");
+    expectSource(waitlistInvitationActions, 'fetch("/api/waitlist/convert"');
+    expectSource(waitlistInvitationActions, "waitlist_entry_id: waitlistEntryId");
+    expectSource(myOrdersPage, "waitlistInvitations");
+    expectSource(myOrdersPage, "<WaitlistInvitationActions");
+    expectSource(ordersData, '.from("waitlist_entries")');
+    expectSource(ordersData, '.in("status", ["waiting", "invited"])');
     expectSource(organizerEventPage, 'import { WaitlistPanel } from "@/components/waitlist-panel";');
     expectSource(organizerEventPage, "waitlistEntries");
     expectSource(organizerEventPage, '<WaitlistPanel entries={waitlistEntries} />');
@@ -722,6 +736,8 @@ describe("registration and payment proof API contracts", () => {
     assert.doesNotMatch(waitlistInviteRoute, /getSupabaseServiceClient/);
     assert.doesNotMatch(waitlistRoute, /\.from\("waitlist_entries"\)\s*\n\s*\.insert/);
     assert.doesNotMatch(waitlistInviteRoute, /\.from\("waitlist_entries"\)\s*\n\s*\.update/);
+    assert.doesNotMatch(waitlistConvertRoute, /\.from\("registrations"\)\s*\n\s*\.insert/);
+    assert.doesNotMatch(waitlistConvertRoute, /\.from\("waitlist_entries"\)\s*\n\s*\.update/);
   });
 
   it("keeps organizer announcements published through an authenticated API route", () => {

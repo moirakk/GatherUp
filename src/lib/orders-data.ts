@@ -50,6 +50,25 @@ type RefundRequestRow = {
   refund_proofs?: RefundProofRow[] | null;
 };
 
+type WaitlistEventRow = EventRow;
+
+type WaitlistEntryRow = {
+  id: string;
+  event_id: string;
+  desired_quantity: number;
+  status: string;
+  priority_position: number | null;
+  note: string | null;
+  invited_at: string | null;
+  invitation_expires_at: string | null;
+  created_at: string;
+  events?: WaitlistEventRow | WaitlistEventRow[] | null;
+};
+
+function firstRelation<T>(value: T | T[] | null | undefined) {
+  return Array.isArray(value) ? value[0] : value;
+}
+
 export type OrderRefundSummary = {
   approvedAmount: number | null;
   confirmedAt: string | null;
@@ -62,6 +81,19 @@ export type OrderRefundSummary = {
   reason: string;
   requestedAmount: number;
   reviewNote: string;
+  status: string;
+};
+
+export type MyWaitlistInvitation = {
+  createdAt: string;
+  desiredQuantity: number;
+  event: GatherEvent | null;
+  eventId: string;
+  expiresAt: string;
+  id: string;
+  invitedAt: string;
+  note: string;
+  priorityPosition: number | null;
   status: string;
 };
 
@@ -104,6 +136,7 @@ export type OrderDetailData = {
 export type MyOrdersData = {
   registrations: Registration[];
   eventsById: Map<string, GatherEvent>;
+  waitlistInvitations: MyWaitlistInvitation[];
   source: "mock" | "supabase";
 };
 
@@ -191,6 +224,23 @@ function rowToRefundSummary(row: RefundRequestRow): OrderRefundSummary {
   };
 }
 
+function rowToMyWaitlistInvitation(row: WaitlistEntryRow): MyWaitlistInvitation {
+  const event = firstRelation(row.events);
+
+  return {
+    createdAt: formatDate(row.created_at),
+    desiredQuantity: row.desired_quantity,
+    event: event ? rowToEvent(event) : null,
+    eventId: row.event_id,
+    expiresAt: formatDate(row.invitation_expires_at),
+    id: row.id,
+    invitedAt: formatDate(row.invited_at),
+    note: row.note ?? "未填写",
+    priorityPosition: row.priority_position,
+    status: row.status
+  };
+}
+
 function mockOrderDetail(orderNumber: string): OrderDetailData | null {
   const registration = findRegistration(orderNumber);
 
@@ -211,6 +261,7 @@ function mockMyOrders(): MyOrdersData {
   return {
     registrations,
     eventsById: new Map(events.map((event) => [event.id, event])),
+    waitlistInvitations: [],
     source: "mock"
   };
 }
@@ -219,6 +270,7 @@ function emptySupabaseMyOrders(): MyOrdersData {
   return {
     registrations: [],
     eventsById: new Map(),
+    waitlistInvitations: [],
     source: "supabase"
   };
 }
@@ -256,10 +308,25 @@ export async function getMyOrders(): Promise<MyOrdersData> {
     }
 
     const registrationRows = (registrationData ?? []) as RegistrationRow[];
-    const eventIds = Array.from(new Set(registrationRows.map((registration) => registration.event_id)));
+    const { data: waitlistData } = await supabase
+      .from("waitlist_entries")
+      .select("id, event_id, desired_quantity, status, priority_position, note, invited_at, invitation_expires_at, created_at, events(id, public_code, name, category, template, custom_type_label, city, venue_name, address, starts_at, registration_deadline, price_cents, capacity, registered_count, accept_waitlist, description, status, allow_multi_person_registration, max_people_per_registration, order_number_prefix, wechat_group_img)")
+      .eq("user_id", appUser.id)
+      .in("status", ["waiting", "invited"])
+      .order("created_at", { ascending: false });
+    const waitlistInvitations = ((waitlistData ?? []) as WaitlistEntryRow[]).map(rowToMyWaitlistInvitation);
+    const eventIds = Array.from(new Set([
+      ...registrationRows.map((registration) => registration.event_id),
+      ...waitlistInvitations.map((entry) => entry.eventId)
+    ]));
 
     if (eventIds.length === 0) {
-      return emptySupabaseMyOrders();
+      return {
+        registrations: [],
+        eventsById: new Map(),
+        waitlistInvitations,
+        source: "supabase"
+      };
     }
 
     const { data: eventData, error: eventError } = await supabase
@@ -274,6 +341,7 @@ export async function getMyOrders(): Promise<MyOrdersData> {
     return {
       registrations: registrationRows.map(rowToRegistration),
       eventsById: new Map(((eventData ?? []) as EventRow[]).map((event) => [event.id, rowToEvent(event)])),
+      waitlistInvitations,
       source: "supabase"
     };
   } catch {
