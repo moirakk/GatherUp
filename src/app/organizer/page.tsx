@@ -1,5 +1,15 @@
 import Link from "next/link";
-import { CalendarCheck, CircleDollarSign, MapPinned, Plus, QrCode, ServerCog } from "lucide-react";
+import {
+  Armchair,
+  CalendarCheck,
+  CircleDollarSign,
+  ClipboardCheck,
+  MapPinned,
+  Plus,
+  QrCode,
+  ServerCog,
+  ShieldCheck
+} from "lucide-react";
 
 import { LocalCreatedEventList } from "@/components/local-created-event-list";
 import { MetricCard } from "@/components/metric-card";
@@ -32,11 +42,11 @@ export default async function OrganizerPage() {
 
   return (
     <>
-      <section className="page-header">
+      <section className="page-header workspace-header">
         <div>
           <p className="eyebrow">组织工作台</p>
-          <h1>需要处理的活动事项</h1>
-          <p className="subtle">先完成活动配置、数调、地点投票和收款二维码，再开放正式报名。</p>
+          <h1>今天需要处理什么</h1>
+          <p className="subtle">先处理会阻塞参与者的事项，再检查筹备进度和活动数据。</p>
         </div>
         <div className="button-row">
           <Link className="button secondary" href="/dev/status">
@@ -50,30 +60,68 @@ export default async function OrganizerPage() {
         </div>
       </section>
 
-      <section className="metrics-grid">
-        <MetricCard label="筹备中活动" value={metrics.activeSetupCount} href={setupHref} />
-        <MetricCard label="已配置收款" value={`${metrics.paymentReadyCount}/${metrics.totalSetups}`} href={paymentHref} />
-        <MetricCard label="待审核付款" value={metrics.pendingPaymentCount} href={pendingPaymentHref} />
-        <MetricCard label="签到率" value={`${metrics.checkInRatePercent}%`} />
-        <MetricCard label="退款风险单" value={metrics.refundExposureCount} />
-        <MetricCard label="选座进度" value={`${metrics.seatingProgressPercent}%`} />
-        <MetricCard label="已确认收入" value={`¥${metrics.confirmedRevenue}`} />
+      <section className="metrics-grid dashboard-primary-metrics" aria-label="关键运营指标">
+        <MetricCard
+          href={pendingPaymentHref}
+          icon={<ClipboardCheck size={19} />}
+          label="待审核付款"
+          meta={metrics.pendingPaymentCount > 0 ? "优先处理，减少等待" : "当前没有积压"}
+          tone={metrics.pendingPaymentCount > 0 ? "attention" : "positive"}
+          value={metrics.pendingPaymentCount}
+        />
+        <MetricCard
+          href={setupHref}
+          icon={<CalendarCheck size={19} />}
+          label="筹备中活动"
+          meta="尚未开放正式报名"
+          value={metrics.activeSetupCount}
+        />
+        <MetricCard
+          icon={<CircleDollarSign size={19} />}
+          label="已确认收入"
+          meta="以审核通过的付款为准"
+          tone="positive"
+          value={`¥${metrics.confirmedRevenue}`}
+        />
+        <MetricCard
+          icon={<CalendarCheck size={19} />}
+          label="签到率"
+          meta="已确认参与者现场数据"
+          value={`${metrics.checkInRatePercent}%`}
+        />
       </section>
 
-      <section className="setup-grid">
-        <OrganizerVerificationPanel />
+      <section className="dashboard-health-strip" aria-label="运营健康度">
+        <Link href={paymentHref}>
+          <span><QrCode size={16} />收款配置</span>
+          <strong>{metrics.paymentReadyCount}/{metrics.totalSetups}</strong>
+        </Link>
+        <div>
+          <span><Armchair size={16} />选座进度</span>
+          <strong>{metrics.seatingProgressPercent}%</strong>
+        </div>
+        <div>
+          <span><ShieldCheck size={16} />退款风险单</span>
+          <strong>{metrics.refundExposureCount}</strong>
+        </div>
       </section>
 
-      <LocalCreatedEventList />
+      <div className="section-title-row">
+        <div>
+          <p className="eyebrow">行动队列</p>
+          <h2>正在筹备的活动</h2>
+        </div>
+        <span>{activeSetups.length} 场需要推进</span>
+      </div>
 
       <section className="setup-grid" id="setup-list">
-        {eventSetups.length === 0 ? (
+        {activeSetups.length === 0 ? (
           <article className="content-card setup-card">
             <div className="section-heading">
               <div>
-                <span className="tag">暂无活动</span>
-                <h2>还没有可管理的活动</h2>
-                <p className="event-meta compact">创建活动后，配置、收款和待办事项会出现在这里。</p>
+                <span className="tag">队列已清空</span>
+                <h2>当前没有筹备中的活动</h2>
+                <p className="event-meta compact">新建活动或检查已经开放报名的活动。</p>
               </div>
               <QrCode size={20} />
             </div>
@@ -127,6 +175,14 @@ export default async function OrganizerPage() {
         })}
       </section>
 
+      <div className="section-title-row table-section-title">
+        <div>
+          <p className="eyebrow">活动总览</p>
+          <h2>全部活动</h2>
+        </div>
+        <span>{events.length} 场活动</span>
+      </div>
+
       <section className="data-table">
         <div className="table-row header">
           <span>活动</span><span>阶段</span><span>报名</span><span>待处理</span><span>操作</span>
@@ -160,6 +216,24 @@ export default async function OrganizerPage() {
           );
         })}
       </section>
+
+      <LocalCreatedEventList />
+
+      <details className="verification-disclosure">
+        <summary>
+          <span>
+            <ShieldCheck size={20} />
+            <span>
+              <strong>收费活动发布资格</strong>
+              <small>仅在需要提交或更新主办认证时展开</small>
+            </span>
+          </span>
+          <span className="status-badge neutral">查看认证</span>
+        </summary>
+        <div className="verification-disclosure-body">
+          <OrganizerVerificationPanel />
+        </div>
+      </details>
     </>
   );
 }

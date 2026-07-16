@@ -84,7 +84,7 @@ describe("organizer dashboard metrics", () => {
     assert.equal(metrics.paidCount, 3);
     assert.equal(metrics.checkInRatePercent, 67);
     assert.equal(metrics.seatedCount, 3);
-    assert.equal(metrics.seatingProgressPercent, 100);
+    assert.equal(metrics.seatingProgressPercent, 50);
     assert.equal(metrics.totalCapacity, 15);
     assert.equal(metrics.confirmedRevenue, 180);
     assert.equal(metrics.refundExposureCount, 1);
@@ -96,5 +96,15 @@ describe("organizer dashboard metrics", () => {
     assert.equal(metrics.checkInRatePercent, 0);
     assert.equal(metrics.seatingProgressPercent, 0);
     assert.equal(metrics.confirmedRevenue, 0);
+  });
+
+  it("never reports progress above one hundred percent when source counters drift", () => {
+    const metrics = buildOrganizerDashboardMetrics(
+      [{ ...baseEvent, paid: 1, seated: 12 }],
+      [],
+      []
+    );
+
+    assert.equal(metrics.seatingProgressPercent, 100);
   });
 });

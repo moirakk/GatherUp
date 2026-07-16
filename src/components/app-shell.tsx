@@ -24,6 +24,13 @@ export function AppShell({ children }: { children: ReactNode }) {
   const router = useRouter();
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [session, setSession] = useState<AuthSession | null>(null);
+  const isWorkspace = pathname.startsWith("/organizer") || pathname.startsWith("/admin") || pathname.startsWith("/dev");
+  const shellClassName = `app-shell ${isWorkspace ? "workspace-shell" : "community-shell"}`;
+
+  function navClassName(href: string) {
+    const isActive = href === "/" ? pathname === href : pathname.startsWith(href);
+    return isActive ? "active" : undefined;
+  }
 
   useEffect(() => {
     let isCancelled = false;
@@ -102,7 +109,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   if (!session && isPublicRoutePath(pathname)) {
     return (
-      <div className="app-shell">
+      <div className="app-shell community-shell">
         <header className="topbar">
           <Link className="brand" href="/">
             <span className="brand-mark">G</span>
@@ -153,21 +160,21 @@ export function AppShell({ children }: { children: ReactNode }) {
   }
 
   return (
-    <div className="app-shell">
+    <div className={shellClassName}>
       <header className="topbar">
         <Link className="brand" href="/">
           <span className="brand-mark">G</span>
           <span>
             <strong>GatherUp</strong>
-            <small>活动组织工作台</small>
+            <small>{isWorkspace ? "主办运营中心" : "让兴趣在线下发生"}</small>
           </span>
         </Link>
 
         <nav className="desktop-nav" aria-label="主导航">
-          <Link href="/">活动广场</Link>
-          <Link href="/venues">场地库</Link>
-          <Link href="/me">我的活动</Link>
-          <Link href="/organizer">工作台</Link>
+          <Link className={navClassName("/")} href="/">活动广场</Link>
+          <Link className={navClassName("/venues")} href="/venues">场地库</Link>
+          <Link className={navClassName("/me")} href="/me">我的活动</Link>
+          <Link className={navClassName("/organizer")} href="/organizer">工作台</Link>
         </nav>
 
         <div className="topbar-actions">

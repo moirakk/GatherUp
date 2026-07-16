@@ -15,7 +15,7 @@ export type OrganizerDashboardMetrics = {
 };
 
 function percent(part: number, total: number) {
-  return total > 0 ? Math.round((part / total) * 100) : 0;
+  return total > 0 ? Math.min(100, Math.round((part / total) * 100)) : 0;
 }
 
 export function buildOrganizerDashboardMetrics(
@@ -29,6 +29,7 @@ export function buildOrganizerDashboardMetrics(
     .filter((registration) => registration.checkInStatus === "CHECKED_IN")
     .reduce((sum, registration) => sum + registration.quantity, 0);
   const seatedCount = events.reduce((sum, event) => sum + event.seated, 0);
+  const eventPaidCount = events.reduce((sum, event) => sum + event.paid, 0);
   const totalCapacity = events.reduce((sum, event) => sum + event.capacity, 0);
 
   return {
@@ -42,7 +43,7 @@ export function buildOrganizerDashboardMetrics(
       (registration) => registration.paymentStatus === "已退款" || registration.registrationStatus === "已取消"
     ).length,
     seatedCount,
-    seatingProgressPercent: percent(seatedCount, paidCount),
+    seatingProgressPercent: percent(seatedCount, eventPaidCount),
     totalCapacity,
     totalSetups: eventSetups.length
   };

@@ -501,8 +501,8 @@ describe("registration and payment proof API contracts", () => {
     expectSource(organizerPage, "buildOrganizerDashboardMetrics(events, eventSetups, registrations)");
     expectSource(organizerPage, "<OrganizerVerificationPanel />");
     expectSource(organizerPage, 'label="签到率"');
-    expectSource(organizerPage, 'label="退款风险单"');
-    expectSource(organizerPage, 'label="选座进度"');
+    expectSource(organizerPage, "退款风险单");
+    expectSource(organizerPage, "选座进度");
     expectSource(organizerPage, 'label="已确认收入"');
     expectSource(organizerPage, "organizersByEventId.get(event.id)");
     expectSource(organizerPage, 'href="/organizer/events/new"');
