@@ -45,6 +45,7 @@ export type EventOrganizer = {
   publicId: string;
   name: string;
   role: EventOrganizerRole;
+  status?: "invited" | "active" | "declined";
 };
 
 export type Registration = {

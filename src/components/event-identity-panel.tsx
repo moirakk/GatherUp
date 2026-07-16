@@ -31,6 +31,12 @@ function roleValue(role: string) {
   return roles[role] ?? "viewer";
 }
 
+function organizerStatusLabel(status: EventOrganizer["status"]) {
+  if (status === "invited") return "待接受";
+  if (status === "declined") return "已拒绝";
+  return "已生效";
+}
+
 export function EventIdentityPanel({ eventId, publicCode, organizers }: EventIdentityPanelProps) {
   const [notice, setNotice] = useState("");
   const [isInviteOpen, setIsInviteOpen] = useState(false);
@@ -89,7 +95,7 @@ export function EventIdentityPanel({ eventId, publicCode, organizers }: EventIde
         return;
       }
 
-      setNotice("协作者已添加。");
+      setNotice("协作者邀请已发送，TA 接受后才会获得对应权限。");
       setInviteForm({ publicId: "", role: "cohost", canManagePayments: false });
       setIsInviteOpen(false);
       window.location.reload();
@@ -207,7 +213,7 @@ export function EventIdentityPanel({ eventId, publicCode, organizers }: EventIde
       <div className="organizer-list">
         {organizers.map((organizer) => (
           <div className="result-row" key={`${organizer.eventId}-${organizer.publicId}`}>
-            <span>{organizer.name} · {organizer.publicId}</span>
+            <span>{organizer.name} · {organizer.publicId} · {organizerStatusLabel(organizer.status)}</span>
             <span className="button-row">
               {organizer.role === "主办" ? (
                 <strong>{organizer.role}</strong>
@@ -242,7 +248,7 @@ export function EventIdentityPanel({ eventId, publicCode, organizers }: EventIde
       </div>
       <button className="button secondary compact" type="button" onClick={() => setIsInviteOpen((current) => !current)}>
         <UserPlus size={15} />
-        {isInviteOpen ? "收起协作者" : "添加协作者"}
+        {isInviteOpen ? "收起协作者" : "邀请协作者"}
       </button>
       {isInviteOpen && (
         <div className="expense-form">
@@ -275,7 +281,7 @@ export function EventIdentityPanel({ eventId, publicCode, organizers }: EventIde
           </div>
           <button className="button primary" disabled={isSaving} type="button" onClick={addOrganizer}>
             <UserPlus size={16} />
-            {isSaving ? "添加中" : "保存协作者"}
+            {isSaving ? "发送中" : "发送邀请"}
           </button>
         </div>
       )}

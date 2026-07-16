@@ -112,6 +112,7 @@ Supabase live 状态：
 - 活动管理台已新增第一版现场核销面板：主办/现场人员可输入订单号、核销码或 `gatherup://check-in/` 链接，前端通过 Supabase session 调用 `/api/orders/verify`，展示成功人数和最近 10 条本地核销记录；v0.1 暂不接摄像头扫码。
 - 退款链路已覆盖申请、审核、凭证上传、参与者确认/争议和主办争议处理：`request_refund_atomic`、`review_refund_request_atomic`、`record_refund_proof_atomic`、`confirm_refund_receipt_atomic`、`resolve_refund_dispute_atomic` 分别驱动对应 API。数据库函数会同步订单/付款/退款状态并写入 `audit_logs`。
 - 退款 UI 已接线：参与者订单详情可提交退款原因、确认已收款或提出争议；活动管理台读取本活动 `refund_requests`，主办可同意/拒绝、上传 `refund-proofs/{event_id}/{refund_request_id}/{filename}`，并对争议选择“确认解决”或“重新打款”。
+- 协作者邀请已从“直接授权”收紧为“邀请确认”：`event_organizers.status` 区分 `invited`、`active`、`declined`，所有活动管理/编辑/财务/付款/退款权限 helper 只认可 `active` 协作者；`respond_event_organizer_invitation_atomic` 和 `/api/events/organizers/respond` 用于被邀请者接受或拒绝，并写入审计日志和站内通知。
 - 主办敏感 API 已从原型 cookie 身份切换到 Supabase Bearer/SSR cookie 统一验证：活动创建、付款审核、核销、名单导出和财务导出不再信任可被客户端伪造的 `gatherup_id` cookie。
 - 这些 API/RPC 仍是早期产品集成层，但付款凭证 Storage 链路、付款审核 RPC、座位锁 RPC、核销 RPC、退款申请/审核/凭证 RPC 和 waitlist 加入/邀请/转正 RPC 已经在干净 Supabase 项目中用真实用户 session 通过集成验证；更多 UI 级端到端流程和新增工作流 RLS 仍需要继续补齐。
 - 主办公告中心已接入真实发布路径：登录主办通过 `/api/announcements` 写入 `announcements` 表，并由数据库 RLS/权限函数控制是否可编辑活动；外部邮件、短信和微信通知仍是后续 channel 层。
@@ -331,7 +332,7 @@ Supabase 接入：
 - 页面路由保护已开始迁移到 Supabase SSR session；原型 cookie 仍保留给部分本地 UI 状态和未完全迁移的组件，不再作为正式主办 API 权限依据。
 - 已配置 Supabase 时，资料补全页和账号中心可以更新 `users` 表；未配置时仍使用本地原型。
 - 付款截图和退款凭证已有真实 Storage/RLS/API/RPC 路径并通过 clean Supabase 集成验证；支出凭证已有 `expense-proofs` 上传、`event_expenses.proof_url` 更新和软作废路径，作废时不删除私有 Storage 原文件，上传/作废也会写入 `audit_logs` 保存前后凭证路径；收款码版本管理仍需继续补齐到完整产品 UI。
-- 创建活动分步向导已支持本地草稿保存和发布前检查；配置 Supabase 时创建按钮会调用受控活动创建 API 并写入真实活动表。创建后的活动管理台已支持通过受控编辑 API 修改活动名称、城市、场地、地址、人数上限、活动时间、报名截止和说明；人数上限不能低于当前有效报名数。活动身份面板已支持通过 GatherUp ID 添加、调整和移除非主办协作者，管理台也会展示该活动最近的审计日志时间线。
+- 创建活动分步向导已支持本地草稿保存和发布前检查；配置 Supabase 时创建按钮会调用受控活动创建 API 并写入真实活动表。创建后的活动管理台已支持通过受控编辑 API 修改活动名称、城市、场地、地址、人数上限、活动时间、报名截止和说明；人数上限不能低于当前有效报名数。活动身份面板已支持通过 GatherUp ID 邀请、调整和移除非主办协作者，协作者接受邀请前不会获得管理权限，管理台也会展示该活动最近的审计日志时间线。
 - 主办公告发布已写入数据库；报名提醒、邮件、短信和微信等外部发送仍未接入真实 provider。
 - 报名、付款、选座、核销、退款和候补的关键数据库路径已经建立并验证；退款已补到参与者确认收款/提出争议与主办争议处理，候补已补到参与者满员加入候补、主办台邀请候补、参与者接受邀请并生成正式订单。仍需要更完整的 UI 级端到端 QA。
 - 权限规则已经在 Supabase RLS、RPC 和 API helper 中落地到核心路径；新增工作流仍需要同步扩展 RLS 与 contract tests。
@@ -341,7 +342,7 @@ Supabase 接入：
 
 第一优先级：
 
-- 继续补齐活动创建后的协作者邀请确认和更细的发布状态流；当前已支持基础信息编辑、开放后关键编辑触发平台复审、协作者添加/调整/移除、事务化审计日志记录、主办台审计时间线、主办认证申请入口、后台活动审核队列、收费活动发布前认证/活动审核门槛，并支持从草稿/数调/待开放报名推进到 `registration_open`。
+- 继续补齐活动创建后的更细发布状态流；当前已支持基础信息编辑、开放后关键编辑触发平台复审、协作者邀请确认/调整/移除、事务化审计日志记录、主办台审计时间线、主办认证申请入口、后台活动审核队列、收费活动发布前认证/活动审核门槛，并支持从草稿/数调/待开放报名推进到 `registration_open`。
 - 补齐财务支出凭证导出证据链、支出编辑、支出凭证 RPC 化和更多 UI 级验证；当前已支持支出凭证上传/替换、软作废当前凭证和上传/作废审计日志。
 - 围绕参与者报名、付款截图、主办审核、选座、核销、退款、财务导出和公告发布补 UI 级端到端验证。
 - 继续保持 README、GitHub profile copy、当前状态文档和真实代码同步。

@@ -89,6 +89,12 @@ create type event_organizer_role as enum (
   'viewer'
 );
 
+create type event_organizer_status as enum (
+  'invited',
+  'active',
+  'declined'
+);
+
 create type event_fee_mode as enum ('free', 'paid', 'split');
 create type event_expense_category as enum (
   'venue',
@@ -417,8 +423,11 @@ create table public.event_organizers (
   event_id uuid not null references public.events(id) on delete cascade,
   user_id uuid not null references public.users(id) on delete cascade,
   role event_organizer_role not null default 'cohost',
+  status event_organizer_status not null default 'active',
   permissions jsonb not null default '{}'::jsonb,
   invited_by uuid references public.users(id) on delete set null,
+  accepted_at timestamptz,
+  declined_at timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   unique (event_id, user_id)
@@ -3574,6 +3583,7 @@ returns boolean as $$
     from public.event_organizers eo
     where eo.event_id = target_event_id
       and eo.user_id = public.current_app_user_id()
+      and eo.status = 'active'
       and eo.role in ('owner', 'cohost', 'finance', 'staff')
   );
 $$ language sql stable security definer set search_path = public;
@@ -3591,6 +3601,7 @@ returns boolean as $$
     from public.event_organizers eo
     where eo.event_id = target_event_id
       and eo.user_id = public.current_app_user_id()
+      and eo.status = 'active'
       and eo.role in ('owner', 'cohost')
   );
 $$ language sql stable security definer set search_path = public;
@@ -3608,6 +3619,7 @@ returns boolean as $$
     from public.event_organizers eo
     where eo.event_id = target_event_id
       and eo.user_id = public.current_app_user_id()
+      and eo.status = 'active'
       and eo.role in ('owner', 'cohost', 'finance')
   );
 $$ language sql stable security definer set search_path = public;
@@ -3625,6 +3637,7 @@ returns boolean as $$
     from public.event_organizers eo
     where eo.event_id = target_event_id
       and eo.user_id = public.current_app_user_id()
+      and eo.status = 'active'
       and (
         eo.role in ('owner', 'finance')
         or (eo.role = 'cohost' and coalesce((eo.permissions ->> 'can_manage_payments')::boolean, false))
@@ -3645,6 +3658,7 @@ returns boolean as $$
     from public.event_organizers eo
     where eo.event_id = target_event_id
       and eo.user_id = public.current_app_user_id()
+      and eo.status = 'active'
       and eo.role in ('owner', 'finance')
   );
 $$ language sql stable security definer set search_path = public;
@@ -3726,7 +3740,7 @@ begin
     return jsonb_build_object('success', false, 'error_code', 'OWNER_PROTECTED', 'message', 'Event owner cannot be changed through collaborator management.');
   end if;
 
-  select id, user_id, role, permissions
+  select id, user_id, role, status, permissions
   into v_existing
   from public.event_organizers
   where event_id = p_event_id
@@ -3772,7 +3786,7 @@ begin
       'event_organizer.removed',
       'medium',
       nullif(trim(coalesce(p_reason, '')), ''),
-      jsonb_build_object('role', v_existing.role, 'permissions', v_existing.permissions, 'user_id', v_existing.user_id),
+      jsonb_build_object('role', v_existing.role, 'status', v_existing.status, 'permissions', v_existing.permissions, 'user_id', v_existing.user_id),
       null,
       jsonb_build_object('source', 'rpc.manage_event_organizer_atomic', 'target_public_id', v_target_user.public_id),
       nullif(trim(coalesce(p_user_agent, '')), '')
@@ -3790,6 +3804,9 @@ begin
     set
       role = p_role,
       permissions = v_permissions,
+      status = case when v_action = 'add' and v_existing.status = 'declined' then 'invited'::event_organizer_status else status end,
+      invited_by = case when v_action = 'add' and v_existing.status = 'declined' then v_actor_id else invited_by end,
+      declined_at = case when v_action = 'add' and v_existing.status = 'declined' then null else declined_at end,
       updated_at = now()
     where id = v_existing.id
       and role <> 'owner'
@@ -3801,12 +3818,14 @@ begin
       event_id,
       user_id,
       role,
+      status,
       permissions,
       invited_by
     ) values (
       p_event_id,
       v_target_user.id,
       p_role,
+      'invited',
       v_permissions,
       v_actor_id
     )
@@ -3839,12 +3858,48 @@ begin
     nullif(trim(coalesce(p_reason, '')), ''),
     case
       when v_existing.id is null then null
-      else jsonb_build_object('role', v_existing.role, 'permissions', v_existing.permissions, 'user_id', v_existing.user_id)
+      else jsonb_build_object('role', v_existing.role, 'status', v_existing.status, 'permissions', v_existing.permissions, 'user_id', v_existing.user_id)
     end,
-    jsonb_build_object('role', p_role, 'permissions', v_permissions, 'user_id', v_target_user.id),
+    jsonb_build_object(
+      'role', p_role,
+      'status', case when v_action = 'add' and (v_existing.id is null or v_existing.status = 'declined') then 'invited' else coalesce(v_existing.status::text, 'active') end,
+      'permissions', v_permissions,
+      'user_id', v_target_user.id
+    ),
     jsonb_build_object('source', 'rpc.manage_event_organizer_atomic', 'target_public_id', v_target_user.public_id),
     nullif(trim(coalesce(p_user_agent, '')), '')
   );
+
+  if v_action = 'add' and (v_existing.id is null or v_existing.status = 'declined') then
+    insert into public.notification_deliveries (
+      event_id,
+      recipient_id,
+      channel,
+      status,
+      template_key,
+      title,
+      body,
+      metadata,
+      sent_at
+    ) values (
+      p_event_id,
+      v_target_user.id,
+      'in_app',
+      'sent',
+      'event_organizer_invited',
+      'Event collaborator invitation',
+      'You have been invited to collaborate on an event. Accept the invitation before managing it.',
+      jsonb_build_object(
+        'workflow', 'event_organizer_invitation',
+        'eventId', p_event_id,
+        'organizerId', v_organizer_id,
+        'role', p_role,
+        'permissions', v_permissions,
+        'publicId', v_target_user.public_id
+      ),
+      now()
+    );
+  end if;
 
   return jsonb_build_object(
     'success', true,
@@ -3853,6 +3908,7 @@ begin
     'event_id', p_event_id,
     'public_id', v_target_user.public_id,
     'role', p_role,
+    'status', case when v_action = 'add' and (v_existing.id is null or v_existing.status = 'declined') then 'invited' else coalesce(v_existing.status::text, 'active') end,
     'permissions', v_permissions
   );
 exception
@@ -3868,6 +3924,150 @@ $$ language plpgsql security definer set search_path = public, auth, pg_temp;
 
 revoke all on function public.manage_event_organizer_atomic(uuid, text, text, event_organizer_role, jsonb, text, text) from public;
 grant execute on function public.manage_event_organizer_atomic(uuid, text, text, event_organizer_role, jsonb, text, text) to authenticated;
+
+create or replace function public.respond_event_organizer_invitation_atomic(
+  p_event_id uuid,
+  p_response text,
+  p_user_agent text default null
+)
+returns jsonb as $$
+declare
+  v_actor_id uuid;
+  v_response text;
+  v_invitation record;
+  v_next_status event_organizer_status;
+  v_now timestamptz := now();
+begin
+  v_actor_id := public.current_app_user_id();
+  v_response := upper(trim(coalesce(p_response, '')));
+
+  if v_actor_id is null then
+    return jsonb_build_object('success', false, 'error_code', 'UNAUTHORIZED', 'message', 'Please sign in before responding to collaborator invitations.');
+  end if;
+
+  if p_event_id is null or v_response not in ('ACCEPT', 'DECLINE') then
+    return jsonb_build_object('success', false, 'error_code', 'INVALID_RESPONSE', 'message', 'Invitation response must be ACCEPT or DECLINE.');
+  end if;
+
+  select
+    eo.id,
+    eo.event_id,
+    eo.user_id,
+    eo.role,
+    eo.status,
+    eo.permissions,
+    e.organizer_id,
+    e.name as event_name
+  into v_invitation
+  from public.event_organizers eo
+  join public.events e on e.id = eo.event_id
+  where eo.event_id = p_event_id
+    and eo.user_id = v_actor_id
+  for update of eo;
+
+  if not found then
+    return jsonb_build_object('success', false, 'error_code', 'INVITATION_NOT_FOUND', 'message', 'Collaborator invitation not found.');
+  end if;
+
+  if v_invitation.status <> 'invited' then
+    return jsonb_build_object('success', false, 'error_code', 'INVALID_INVITATION_STATUS', 'message', 'Only pending collaborator invitations can be answered.');
+  end if;
+
+  v_next_status := case when v_response = 'ACCEPT' then 'active'::event_organizer_status else 'declined'::event_organizer_status end;
+
+  update public.event_organizers
+  set
+    status = v_next_status,
+    accepted_at = case when v_response = 'ACCEPT' then v_now else accepted_at end,
+    declined_at = case when v_response = 'DECLINE' then v_now else declined_at end,
+    updated_at = v_now
+  where id = v_invitation.id;
+
+  insert into public.audit_logs (
+    actor_id,
+    actor_role,
+    event_id,
+    target_type,
+    target_id,
+    action,
+    risk_level,
+    reason,
+    before_snapshot,
+    after_snapshot,
+    metadata,
+    user_agent
+  ) values (
+    v_actor_id,
+    'event_collaborator',
+    p_event_id,
+    'event_organizer',
+    v_invitation.id,
+    case when v_response = 'ACCEPT' then 'event_organizer.invitation_accepted' else 'event_organizer.invitation_declined' end,
+    case when v_response = 'ACCEPT' then 'medium' else 'low' end,
+    null,
+    jsonb_build_object('role', v_invitation.role, 'status', v_invitation.status, 'permissions', v_invitation.permissions),
+    jsonb_build_object('role', v_invitation.role, 'status', v_next_status, 'permissions', v_invitation.permissions),
+    jsonb_build_object(
+      'source', 'rpc.respond_event_organizer_invitation_atomic',
+      'response', v_response,
+      'ownerId', v_invitation.organizer_id,
+      'eventName', v_invitation.event_name
+    ),
+    nullif(trim(coalesce(p_user_agent, '')), '')
+  );
+
+  insert into public.notification_deliveries (
+    event_id,
+    recipient_id,
+    channel,
+    status,
+    template_key,
+    title,
+    body,
+    metadata,
+    sent_at
+  ) values (
+    p_event_id,
+    v_invitation.organizer_id,
+    'in_app',
+    'sent',
+    case when v_response = 'ACCEPT' then 'event_organizer_invitation_accepted' else 'event_organizer_invitation_declined' end,
+    case when v_response = 'ACCEPT' then 'Collaborator accepted' else 'Collaborator declined' end,
+    case when v_response = 'ACCEPT' then 'A collaborator accepted the invitation for ' || v_invitation.event_name || '.'
+      else 'A collaborator declined the invitation for ' || v_invitation.event_name || '.'
+    end,
+    jsonb_build_object(
+      'workflow', 'event_organizer_invitation',
+      'eventId', p_event_id,
+      'organizerId', v_invitation.id,
+      'userId', v_actor_id,
+      'role', v_invitation.role,
+      'from', v_invitation.status,
+      'to', v_next_status,
+      'response', v_response
+    ),
+    v_now
+  );
+
+  return jsonb_build_object(
+    'success', true,
+    'event_id', p_event_id,
+    'organizer_id', v_invitation.id,
+    'role', v_invitation.role,
+    'status', v_next_status,
+    'response', v_response
+  );
+exception
+  when deadlock_detected or serialization_failure then
+    return jsonb_build_object('success', false, 'error_code', 'CONCURRENT_CONFLICT', 'message', 'Collaborator invitation is busy. Please retry.');
+  when others then
+    raise warning '[GatherUp] respond_event_organizer_invitation_atomic: % | %', sqlstate, sqlerrm;
+    return jsonb_build_object('success', false, 'error_code', 'INTERNAL_ERROR', 'message', 'Collaborator invitation response failed.');
+end;
+$$ language plpgsql security definer set search_path = public, auth, pg_temp;
+
+revoke all on function public.respond_event_organizer_invitation_atomic(uuid, text, text) from public;
+grant execute on function public.respond_event_organizer_invitation_atomic(uuid, text, text) to authenticated;
 
 create or replace function public.mark_notification_deliveries_read(
   p_notification_id uuid default null,

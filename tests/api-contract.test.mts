@@ -30,6 +30,7 @@ function listApiRouteFiles(dir = join(repoRoot, "src/app/api")): string[] {
 describe("registration and payment proof API contracts", () => {
   const eventRoute = readSource("src/app/api/events/route.ts");
   const eventOrganizerRoute = readSource("src/app/api/events/organizers/route.ts");
+  const eventOrganizerRespondRoute = readSource("src/app/api/events/organizers/respond/route.ts");
   const eventPublishRoute = readSource("src/app/api/events/publish/route.ts");
   const eventUpdateRoute = readSource("src/app/api/events/update/route.ts");
   const orderRoute = readSource("src/app/api/orders/route.ts");
@@ -255,6 +256,20 @@ describe("registration and payment proof API contracts", () => {
     expectSource(eventIdentityPanel, "can_manage_payments");
     expectSource(eventIdentityPanel, 'organizer.role === "主办"');
     expectSource(eventIdentityPanel, 'className="compact-select"');
+    expectSource(eventIdentityPanel, "organizerStatusLabel");
+  });
+
+  it("keeps collaborator invitation responses on the authenticated atomic RPC path", () => {
+    expectSource(eventOrganizerRespondRoute, "getAuthenticatedSupabaseClient(request)");
+    expectSource(eventOrganizerRespondRoute, "enforceRateLimit(request");
+    expectSource(eventOrganizerRespondRoute, 'keyPrefix: "events:organizers-respond"');
+    expectSource(eventOrganizerRespondRoute, 'authContext.supabase.rpc("respond_event_organizer_invitation_atomic"');
+    expectSource(eventOrganizerRespondRoute, "p_event_id: eventId");
+    expectSource(eventOrganizerRespondRoute, "p_response: response");
+    expectSource(eventOrganizerRespondRoute, "p_user_agent: request.headers.get(\"user-agent\") ?? \"unknown\"");
+    assert.doesNotMatch(eventOrganizerRespondRoute, /getSupabaseServiceClient/);
+    assert.doesNotMatch(eventOrganizerRespondRoute, /\.from\("event_organizers"\)/);
+    assert.doesNotMatch(eventOrganizerRespondRoute, /\.from\("audit_logs"\)/);
   });
 
   it("keeps participant payment proof submission gated by identity and order ownership", () => {
@@ -497,6 +512,7 @@ describe("registration and payment proof API contracts", () => {
     expectSource(organizerData, "findUserByAuthUserId(supabase, user.id)");
     expectSource(organizerData, '.from("event_organizers")');
     expectSource(organizerData, '.eq("user_id", appUser.id)');
+    expectSource(organizerData, '.eq("status", "active")');
     expectSource(organizerData, '.eq("organizer_id", appUser.id)');
     expectSource(organizerData, "eventRowToGatherEvent(row)");
     expectSource(organizerData, "rowToRegistration");

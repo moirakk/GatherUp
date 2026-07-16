@@ -219,6 +219,7 @@ describe("commercial schema contract", () => {
 
     assert.ok(extractEnumValues("event_organizer_role").includes("cohost"));
     assert.equal(extractEnumValues("event_organizer_role").includes("co_host"), false);
+    assert.deepEqual(extractEnumValues("event_organizer_status"), ["invited", "active", "declined"]);
     assert.ok(extractEnumValues("registration_status").includes("payment_submitted"));
     assert.ok(extractEnumValues("registration_status").includes("partial_paid_needs_topup"));
     assert.ok(extractEnumValues("payment_status").includes("topup_required"));
@@ -278,10 +279,17 @@ describe("commercial schema contract", () => {
   });
 
   it("keeps collaborator management atomic and audited in the database", () => {
+    const collaboratorBlock = extractTableBlock("event_organizers");
+
+    assert.match(collaboratorBlock, /status event_organizer_status not null default 'active'/);
+    assert.match(collaboratorBlock, /accepted_at timestamptz/);
+    assert.match(collaboratorBlock, /declined_at timestamptz/);
     expectSql(schema, "create or replace function public.manage_event_organizer_atomic");
     expectSql(schema, "if not (public.can_edit_event(p_event_id) or public.is_platform_admin()) then");
     expectSql(schema, "if p_role = 'owner' then");
     expectSql(schema, "if v_event.organizer_id = v_target_user.id then");
+    expectSql(schema, "status = case when v_action = 'add' and v_existing.status = 'declined' then 'invited'::event_organizer_status else status end");
+    expectSql(schema, "'event_organizer_invited'");
     expectSql(schema, "target_type,\n      target_id,\n      action,");
     expectSql(schema, "'event_organizer.removed'");
     expectSql(schema, "'event_organizer.role_updated'");
@@ -290,6 +298,22 @@ describe("commercial schema contract", () => {
     expectSql(schema, "delete from public.event_organizers");
     expectSql(schema, "update public.event_organizers");
     expectSql(schema, "grant execute on function public.manage_event_organizer_atomic(uuid, text, text, event_organizer_role, jsonb, text, text) to authenticated;");
+  });
+
+  it("keeps collaborator invitations pending until the recipient responds", () => {
+    expectSql(schema, "and eo.status = 'active'");
+    expectSql(schema, "create or replace function public.respond_event_organizer_invitation_atomic(");
+    expectSql(schema, "v_response not in ('ACCEPT', 'DECLINE')");
+    expectSql(schema, "where eo.event_id = p_event_id\n    and eo.user_id = v_actor_id");
+    expectSql(schema, "for update of eo;");
+    expectSql(schema, "if v_invitation.status <> 'invited' then");
+    expectSql(schema, "v_next_status := case when v_response = 'ACCEPT' then 'active'::event_organizer_status else 'declined'::event_organizer_status end;");
+    expectSql(schema, "'event_organizer.invitation_accepted'");
+    expectSql(schema, "'event_organizer.invitation_declined'");
+    expectSql(schema, "'event_organizer_invitation_accepted'");
+    expectSql(schema, "'workflow', 'event_organizer_invitation'");
+    expectSql(schema, "grant execute on function public.respond_event_organizer_invitation_atomic(uuid, text, text) to authenticated;");
+    assert.doesNotMatch(schema, /grant execute on function public\.respond_event_organizer_invitation_atomic\(uuid, text, text\) to anon/);
   });
 
   it("keeps notification deliveries able to store queued message content", () => {

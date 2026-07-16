@@ -88,6 +88,18 @@ const notificationTemplates: Record<string, NotificationTemplate> = {
     title: "Waitlist entry cancelled",
     body: "Your waitlist entry for {eventName} has been cancelled."
   },
+  event_organizer_invited: {
+    title: "Collaborator invitation",
+    body: "You have been invited to collaborate on {eventName}. Accept the invitation before managing it."
+  },
+  event_organizer_invitation_accepted: {
+    title: "Collaborator accepted",
+    body: "A collaborator accepted the invitation for {eventName}."
+  },
+  event_organizer_invitation_declined: {
+    title: "Collaborator declined",
+    body: "A collaborator declined the invitation for {eventName}."
+  },
   registration_cancelled: {
     title: "Registration cancelled",
     body: "Order {orderNumber} for {eventName} has been cancelled."

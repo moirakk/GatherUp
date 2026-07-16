@@ -15,6 +15,12 @@ const riskTone: Record<string, string> = {
 
 const actionLabels: Record<string, string> = {
   "event.organizer.added": "新增协作者",
+  "event_organizer.added": "邀请协作者",
+  "event_organizer.invitation_accepted": "协作者接受邀请",
+  "event_organizer.invitation_declined": "协作者拒绝邀请",
+  "event_organizer.role_updated": "调整协作者角色",
+  "event_organizer.removed": "移除协作者",
+  "event_organizer.updated": "更新协作者",
   "event.organizer.updated": "更新协作者",
   "event.organizer.removed": "移除协作者",
   "payment.approved": "付款审核通过",

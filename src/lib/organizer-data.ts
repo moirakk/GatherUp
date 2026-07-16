@@ -31,6 +31,7 @@ import { rowToRegistration, type RegistrationRow } from "@/lib/orders-data";
 type EventOrganizerRow = {
   event_id: string;
   role: string;
+  status?: string | null;
   users?:
     | {
         id: string;
@@ -506,7 +507,8 @@ function organizerRowsToMap(rows: EventOrganizerRow[]) {
       userId: user.id,
       publicId: user.public_id,
       name: user.name,
-      role: mapOrganizerRole(row.role)
+      role: mapOrganizerRole(row.role),
+      status: row.status === "invited" || row.status === "declined" ? row.status : "active"
     });
     organizerMap.set(row.event_id, organizers);
   }
@@ -539,7 +541,8 @@ export async function getOrganizerDashboard(): Promise<OrganizerDashboardData> {
     const { data: membershipData, error: membershipError } = await supabase
       .from("event_organizers")
       .select("event_id")
-      .eq("user_id", appUser.id);
+      .eq("user_id", appUser.id)
+      .eq("status", "active");
 
     if (membershipError) {
       return emptySupabaseOrganizerDashboard();
@@ -588,7 +591,7 @@ export async function getOrganizerDashboard(): Promise<OrganizerDashboardData> {
         .in("event_id", eventIds),
       supabase
         .from("event_organizers")
-        .select("event_id, role, users(id, public_id, name)")
+        .select("event_id, role, status, users(id, public_id, name)")
         .in("event_id", eventIds)
     ]);
 
@@ -674,7 +677,7 @@ export async function getOrganizerEventDetail(eventId: string): Promise<Organize
         .eq("event_id", eventRow.id),
       supabase
         .from("event_organizers")
-        .select("event_id, role, users(id, public_id, name)")
+        .select("event_id, role, status, users(id, public_id, name)")
         .eq("event_id", eventRow.id),
       supabase
         .from("audit_logs")
