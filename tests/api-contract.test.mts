@@ -61,6 +61,8 @@ describe("registration and payment proof API contracts", () => {
   const notificationBell = readSource("src/components/notification-bell.tsx");
   const checkInPanel = readSource("src/components/check-in-panel.tsx");
   const orderSeatSelectionPanel = readSource("src/components/order-seat-selection-panel.tsx");
+  const participantOrderActions = readSource("src/components/participant-order-actions.tsx");
+  const refundReviewPanel = readSource("src/components/refund-review-panel.tsx");
   const orderPage = readSource("src/app/me/orders/[orderNumber]/page.tsx");
   const myOrdersPage = readSource("src/app/me/page.tsx");
   const organizerPage = readSource("src/app/organizer/page.tsx");
@@ -329,9 +331,16 @@ describe("registration and payment proof API contracts", () => {
     expectSource(orderRefundRoute, "getAuthenticatedSupabaseClient(request)");
     expectSource(orderRefundRoute, "enforceRateLimit(request");
     expectSource(orderRefundRoute, 'keyPrefix: "orders:refund"');
+    expectSource(orderRefundRoute, 'getString(body, ["order_number", "orderNumber"])');
+    expectSource(orderRefundRoute, '.from("registrations")');
+    expectSource(orderRefundRoute, '.select("id")');
+    expectSource(orderRefundRoute, '.eq("order_number", orderNumber)');
     expectSource(orderRefundRoute, 'authContext.supabase.rpc("request_refund_atomic"');
     expectSource(orderRefundRoute, "p_registration_id: registrationId");
     expectSource(orderRefundRoute, "p_reason: reason");
+    expectSource(participantOrderActions, 'fetch("/api/orders/refund"');
+    expectSource(participantOrderActions, "order_number: registration.orderNumber");
+    expectSource(participantOrderActions, "reason");
 
     assert.doesNotMatch(orderRefundRoute, /getSupabaseServiceClient/);
     assert.doesNotMatch(orderRefundRoute, /\.from\("refund_requests"\)\s*\n\s*\.insert/);
@@ -346,6 +355,8 @@ describe("registration and payment proof API contracts", () => {
     expectSource(orderRefundReviewRoute, 'authContext.supabase.rpc("review_refund_request_atomic"');
     expectSource(orderRefundReviewRoute, "p_refund_request_id: refundRequestId");
     expectSource(orderRefundReviewRoute, "p_decision: decision");
+    expectSource(refundReviewPanel, 'fetch("/api/orders/refund/review"');
+    expectSource(refundReviewPanel, 'result === "APPROVED"');
 
     assert.doesNotMatch(orderRefundReviewRoute, /getSupabaseServiceClient/);
     assert.doesNotMatch(orderRefundReviewRoute, /\.from\("refund_requests"\)\s*\n\s*\.update/);
@@ -366,6 +377,10 @@ describe("registration and payment proof API contracts", () => {
     expectSource(orderRefundProofRoute, 'authContext.supabase.rpc("record_refund_proof_atomic"');
     expectSource(orderRefundProofRoute, "p_refund_request_id: refundRequestId");
     expectSource(orderRefundProofRoute, "p_file_url: storagePath");
+    expectSource(refundReviewPanel, '.from("refund-proofs")');
+    expectSource(refundReviewPanel, 'fetch("/api/orders/refund/proof"');
+    expectSource(refundReviewPanel, "refund_request_id: refundRequest.id");
+    expectSource(refundReviewPanel, "storage_path: storagePath");
 
     assert.doesNotMatch(orderRefundProofRoute, /getSupabaseServiceClient/);
     assert.doesNotMatch(orderRefundProofRoute, /\.from\("refund_proofs"\)\s*\n\s*\.insert/);
@@ -508,12 +523,15 @@ describe("registration and payment proof API contracts", () => {
     expectSource(organizerEventPage, 'import { getOrganizerEventDetail } from "@/lib/organizer-data";');
     expectSource(organizerEventPage, 'import { AuditLogTimeline } from "@/components/audit-log-timeline";');
     expectSource(organizerEventPage, 'import { CheckInPanel } from "@/components/check-in-panel";');
+    expectSource(organizerEventPage, 'import { RefundReviewPanel } from "@/components/refund-review-panel";');
     expectSource(organizerEventPage, "await getOrganizerEventDetail(eventId)");
-    expectSource(organizerEventPage, "const { announcements, auditLogs, event, organizers, registrations, setup } = eventDetail;");
+    expectSource(organizerEventPage, "const { announcements, auditLogs, event, organizers, refundRequests, registrations, setup } = eventDetail;");
     expectSource(organizerEventPage, "<AuditLogTimeline logs={auditLogs} />");
     expectSource(organizerEventPage, "<CheckInPanel />");
+    expectSource(organizerEventPage, "<RefundReviewPanel eventId={event.id} refundRequests={refundRequests} />");
     expectSource(organizerData, "export async function getOrganizerEventDetail(eventId: string)");
     expectSource(organizerData, "auditLogs: EventAuditLog[];");
+    expectSource(organizerData, "refundRequests: EventRefundRequest[];");
     expectSource(organizerData, "await createSupabaseServerClient()");
     expectSource(organizerData, "findUserByAuthUserId(supabase, user.id)");
     expectSource(organizerData, "await canManageEvent(supabase, eventRow.id)");
@@ -521,6 +539,8 @@ describe("registration and payment proof API contracts", () => {
     expectSource(organizerData, '.from("registrations")');
     expectSource(organizerData, '.from("event_organizers")');
     expectSource(organizerData, '.from("audit_logs")');
+    expectSource(organizerData, '.from("refund_requests")');
+    expectSource(organizerData, "refundRequestRowToEventRefundRequest");
     expectSource(organizerData, '.select("id, actor_role, target_type, action, risk_level, reason, before_snapshot, after_snapshot, created_at")');
     expectSource(organizerData, ".limit(12)");
     expectSource(auditLogTimeline, "export function AuditLogTimeline");

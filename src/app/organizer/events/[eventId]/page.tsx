@@ -13,6 +13,7 @@ import { OrganizerEventActions } from "@/components/organizer-event-actions";
 import { PaymentReviewTable } from "@/components/payment-review-table";
 import { PollDecisionPanel } from "@/components/poll-decision-panel";
 import { PromotionCenter } from "@/components/promotion-center";
+import { RefundReviewPanel } from "@/components/refund-review-panel";
 import { SeatMap } from "@/components/seat-map";
 import { WorkflowStepper } from "@/components/workflow-stepper";
 import { getOrganizerEventDetail } from "@/lib/organizer-data";
@@ -38,7 +39,7 @@ export default async function OrganizerEventPage({ params, searchParams }: Organ
     notFound();
   }
 
-  const { announcements, auditLogs, event, organizers, registrations, setup } = eventDetail;
+  const { announcements, auditLogs, event, organizers, refundRequests, registrations, setup } = eventDetail;
   const activePanel = getPanelId(panel);
   const totalSurveyVotes = setup.surveyOptions.reduce((sum, option) => sum + option.votes, 0);
   const totalVenueVotes = setup.venueOptions.reduce((sum, option) => sum + option.votes, 0);
@@ -163,6 +164,7 @@ export default async function OrganizerEventPage({ params, searchParams }: Organ
                 <div className="segmented"><span>报名</span><span>付款</span><span>座位</span></div>
               </div>
               <PaymentReviewTable registrations={registrations} />
+              <RefundReviewPanel eventId={event.id} refundRequests={refundRequests} />
               <CheckInPanel />
             </article>
           )}
@@ -245,6 +247,7 @@ export default async function OrganizerEventPage({ params, searchParams }: Organ
             <div className="segmented"><span>报名</span><span>付款</span><span>座位</span></div>
           </div>
           <PaymentReviewTable registrations={registrations} />
+          <RefundReviewPanel eventId={event.id} refundRequests={refundRequests} />
           <CheckInPanel />
         </article>
 

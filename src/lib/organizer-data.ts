@@ -97,6 +97,32 @@ type AuditLogRow = {
   created_at: string;
 };
 
+type RefundRegistrationRow = {
+  amount_due_cents: number;
+  nickname: string;
+  order_number: string;
+  quantity: number;
+  status: string;
+};
+
+type RefundProofRow = {
+  amount_cents: number | null;
+  file_url: string;
+  uploaded_at: string;
+};
+
+type RefundRequestRow = {
+  id: string;
+  status: string;
+  requested_amount_cents: number;
+  approved_amount_cents: number | null;
+  reason: string;
+  organizer_note: string | null;
+  created_at: string;
+  registrations?: RefundRegistrationRow | RefundRegistrationRow[] | null;
+  refund_proofs?: RefundProofRow[] | null;
+};
+
 function firstRelation<T>(value: T | T[] | null | undefined) {
   return Array.isArray(value) ? value[0] : value;
 }
@@ -121,6 +147,7 @@ export type OrganizerEventDetailData = {
   event: GatherEvent;
   organizers: EventOrganizer[];
   registrations: Registration[];
+  refundRequests: EventRefundRequest[];
   setup: EventSetup;
   source: "mock" | "supabase";
 };
@@ -135,6 +162,22 @@ export type EventAuditLog = {
   reason: string;
   riskLevel: string;
   targetType: string;
+};
+
+export type EventRefundRequest = {
+  approvedAmount: number | null;
+  createdAt: string;
+  id: string;
+  orderAmount: number;
+  orderNumber: string;
+  participantName: string;
+  proofAmount: number | null;
+  proofPath: string | null;
+  quantity: number;
+  reason: string;
+  requestedAmount: number;
+  reviewNote: string;
+  status: string;
 };
 
 export type OrganizerFinanceDetailData = {
@@ -227,6 +270,27 @@ function auditLogRowToEventAuditLog(row: AuditLogRow): EventAuditLog {
   };
 }
 
+function refundRequestRowToEventRefundRequest(row: RefundRequestRow): EventRefundRequest {
+  const registration = firstRelation(row.registrations);
+  const proof = row.refund_proofs?.[0] ?? null;
+
+  return {
+    approvedAmount: row.approved_amount_cents === null ? null : Math.round(row.approved_amount_cents / 100),
+    createdAt: formatDateTime(row.created_at),
+    id: row.id,
+    orderAmount: Math.round((registration?.amount_due_cents ?? 0) / 100),
+    orderNumber: registration?.order_number ?? "未知订单",
+    participantName: registration?.nickname ?? "未知参与者",
+    proofAmount: proof?.amount_cents === null || proof?.amount_cents === undefined ? null : Math.round(proof.amount_cents / 100),
+    proofPath: proof?.file_url ?? null,
+    quantity: registration?.quantity ?? 0,
+    reason: row.reason,
+    requestedAmount: Math.round(row.requested_amount_cents / 100),
+    reviewNote: row.organizer_note ?? "未填写",
+    status: row.status
+  };
+}
+
 function mockOrganizerEventDetail(eventId: string): OrganizerEventDetailData | null {
   const event = findEvent(eventId);
 
@@ -240,6 +304,7 @@ function mockOrganizerEventDetail(eventId: string): OrganizerEventDetailData | n
     event,
     organizers: getEventOrganizers(event.id),
     registrations: getEventRegistrations(event.id),
+    refundRequests: [],
     setup: getEventSetup(event.id),
     source: "mock"
   };
@@ -547,7 +612,7 @@ export async function getOrganizerEventDetail(eventId: string): Promise<Organize
       return null;
     }
 
-    const [announcementResult, registrationResult, organizerResult, auditLogResult] = await Promise.all([
+    const [announcementResult, registrationResult, organizerResult, auditLogResult, refundRequestResult] = await Promise.all([
       supabase
         .from("announcements")
         .select("id, event_id, title, body, status, published_at")
@@ -566,10 +631,15 @@ export async function getOrganizerEventDetail(eventId: string): Promise<Organize
         .select("id, actor_role, target_type, action, risk_level, reason, before_snapshot, after_snapshot, created_at")
         .eq("event_id", eventRow.id)
         .order("created_at", { ascending: false })
-        .limit(12)
+        .limit(12),
+      supabase
+        .from("refund_requests")
+        .select("id, status, requested_amount_cents, approved_amount_cents, reason, organizer_note, created_at, registrations!inner(order_number, nickname, quantity, amount_due_cents, status, event_id), refund_proofs(file_url, amount_cents, uploaded_at)")
+        .eq("registrations.event_id", eventRow.id)
+        .order("created_at", { ascending: false })
     ]);
 
-    if (announcementResult.error || registrationResult.error || organizerResult.error || auditLogResult.error) {
+    if (announcementResult.error || registrationResult.error || organizerResult.error || auditLogResult.error || refundRequestResult.error) {
       return null;
     }
 
@@ -589,6 +659,7 @@ export async function getOrganizerEventDetail(eventId: string): Promise<Organize
       event,
       organizers: organizerRowsToMap((organizerResult.data ?? []) as EventOrganizerRow[]).get(eventRow.id) ?? [],
       registrations: eventRegistrations,
+      refundRequests: ((refundRequestResult.data ?? []) as RefundRequestRow[]).map(refundRequestRowToEventRefundRequest),
       setup: eventRowToSetup(eventRow),
       source: "supabase"
     };

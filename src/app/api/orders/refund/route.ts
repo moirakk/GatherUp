@@ -6,6 +6,8 @@ import { getAuthenticatedSupabaseClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
 
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export async function POST(request: Request) {
   const rateLimitResponse = await enforceRateLimit(request, {
     keyPrefix: "orders:refund",
@@ -31,10 +33,12 @@ export async function POST(request: Request) {
     return jsonError("请求体不是合法 JSON。");
   }
 
-  const registrationId = getString(body, ["registration_id", "registrationId", "order_id", "orderId"]);
+  const registrationInput = getString(body, ["registration_id", "registrationId", "order_id", "orderId"]);
+  const explicitOrderNumber = getString(body, ["order_number", "orderNumber"]);
+  const orderNumber = explicitOrderNumber || (registrationInput && !UUID_PATTERN.test(registrationInput) ? registrationInput : "");
   const reason = getString(body, ["reason", "refund_reason", "refundReason"]);
 
-  if (!registrationId) {
+  if (!registrationInput && !orderNumber) {
     return jsonError("缺少 registration_id。");
   }
 
@@ -43,6 +47,26 @@ export async function POST(request: Request) {
   }
 
   try {
+    let registrationId = UUID_PATTERN.test(registrationInput) ? registrationInput : "";
+
+    if (orderNumber && !registrationId) {
+      const { data: registration, error: registrationError } = await authContext.supabase
+        .from("registrations")
+        .select("id")
+        .eq("order_number", orderNumber)
+        .maybeSingle();
+
+      if (registrationError) {
+        return jsonError(registrationError.message, 500);
+      }
+
+      registrationId = typeof registration?.id === "string" ? registration.id : "";
+    }
+
+    if (!registrationId) {
+      return jsonError("找不到可申请退款的订单。", 404);
+    }
+
     const requestedAmountCents = getNumber(body, ["requested_amount_cents", "requestedAmountCents"], 0);
     const { data, error } = await authContext.supabase.rpc("request_refund_atomic", {
       p_registration_id: registrationId,

@@ -1611,6 +1611,10 @@ h3 {
   opacity: 0.45;
 }
 
+.mini-action input[type="file"] {
+  display: none;
+}
+
 .segmented {
   display: inline-flex;
   gap: 4px;
