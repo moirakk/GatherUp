@@ -29,11 +29,11 @@ GatherUp is designed as a general offline event platform, not a fandom-only tool
 
 ## Product Preview
 
-The screenshots below are generated from the local Next.js app and committed as repository assets.
+The screenshots below are generated from the current local Next.js app and committed as repository assets. The participant surface is optimized for event discovery, while the organizer surface prioritizes operational actions, payment review, progress, and activity status.
 
-| Account and Auth Foundation | Public Event Detail |
+| Participant Event Discovery | Organizer Operations Dashboard |
 | --- | --- |
-| ![GatherUp account and auth screen](./docs/assets/gatherup-home.png) | ![GatherUp public event detail screen](./docs/assets/gatherup-event-detail.png) |
+| ![GatherUp participant event discovery](./docs/assets/gatherup-activity-discovery.jpg) | ![GatherUp organizer operations dashboard](./docs/assets/gatherup-organizer-dashboard.jpg) |
 
 ## Product Architecture Snapshot
 
