@@ -79,6 +79,8 @@ type EventRow = {
   registration_deadline: string | null;
   price_cents: number;
   capacity: number;
+  registered_count: number;
+  accept_waitlist: boolean;
   description: string | null;
   status: string;
   allow_multi_person_registration: boolean;
@@ -134,12 +136,13 @@ function rowToEvent(row: EventRow): GatherEvent {
     deadline: formatDate(row.registration_deadline),
     price: Math.round(row.price_cents / 100),
     capacity: row.capacity,
-    registered: 0,
+    registered: row.registered_count ?? 0,
     paid: 0,
     seated: 0,
     status: row.status === "completed" ? "已结束" : "报名中",
     allowMulti: row.allow_multi_person_registration,
     maxPeoplePerOrder: row.max_people_per_registration,
+    acceptWaitlist: row.accept_waitlist,
     orderPrefix: row.order_number_prefix ?? row.public_code.replace(/^GU-/, "").slice(0, 8),
     wechatGroupImg: row.wechat_group_img ?? undefined,
     description: row.description ?? "活动详情由主办方补充。"
@@ -261,7 +264,7 @@ export async function getMyOrders(): Promise<MyOrdersData> {
 
     const { data: eventData, error: eventError } = await supabase
       .from("events")
-      .select("id, public_code, name, category, template, custom_type_label, city, venue_name, address, starts_at, registration_deadline, price_cents, capacity, description, status, allow_multi_person_registration, max_people_per_registration, order_number_prefix, wechat_group_img")
+      .select("id, public_code, name, category, template, custom_type_label, city, venue_name, address, starts_at, registration_deadline, price_cents, capacity, registered_count, accept_waitlist, description, status, allow_multi_person_registration, max_people_per_registration, order_number_prefix, wechat_group_img")
       .in("id", eventIds);
 
     if (eventError) {
@@ -321,7 +324,7 @@ export async function getOrderDetail(orderNumber: string): Promise<OrderDetailDa
 
     const { data: eventData, error: eventError } = await supabase
       .from("events")
-      .select("id, public_code, name, category, template, custom_type_label, city, venue_name, address, starts_at, registration_deadline, price_cents, capacity, description, status, allow_multi_person_registration, max_people_per_registration, order_number_prefix, wechat_group_img")
+        .select("id, public_code, name, category, template, custom_type_label, city, venue_name, address, starts_at, registration_deadline, price_cents, capacity, registered_count, accept_waitlist, description, status, allow_multi_person_registration, max_people_per_registration, order_number_prefix, wechat_group_img")
       .eq("id", registration.eventId)
       .single();
 

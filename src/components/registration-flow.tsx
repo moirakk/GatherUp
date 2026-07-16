@@ -38,6 +38,15 @@ type CreatedOrder = {
   amount_due_cents?: number;
 };
 
+type WaitlistResult = {
+  desired_quantity?: number;
+  message?: string;
+  ok?: boolean;
+  priority_position?: number;
+  status?: string;
+  waitlist_entry_id?: string;
+};
+
 const flowSteps: Array<{ key: FlowStep; label: string }> = [
   { key: "role", label: "登录身份" },
   { key: "survey", label: "数调" },
@@ -75,6 +84,8 @@ export function RegistrationFlow({ event, initialStep, setup }: RegistrationFlow
   const [selectedSchedules, setSelectedSchedules] = useState<string[]>([scheduleOptions[1]]);
   const [selectedLocation, setSelectedLocation] = useState(event.venue);
   const [message, setMessage] = useState("");
+  const [isJoiningWaitlist, setIsJoiningWaitlist] = useState(false);
+  const [waitlistStatus, setWaitlistStatus] = useState("");
 
   const orderNumber = createdOrderNumber || `${event.orderPrefix}-0029`;
   const amount = event.price * quantity;
@@ -82,6 +93,8 @@ export function RegistrationFlow({ event, initialStep, setup }: RegistrationFlow
   const registrationOpen = setup.setupStatus === "报名已开放";
   const paymentReady = isFreeEvent || setup.paymentQrStatus === "已配置";
   const canEnterRegistration = registrationOpen && paymentReady;
+  const capacityFull = event.registered >= event.capacity;
+  const canJoinWaitlist = registrationOpen && capacityFull && event.acceptWaitlist !== false;
   const [step, setStep] = useState<FlowStep>(() => getInitialStep(initialStep, canEnterRegistration));
   const participantStage = step === "locked"
     ? "已提交意向，等待报名开放"
@@ -259,6 +272,11 @@ export function RegistrationFlow({ event, initialStep, setup }: RegistrationFlow
   async function submitProfile() {
     setMessage("");
 
+    if (capacityFull) {
+      setMessage(canJoinWaitlist ? "活动名额已满，请先加入候补。" : "活动名额已满，且主办方未开放候补。");
+      return;
+    }
+
     if (isFreeEvent) {
       await createPendingOrder();
       setStep("waiting");
@@ -266,6 +284,47 @@ export function RegistrationFlow({ event, initialStep, setup }: RegistrationFlow
     }
 
     setStep("payment");
+  }
+
+  async function joinWaitlist() {
+    setMessage("");
+    setIsJoiningWaitlist(true);
+
+    try {
+      const accessToken = await getAccessToken();
+
+      if (!accessToken) {
+        setMessage("真实候补需要先使用 Supabase 账号登录。");
+        return;
+      }
+
+      const response = await fetch("/api/waitlist", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`
+        },
+        body: JSON.stringify({
+          event_id: event.id,
+          desired_quantity: quantity,
+          participant_note: formAnswers
+        })
+      });
+      const result = (await response.json().catch(() => ({}))) as WaitlistResult;
+
+      if (!response.ok || !result.ok) {
+        setMessage(result.message ?? "加入候补失败。");
+        return;
+      }
+
+      setWaitlistStatus(`候补已提交，当前排序：${result.priority_position ?? "待计算"}`);
+      setMessage("候补申请已提交；有名额释放时，主办方会发出转正邀请。");
+      setStep("waiting");
+    } catch {
+      setMessage("候补接口暂时不可用，请稍后重试。");
+    } finally {
+      setIsJoiningWaitlist(false);
+    }
   }
 
   async function submitPayment() {
@@ -445,8 +504,8 @@ export function RegistrationFlow({ event, initialStep, setup }: RegistrationFlow
               </div>
 
               <div className="state-summary">
-                <strong>你现在还没有付款，也还没有选座。</strong>
-                <span>提交后会生成订单号；付款确认前不会开放选座。</span>
+                <strong>{capacityFull ? "当前活动名额已满。" : "你现在还没有付款，也还没有选座。"}</strong>
+                <span>{capacityFull ? "如果主办方开放候补，你可以先加入候补队列，等待名额释放。" : "提交后会生成订单号；付款确认前不会开放选座。"}</span>
               </div>
 
               <div className="form-grid">
@@ -483,10 +542,25 @@ export function RegistrationFlow({ event, initialStep, setup }: RegistrationFlow
                 <span>{event.allowMulti ? `本活动允许多人报名，最多 ${event.maxPeoplePerOrder} 人。同行人需要填写 GatherUp ID，方便对账、选座和入场核验。` : "本活动不允许多人报名，每个订单固定 1 人。"}</span>
               </div>
 
-              <button className="button primary" type="button" onClick={submitProfile}>
-                <ShieldCheck size={17} />
-                生成订单
-              </button>
+              {capacityFull ? (
+                <div className="notice-list">
+                  <div>
+                    <UsersRound size={16} />
+                    {canJoinWaitlist ? "名额已满，但主办方接受候补。" : "名额已满，主办方暂未开放候补。"}
+                  </div>
+                  {canJoinWaitlist && (
+                    <button className="button primary" type="button" disabled={isJoiningWaitlist} onClick={() => void joinWaitlist()}>
+                      <ShieldCheck size={17} />
+                      {isJoiningWaitlist ? "提交候补中" : "加入候补"}
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <button className="button primary" type="button" onClick={submitProfile}>
+                  <ShieldCheck size={17} />
+                  生成订单
+                </button>
+              )}
             </div>
           )}
 
@@ -550,8 +624,8 @@ export function RegistrationFlow({ event, initialStep, setup }: RegistrationFlow
                 订单 {orderNumber} 已进入组织者确认队列。组织者确认付款后，系统才会开放选座或签到。
               </p>
               <div className="state-summary">
-                <strong>{isFreeEvent ? "你已提交报名，等待组织者确认。" : "你已提交付款截图，但付款尚未确认。"}</strong>
-                <span>确认前不会开放选座；确认后订单详情页会显示下一步入口。</span>
+                <strong>{waitlistStatus || (isFreeEvent ? "你已提交报名，等待组织者确认。" : "你已提交付款截图，但付款尚未确认。")}</strong>
+                <span>{waitlistStatus ? "收到候补邀请后，请按通知及时完成转正报名。" : "确认前不会开放选座；确认后订单详情页会显示下一步入口。"}</span>
               </div>
               <Link className="button secondary" href={`/me/orders/${orderNumber}`}>查看订单详情</Link>
             </div>

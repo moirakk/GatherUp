@@ -24,6 +24,7 @@ export type GatherEvent = {
   price: number;
   capacity: number;
   registered: number;
+  acceptWaitlist?: boolean;
   paid: number;
   seated: number;
   status: EventStatus;

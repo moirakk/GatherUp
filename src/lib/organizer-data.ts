@@ -123,6 +123,24 @@ type RefundRequestRow = {
   refund_proofs?: RefundProofRow[] | null;
 };
 
+type WaitlistUserRow = {
+  id: string;
+  name: string;
+  public_id: string;
+};
+
+type WaitlistEntryRow = {
+  id: string;
+  desired_quantity: number;
+  status: string;
+  priority_position: number | null;
+  note: string | null;
+  invited_at: string | null;
+  invitation_expires_at: string | null;
+  created_at: string;
+  users?: WaitlistUserRow | WaitlistUserRow[] | null;
+};
+
 function firstRelation<T>(value: T | T[] | null | undefined) {
   return Array.isArray(value) ? value[0] : value;
 }
@@ -150,6 +168,7 @@ export type OrganizerEventDetailData = {
   refundRequests: EventRefundRequest[];
   setup: EventSetup;
   source: "mock" | "supabase";
+  waitlistEntries: EventWaitlistEntry[];
 };
 
 export type EventAuditLog = {
@@ -177,6 +196,19 @@ export type EventRefundRequest = {
   reason: string;
   requestedAmount: number;
   reviewNote: string;
+  status: string;
+};
+
+export type EventWaitlistEntry = {
+  createdAt: string;
+  desiredQuantity: number;
+  expiresAt: string;
+  id: string;
+  invitedAt: string;
+  note: string;
+  participantName: string;
+  priorityPosition: number | null;
+  publicId: string;
   status: string;
 };
 
@@ -291,6 +323,23 @@ function refundRequestRowToEventRefundRequest(row: RefundRequestRow): EventRefun
   };
 }
 
+function waitlistEntryRowToEventWaitlistEntry(row: WaitlistEntryRow): EventWaitlistEntry {
+  const user = firstRelation(row.users);
+
+  return {
+    createdAt: formatDateTime(row.created_at),
+    desiredQuantity: row.desired_quantity,
+    expiresAt: formatDateTime(row.invitation_expires_at),
+    id: row.id,
+    invitedAt: formatDateTime(row.invited_at),
+    note: row.note ?? "未填写",
+    participantName: user?.name ?? "未知参与者",
+    priorityPosition: row.priority_position,
+    publicId: user?.public_id ?? "未知 ID",
+    status: row.status
+  };
+}
+
 function mockOrganizerEventDetail(eventId: string): OrganizerEventDetailData | null {
   const event = findEvent(eventId);
 
@@ -306,7 +355,8 @@ function mockOrganizerEventDetail(eventId: string): OrganizerEventDetailData | n
     registrations: getEventRegistrations(event.id),
     refundRequests: [],
     setup: getEventSetup(event.id),
-    source: "mock"
+    source: "mock",
+    waitlistEntries: []
   };
 }
 
@@ -498,14 +548,14 @@ export async function getOrganizerDashboard(): Promise<OrganizerDashboardData> {
     const memberEventIds = (membershipData ?? []).map((row) => row.event_id as string);
     const ownedEventsQuery = supabase
       .from("events")
-      .select("id, public_code, name, category, template, custom_type_label, city, venue_name, address, starts_at, registration_deadline, price_cents, custom_form_config, payment_code_img, wechat_group_img, capacity, description, status, allow_multi_person_registration, max_people_per_registration, order_number_prefix")
+      .select("id, public_code, name, category, template, custom_type_label, city, venue_name, address, starts_at, registration_deadline, price_cents, custom_form_config, payment_code_img, wechat_group_img, capacity, registered_count, accept_waitlist, description, status, allow_multi_person_registration, max_people_per_registration, order_number_prefix")
       .eq("organizer_id", appUser.id)
       .order("starts_at", { ascending: true });
     const memberEventsQuery =
       memberEventIds.length > 0
         ? supabase
             .from("events")
-            .select("id, public_code, name, category, template, custom_type_label, city, venue_name, address, starts_at, registration_deadline, price_cents, custom_form_config, payment_code_img, wechat_group_img, capacity, description, status, allow_multi_person_registration, max_people_per_registration, order_number_prefix")
+            .select("id, public_code, name, category, template, custom_type_label, city, venue_name, address, starts_at, registration_deadline, price_cents, custom_form_config, payment_code_img, wechat_group_img, capacity, registered_count, accept_waitlist, description, status, allow_multi_person_registration, max_people_per_registration, order_number_prefix")
             .in("id", memberEventIds)
             .order("starts_at", { ascending: true })
         : null;
@@ -596,7 +646,7 @@ export async function getOrganizerEventDetail(eventId: string): Promise<Organize
 
     const eventQuery = supabase
       .from("events")
-      .select("id, public_code, name, category, template, custom_type_label, city, venue_name, address, starts_at, registration_deadline, price_cents, custom_form_config, payment_code_img, wechat_group_img, capacity, description, status, allow_multi_person_registration, max_people_per_registration, order_number_prefix");
+      .select("id, public_code, name, category, template, custom_type_label, city, venue_name, address, starts_at, registration_deadline, price_cents, custom_form_config, payment_code_img, wechat_group_img, capacity, registered_count, accept_waitlist, description, status, allow_multi_person_registration, max_people_per_registration, order_number_prefix");
     const { data: eventData, error: eventError } = await (isUuid(eventId)
       ? eventQuery.eq("id", eventId).single()
       : eventQuery.eq("public_code", eventId).single());
@@ -612,7 +662,7 @@ export async function getOrganizerEventDetail(eventId: string): Promise<Organize
       return null;
     }
 
-    const [announcementResult, registrationResult, organizerResult, auditLogResult, refundRequestResult] = await Promise.all([
+    const [announcementResult, registrationResult, organizerResult, auditLogResult, refundRequestResult, waitlistEntryResult] = await Promise.all([
       supabase
         .from("announcements")
         .select("id, event_id, title, body, status, published_at")
@@ -636,10 +686,16 @@ export async function getOrganizerEventDetail(eventId: string): Promise<Organize
         .from("refund_requests")
         .select("id, status, requested_amount_cents, approved_amount_cents, reason, organizer_note, created_at, registrations!inner(order_number, nickname, quantity, amount_due_cents, status, event_id), refund_proofs(file_url, amount_cents, uploaded_at)")
         .eq("registrations.event_id", eventRow.id)
+        .order("created_at", { ascending: false }),
+      supabase
+        .from("waitlist_entries")
+        .select("id, desired_quantity, status, priority_position, note, invited_at, invitation_expires_at, created_at, users(id, public_id, name)")
+        .eq("event_id", eventRow.id)
+        .order("priority_position", { ascending: true, nullsFirst: false })
         .order("created_at", { ascending: false })
     ]);
 
-    if (announcementResult.error || registrationResult.error || organizerResult.error || auditLogResult.error || refundRequestResult.error) {
+    if (announcementResult.error || registrationResult.error || organizerResult.error || auditLogResult.error || refundRequestResult.error || waitlistEntryResult.error) {
       return null;
     }
 
@@ -661,7 +717,8 @@ export async function getOrganizerEventDetail(eventId: string): Promise<Organize
       registrations: eventRegistrations,
       refundRequests: ((refundRequestResult.data ?? []) as RefundRequestRow[]).map(refundRequestRowToEventRefundRequest),
       setup: eventRowToSetup(eventRow),
-      source: "supabase"
+      source: "supabase",
+      waitlistEntries: ((waitlistEntryResult.data ?? []) as WaitlistEntryRow[]).map(waitlistEntryRowToEventWaitlistEntry)
     };
   } catch {
     return null;
@@ -692,7 +749,7 @@ export async function getOrganizerFinanceDetail(eventId: string): Promise<Organi
 
     const eventQuery = supabase
       .from("events")
-      .select("id, public_code, name, category, template, custom_type_label, city, venue_name, address, starts_at, registration_deadline, price_cents, custom_form_config, payment_code_img, wechat_group_img, capacity, description, status, allow_multi_person_registration, max_people_per_registration, order_number_prefix");
+      .select("id, public_code, name, category, template, custom_type_label, city, venue_name, address, starts_at, registration_deadline, price_cents, custom_form_config, payment_code_img, wechat_group_img, capacity, registered_count, accept_waitlist, description, status, allow_multi_person_registration, max_people_per_registration, order_number_prefix");
     const { data: eventData, error: eventError } = await (isUuid(eventId)
       ? eventQuery.eq("id", eventId).single()
       : eventQuery.eq("public_code", eventId).single());

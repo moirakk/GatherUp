@@ -15,6 +15,7 @@ import { PollDecisionPanel } from "@/components/poll-decision-panel";
 import { PromotionCenter } from "@/components/promotion-center";
 import { RefundReviewPanel } from "@/components/refund-review-panel";
 import { SeatMap } from "@/components/seat-map";
+import { WaitlistPanel } from "@/components/waitlist-panel";
 import { WorkflowStepper } from "@/components/workflow-stepper";
 import { getOrganizerEventDetail } from "@/lib/organizer-data";
 
@@ -23,7 +24,7 @@ type OrganizerEventPageProps = {
   searchParams: Promise<{ panel?: string }>;
 };
 
-const panelIds = ["publish", "notify", "survey", "venue", "orders"] as const;
+const panelIds = ["publish", "notify", "survey", "venue", "orders", "waitlist"] as const;
 type PanelId = (typeof panelIds)[number];
 
 function getPanelId(panel?: string): PanelId | null {
@@ -39,7 +40,7 @@ export default async function OrganizerEventPage({ params, searchParams }: Organ
     notFound();
   }
 
-  const { announcements, auditLogs, event, organizers, refundRequests, registrations, setup } = eventDetail;
+  const { announcements, auditLogs, event, organizers, refundRequests, registrations, setup, waitlistEntries } = eventDetail;
   const activePanel = getPanelId(panel);
   const totalSurveyVotes = setup.surveyOptions.reduce((sum, option) => sum + option.votes, 0);
   const totalVenueVotes = setup.venueOptions.reduce((sum, option) => sum + option.votes, 0);
@@ -55,6 +56,12 @@ export default async function OrganizerEventPage({ params, searchParams }: Organ
       label: "待确认付款",
       href: `${basePath}?panel=orders`,
       value: registrations.filter((item) => item.paymentStatus === "待审核").length
+    },
+    {
+      id: "waitlist",
+      label: "候补",
+      href: `${basePath}?panel=waitlist`,
+      value: waitlistEntries.filter((item) => item.status === "waiting").length
     }
   ];
 
@@ -100,6 +107,7 @@ export default async function OrganizerEventPage({ params, searchParams }: Organ
             <Link className="button secondary" href={`${basePath}?panel=survey`}>数调</Link>
             <Link className="button secondary" href={`${basePath}?panel=venue`}>地点</Link>
             <Link className="button secondary" href={`${basePath}?panel=orders`}>付款</Link>
+            <Link className="button secondary" href={`${basePath}?panel=waitlist`}>候补</Link>
           </div>
 
           {activePanel === "publish" && (
@@ -166,6 +174,19 @@ export default async function OrganizerEventPage({ params, searchParams }: Organ
               <PaymentReviewTable registrations={registrations} />
               <RefundReviewPanel eventId={event.id} refundRequests={refundRequests} />
               <CheckInPanel />
+            </article>
+          )}
+
+          {activePanel === "waitlist" && (
+            <article className="content-card focused-card">
+              <div className="section-heading">
+                <div>
+                  <h2>候补队列</h2>
+                  <p className="subtle">名额释放后，按排序邀请候补参与者转正报名。</p>
+                </div>
+                <div className="segmented"><span>候补</span><span>邀请</span><span>转正</span></div>
+              </div>
+              <WaitlistPanel entries={waitlistEntries} />
             </article>
           )}
         </section>
@@ -249,6 +270,14 @@ export default async function OrganizerEventPage({ params, searchParams }: Organ
           <PaymentReviewTable registrations={registrations} />
           <RefundReviewPanel eventId={event.id} refundRequests={refundRequests} />
           <CheckInPanel />
+        </article>
+
+        <article className="content-card" id="waitlist">
+          <div className="section-heading">
+            <h2>候补队列</h2>
+            <div className="segmented"><span>候补</span><span>邀请</span><span>转正</span></div>
+          </div>
+          <WaitlistPanel entries={waitlistEntries} />
         </article>
 
         <article className="content-card" id="seats">

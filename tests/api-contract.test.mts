@@ -64,6 +64,7 @@ describe("registration and payment proof API contracts", () => {
   const orderSeatSelectionPanel = readSource("src/components/order-seat-selection-panel.tsx");
   const participantOrderActions = readSource("src/components/participant-order-actions.tsx");
   const refundReviewPanel = readSource("src/components/refund-review-panel.tsx");
+  const waitlistPanel = readSource("src/components/waitlist-panel.tsx");
   const orderPage = readSource("src/app/me/orders/[orderNumber]/page.tsx");
   const myOrdersPage = readSource("src/app/me/page.tsx");
   const organizerPage = readSource("src/app/organizer/page.tsx");
@@ -548,7 +549,7 @@ describe("registration and payment proof API contracts", () => {
     expectSource(organizerEventPage, 'import { CheckInPanel } from "@/components/check-in-panel";');
     expectSource(organizerEventPage, 'import { RefundReviewPanel } from "@/components/refund-review-panel";');
     expectSource(organizerEventPage, "await getOrganizerEventDetail(eventId)");
-    expectSource(organizerEventPage, "const { announcements, auditLogs, event, organizers, refundRequests, registrations, setup } = eventDetail;");
+    expectSource(organizerEventPage, "const { announcements, auditLogs, event, organizers, refundRequests, registrations, setup, waitlistEntries } = eventDetail;");
     expectSource(organizerEventPage, "<AuditLogTimeline logs={auditLogs} />");
     expectSource(organizerEventPage, "<CheckInPanel />");
     expectSource(organizerEventPage, "<RefundReviewPanel eventId={event.id} refundRequests={refundRequests} />");
@@ -703,6 +704,19 @@ describe("registration and payment proof API contracts", () => {
     expectSource(waitlistInviteRoute, 'authContext.supabase.rpc("invite_waitlist_entry_atomic"');
     expectSource(waitlistInviteRoute, "p_waitlist_entry_id: waitlistEntryId");
     expectSource(waitlistInviteRoute, "INVALID_WAITLIST_STATUS");
+    expectSource(registrationFlow, 'fetch("/api/waitlist"');
+    expectSource(registrationFlow, "capacityFull");
+    expectSource(registrationFlow, "event.acceptWaitlist !== false");
+    expectSource(registrationFlow, "加入候补");
+    expectSource(waitlistPanel, 'fetch("/api/waitlist/invite"');
+    expectSource(waitlistPanel, "waitlist_entry_id: entry.id");
+    expectSource(organizerEventPage, 'import { WaitlistPanel } from "@/components/waitlist-panel";');
+    expectSource(organizerEventPage, "waitlistEntries");
+    expectSource(organizerEventPage, '<WaitlistPanel entries={waitlistEntries} />');
+    expectSource(organizerData, "waitlistEntries: EventWaitlistEntry[];");
+    expectSource(organizerData, '.from("waitlist_entries")');
+    expectSource(organizerData, "waitlistEntryRowToEventWaitlistEntry");
+    expectSource(eventsData, "registered_count, accept_waitlist");
 
     assert.doesNotMatch(waitlistRoute, /getSupabaseServiceClient/);
     assert.doesNotMatch(waitlistInviteRoute, /getSupabaseServiceClient/);
