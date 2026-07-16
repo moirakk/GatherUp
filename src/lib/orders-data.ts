@@ -30,6 +30,41 @@ export type OrderSeatOption = {
   status: string;
 };
 
+type RefundProofRow = {
+  amount_cents: number | null;
+  file_url: string;
+  uploaded_at: string;
+};
+
+type RefundRequestRow = {
+  id: string;
+  status: string;
+  requested_amount_cents: number;
+  approved_amount_cents: number | null;
+  reason: string;
+  organizer_note: string | null;
+  paid_at: string | null;
+  confirmed_at: string | null;
+  disputed_at: string | null;
+  created_at: string;
+  refund_proofs?: RefundProofRow[] | null;
+};
+
+export type OrderRefundSummary = {
+  approvedAmount: number | null;
+  confirmedAt: string | null;
+  createdAt: string;
+  disputedAt: string | null;
+  id: string;
+  paidAt: string | null;
+  proofAmount: number | null;
+  proofPath: string | null;
+  reason: string;
+  requestedAmount: number;
+  reviewNote: string;
+  status: string;
+};
+
 type EventRow = {
   id: string;
   public_code: string;
@@ -55,6 +90,7 @@ type EventRow = {
 export type OrderDetailData = {
   event: GatherEvent;
   registration: Registration;
+  refundRequest?: OrderRefundSummary;
   seatSelection?: {
     registrationId: string;
     attendees: OrderAttendeeOption[];
@@ -130,6 +166,25 @@ export function rowToRegistration(row: RegistrationRow): Registration {
     checkInCode: row.check_in_code ?? undefined,
     checkInStatus: toPublicCheckInStatus(row.check_in_status),
     refundPolicy: "活动退款规则以组织者发布的信息为准。"
+  };
+}
+
+function rowToRefundSummary(row: RefundRequestRow): OrderRefundSummary {
+  const proof = row.refund_proofs?.[0] ?? null;
+
+  return {
+    approvedAmount: row.approved_amount_cents === null ? null : Math.round(row.approved_amount_cents / 100),
+    confirmedAt: row.confirmed_at ? formatDate(row.confirmed_at) : null,
+    createdAt: formatDate(row.created_at),
+    disputedAt: row.disputed_at ? formatDate(row.disputed_at) : null,
+    id: row.id,
+    paidAt: row.paid_at ? formatDate(row.paid_at) : null,
+    proofAmount: proof?.amount_cents === null || proof?.amount_cents === undefined ? null : Math.round(proof.amount_cents / 100),
+    proofPath: proof?.file_url ?? null,
+    reason: row.reason,
+    requestedAmount: Math.round(row.requested_amount_cents / 100),
+    reviewNote: row.organizer_note ?? "未填写",
+    status: row.status
   };
 }
 
@@ -245,6 +300,14 @@ export async function getOrderDetail(orderNumber: string): Promise<OrderDetailDa
     }
 
     const registration = rowToRegistration(registrationData as RegistrationRow);
+    const { data: refundRequestData } = await supabase
+      .from("refund_requests")
+      .select("id, status, requested_amount_cents, approved_amount_cents, reason, organizer_note, paid_at, confirmed_at, disputed_at, created_at, refund_proofs(file_url, amount_cents, uploaded_at)")
+      .eq("registration_id", registrationData.id)
+      .order("created_at", { ascending: false })
+      .limit(1);
+    const refundRequest = ((refundRequestData ?? []) as RefundRequestRow[]).map(rowToRefundSummary)[0];
+
     const { data: attendeeData } = await supabase
       .from("registration_attendees")
       .select("id, public_id, display_name")
@@ -310,6 +373,7 @@ export async function getOrderDetail(orderNumber: string): Promise<OrderDetailDa
     return {
       event: rowToEvent(eventData as EventRow),
       registration,
+      refundRequest,
       seatSelection,
       source: "supabase"
     };

@@ -36,6 +36,7 @@ describe("registration and payment proof API contracts", () => {
   const paymentProofRoute = readSource("src/app/api/orders/payment-proof/route.ts");
   const paymentReviewRoute = readSource("src/app/api/orders/review/route.ts");
   const orderRefundRoute = readSource("src/app/api/orders/refund/route.ts");
+  const orderRefundConfirmRoute = readSource("src/app/api/orders/refund/confirm/route.ts");
   const orderRefundReviewRoute = readSource("src/app/api/orders/refund/review/route.ts");
   const orderRefundProofRoute = readSource("src/app/api/orders/refund/proof/route.ts");
   const expenseProofRoute = readSource("src/app/api/expenses/proof/route.ts");
@@ -387,6 +388,28 @@ describe("registration and payment proof API contracts", () => {
     assert.doesNotMatch(orderRefundProofRoute, /\.from\("refund_requests"\)\s*\n\s*\.update/);
     assert.doesNotMatch(orderRefundProofRoute, /\.from\("registrations"\)\s*\n\s*\.update/);
     assert.doesNotMatch(orderRefundProofRoute, /\.from\("payments"\)\s*\n\s*\.update/);
+  });
+
+  it("keeps participant refund receipt confirmation on the authenticated Supabase RPC path", () => {
+    expectSource(orderRefundConfirmRoute, "getAuthenticatedSupabaseClient(request)");
+    expectSource(orderRefundConfirmRoute, "enforceRateLimit(request");
+    expectSource(orderRefundConfirmRoute, 'keyPrefix: "orders:refund-confirm"');
+    expectSource(orderRefundConfirmRoute, 'authContext.supabase.rpc("confirm_refund_receipt_atomic"');
+    expectSource(orderRefundConfirmRoute, "p_refund_request_id: refundRequestId");
+    expectSource(orderRefundConfirmRoute, "p_decision: decision");
+    expectSource(participantOrderActions, 'fetch("/api/orders/refund/confirm"');
+    expectSource(participantOrderActions, "refund_request_id: refundRequest.id");
+    expectSource(participantOrderActions, 'confirmRefundReceipt("CONFIRMED")');
+    expectSource(participantOrderActions, 'confirmRefundReceipt("DISPUTED")');
+    expectSource(ordersData, '.from("refund_requests")');
+    expectSource(ordersData, "refund_proofs(file_url, amount_cents, uploaded_at)");
+    expectSource(orderPage, "refundRequest.status");
+    expectSource(orderPage, "<ParticipantOrderActions eventId={event.id} refundRequest={refundRequest} registration={registration} />");
+
+    assert.doesNotMatch(orderRefundConfirmRoute, /getSupabaseServiceClient/);
+    assert.doesNotMatch(orderRefundConfirmRoute, /\.from\("refund_requests"\)\s*\n\s*\.update/);
+    assert.doesNotMatch(orderRefundConfirmRoute, /\.from\("registrations"\)\s*\n\s*\.update/);
+    assert.doesNotMatch(orderRefundConfirmRoute, /\.from\("payments"\)\s*\n\s*\.update/);
   });
 
   it("keeps payment proof files bound to the private Storage object path", () => {

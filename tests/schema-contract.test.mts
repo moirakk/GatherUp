@@ -526,6 +526,30 @@ describe("commercial schema contract", () => {
     assert.doesNotMatch(schema, /grant execute on function public\.record_refund_proof_atomic\(uuid, text, integer\) to anon/);
   });
 
+  it("keeps participant refund receipt confirmation atomic and audited", () => {
+    expectSql(schema, "create or replace function public.confirm_refund_receipt_atomic(");
+    expectSql(schema, "v_actor_id := public.current_app_user_id();");
+    expectSql(schema, "v_normalized_decision not in ('CONFIRMED', 'DISPUTED')");
+    expectSql(schema, "from public.refund_requests rr");
+    expectSql(schema, "join public.registrations r on r.id = rr.registration_id");
+    expectSql(schema, "join public.payments p on p.id = rr.payment_id");
+    expectSql(schema, "for update of rr, r, p;");
+    expectSql(schema, "v_refund.requested_by <> v_actor_id");
+    expectSql(schema, "v_refund.refund_status <> 'proof_uploaded'");
+    expectSql(schema, "status = v_next_refund_status");
+    expectSql(schema, "confirmed_at = case when v_normalized_decision = 'CONFIRMED'");
+    expectSql(schema, "disputed_at = case when v_normalized_decision = 'DISPUTED'");
+    expectSql(schema, "status = v_next_registration_status");
+    expectSql(schema, "status = v_next_payment_status");
+    expectSql(schema, "'refund.confirmed'");
+    expectSql(schema, "'refund.disputed'");
+    expectSql(schema, "'workflow', 'refund_receipt'");
+    expectSql(schema, "'refund_confirmed'");
+    expectSql(schema, "'refund_disputed'");
+    expectSql(schema, "grant execute on function public.confirm_refund_receipt_atomic(uuid, text, text) to authenticated;");
+    assert.doesNotMatch(schema, /grant execute on function public\.confirm_refund_receipt_atomic\(uuid, text, text\) to anon/);
+  });
+
   it("defines helper and trigger functions before they are used", () => {
     const firstPolicyIndex = schema.indexOf("create policy");
     assert.notEqual(firstPolicyIndex, -1, "Missing RLS policies");

@@ -10,6 +10,21 @@ type OrderPageProps = {
   params: Promise<{ orderNumber: string }>;
 };
 
+function refundStatusLabel(status: string) {
+  const labels: Record<string, string> = {
+    requested: "退款待审核",
+    approved: "主办已同意退款",
+    rejected: "退款已拒绝",
+    paid_offline: "主办已线下打款",
+    proof_uploaded: "退款凭证已上传",
+    confirmed: "已确认收款",
+    disputed: "退款有争议",
+    cancelled: "退款已取消"
+  };
+
+  return labels[status] ?? status;
+}
+
 export default async function OrderPage({ params }: OrderPageProps) {
   const { orderNumber } = await params;
   const orderDetail = await getOrderDetail(orderNumber);
@@ -18,7 +33,7 @@ export default async function OrderPage({ params }: OrderPageProps) {
     notFound();
   }
 
-  const { event, registration } = orderDetail;
+  const { event, refundRequest, registration } = orderDetail;
   const isConfirmed = registration.paymentStatus === "付款已确认";
   const checkInQrData = registration.checkInCode ? `gatherup://check-in/${registration.checkInCode}` : "";
 
@@ -100,7 +115,7 @@ export default async function OrderPage({ params }: OrderPageProps) {
               <dd>{registration.createdAt}</dd>
             </div>
           </dl>
-          <ParticipantOrderActions eventId={event.id} registration={registration} />
+          <ParticipantOrderActions eventId={event.id} refundRequest={refundRequest} registration={registration} />
         </aside>
 
         <article className="content-card">
@@ -195,6 +210,49 @@ export default async function OrderPage({ params }: OrderPageProps) {
             </div>
           </dl>
         </article>
+
+        {refundRequest && (
+          <article className="content-card">
+            <div className="section-heading">
+              <h2>退款记录</h2>
+              <AlertCircle size={20} />
+            </div>
+            <dl className="info-list">
+              <div>
+                <dt>退款状态</dt>
+                <dd>{refundStatusLabel(refundRequest.status)}</dd>
+              </div>
+              <div>
+                <dt>申请金额</dt>
+                <dd>¥{refundRequest.requestedAmount}</dd>
+              </div>
+              <div>
+                <dt>同意金额</dt>
+                <dd>{refundRequest.approvedAmount === null ? "待审核" : `¥${refundRequest.approvedAmount}`}</dd>
+              </div>
+              <div>
+                <dt>退款原因</dt>
+                <dd>{refundRequest.reason}</dd>
+              </div>
+              <div>
+                <dt>主办备注</dt>
+                <dd>{refundRequest.reviewNote}</dd>
+              </div>
+              <div>
+                <dt>退款凭证</dt>
+                <dd>{refundRequest.proofPath ?? "待上传"}</dd>
+              </div>
+              <div>
+                <dt>线下打款时间</dt>
+                <dd>{refundRequest.paidAt ?? "待处理"}</dd>
+              </div>
+              <div>
+                <dt>确认/争议时间</dt>
+                <dd>{refundRequest.confirmedAt ?? refundRequest.disputedAt ?? "待确认"}</dd>
+              </div>
+            </dl>
+          </article>
+        )}
 
         <article className="content-card">
           <div className="section-heading">
