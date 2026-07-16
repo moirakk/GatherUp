@@ -500,10 +500,12 @@ describe("registration and payment proof API contracts", () => {
     expectSource(organizerPage, "await getOrganizerDashboard()");
     expectSource(organizerPage, "buildOrganizerDashboardMetrics(events, eventSetups, registrations)");
     expectSource(organizerPage, "<OrganizerVerificationPanel />");
-    expectSource(organizerPage, 'label="签到率"');
+    expectSource(organizerPage, "metrics.checkInRatePercent");
+    expectSource(organizerPage, "签到率");
     expectSource(organizerPage, "退款风险单");
     expectSource(organizerPage, "选座进度");
-    expectSource(organizerPage, 'label="已确认收入"');
+    expectSource(organizerPage, "metrics.confirmedRevenue");
+    expectSource(organizerPage, "已确认收入");
     expectSource(organizerPage, "organizersByEventId.get(event.id)");
     expectSource(organizerPage, 'href="/organizer/events/new"');
     expectSource(organizerData, "export async function getOrganizerDashboard()");

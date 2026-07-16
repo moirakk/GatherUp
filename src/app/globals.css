@@ -2609,6 +2609,29 @@ h3 {
   background: #f4f5f2;
 }
 
+.organizer-home-shell {
+  background: #f5f5f7;
+}
+
+.organizer-home-shell .page-shell {
+  width: min(1120px, calc(100% - 40px));
+  padding-top: 42px;
+}
+
+.organizer-home-shell .topbar {
+  border-bottom-color: rgba(0, 0, 0, 0.08);
+  background: rgba(250, 250, 252, 0.9);
+}
+
+.organizer-home-shell .desktop-nav a.active {
+  background: #e7e7ea;
+  color: #1d1d1f;
+}
+
+.organizer-home-shell .global-create-action {
+  display: none;
+}
+
 .workspace-shell .page-shell {
   width: min(1240px, calc(100% - 40px));
 }
@@ -3005,6 +3028,33 @@ h3 {
 }
 
 @media (max-width: 620px) {
+  .mobile-hidden-action {
+    display: none;
+  }
+
+  .topbar {
+    gap: 12px;
+    padding-right: 12px;
+    padding-left: 12px;
+  }
+
+  .topbar-actions {
+    gap: 7px;
+  }
+
+  .brand {
+    gap: 9px;
+  }
+
+  .brand-mark {
+    width: 38px;
+    height: 38px;
+  }
+
+  .brand small {
+    display: none;
+  }
+
   .discovery-copy h1 {
     font-size: 30px;
   }

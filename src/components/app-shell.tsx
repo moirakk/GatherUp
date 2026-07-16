@@ -4,7 +4,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { CalendarRange, LayoutDashboard, LogOut, MapPinned, Plus, UserRound } from "lucide-react";
+import { CalendarRange, LayoutDashboard, LogOut, MapPinned, Plus, ServerCog, UserRound } from "lucide-react";
 
 import {
   createSessionCookies,
@@ -25,7 +25,8 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [session, setSession] = useState<AuthSession | null>(null);
   const isWorkspace = pathname.startsWith("/organizer") || pathname.startsWith("/admin") || pathname.startsWith("/dev");
-  const shellClassName = `app-shell ${isWorkspace ? "workspace-shell" : "community-shell"}`;
+  const isOrganizerHome = pathname === "/organizer";
+  const shellClassName = `app-shell ${isWorkspace ? "workspace-shell" : "community-shell"} ${isOrganizerHome ? "organizer-home-shell" : ""}`;
 
   function navClassName(href: string) {
     const isActive = href === "/" ? pathname === href : pathname.startsWith(href);
@@ -171,24 +172,34 @@ export function AppShell({ children }: { children: ReactNode }) {
         </Link>
 
         <nav className="desktop-nav" aria-label="主导航">
-          <Link className={navClassName("/")} href="/">活动广场</Link>
-          <Link className={navClassName("/venues")} href="/venues">场地库</Link>
-          <Link className={navClassName("/me")} href="/me">我的活动</Link>
-          <Link className={navClassName("/organizer")} href="/organizer">工作台</Link>
+          {isWorkspace ? (
+            <>
+              <Link className={navClassName("/organizer")} href="/organizer">工作台</Link>
+              <Link className={navClassName("/organizer/events/new")} href="/organizer/events/new">新建活动</Link>
+              <Link className={navClassName("/me")} href="/me">我的活动</Link>
+            </>
+          ) : (
+            <>
+              <Link className={navClassName("/")} href="/">活动广场</Link>
+              <Link className={navClassName("/venues")} href="/venues">场地库</Link>
+              <Link className={navClassName("/me")} href="/me">我的活动</Link>
+              <Link className={navClassName("/organizer")} href="/organizer">工作台</Link>
+            </>
+          )}
         </nav>
 
         <div className="topbar-actions">
-          <Link className="icon-button" href="/organizer/events/new" aria-label="创建活动">
+          <Link className="icon-button global-create-action" href="/organizer/events/new" aria-label="创建活动">
             <Plus size={19} />
           </Link>
           <NotificationBell enabled={session.sessionType === "supabase"} />
-          <span className="account-pill" title={`${session.email} · ${session.gatherUpId}`}>
+          <span className="account-pill mobile-hidden-action" title={`${session.email} · ${session.gatherUpId}`}>
             已登录
           </span>
           <Link className="avatar-button" href="/me" aria-label="个人中心">
             {session.name.slice(0, 1)}
           </Link>
-          <button className="icon-button" type="button" aria-label="退出登录" onClick={logout}>
+          <button className="icon-button mobile-hidden-action" type="button" aria-label="退出登录" onClick={logout}>
             <LogOut size={18} />
           </button>
         </div>
@@ -197,22 +208,45 @@ export function AppShell({ children }: { children: ReactNode }) {
       <main className="page-shell">{children}</main>
 
       <nav className="mobile-nav" aria-label="移动端导航">
-        <Link href="/">
-          <CalendarRange size={18} />
-          广场
-        </Link>
-        <Link href="/venues">
-          <MapPinned size={18} />
-          场地
-        </Link>
-        <Link href="/me">
-          <UserRound size={18} />
-          我的
-        </Link>
-        <Link href="/organizer">
-          <LayoutDashboard size={18} />
-          工作台
-        </Link>
+        {isWorkspace ? (
+          <>
+            <Link href="/organizer">
+              <LayoutDashboard size={18} />
+              工作台
+            </Link>
+            <Link href="/organizer/events/new">
+              <Plus size={18} />
+              新建
+            </Link>
+            <Link href="/me">
+              <UserRound size={18} />
+              账号
+            </Link>
+            <Link href="/dev/status">
+              <ServerCog size={18} />
+              系统
+            </Link>
+          </>
+        ) : (
+          <>
+            <Link href="/">
+              <CalendarRange size={18} />
+              广场
+            </Link>
+            <Link href="/venues">
+              <MapPinned size={18} />
+              场地
+            </Link>
+            <Link href="/me">
+              <UserRound size={18} />
+              我的
+            </Link>
+            <Link href="/organizer">
+              <LayoutDashboard size={18} />
+              工作台
+            </Link>
+          </>
+        )}
       </nav>
     </div>
   );

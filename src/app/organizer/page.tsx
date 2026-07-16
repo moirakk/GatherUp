@@ -1,23 +1,28 @@
 import Link from "next/link";
 import {
   Armchair,
-  CalendarCheck,
+  CalendarClock,
+  CheckCircle2,
+  ChevronRight,
   CircleDollarSign,
   ClipboardCheck,
-  MapPinned,
+  MapPin,
   Plus,
   QrCode,
+  ReceiptText,
   ServerCog,
-  ShieldCheck
+  ShieldCheck,
+  UsersRound,
+  WalletCards
 } from "lucide-react";
 
 import { LocalCreatedEventList } from "@/components/local-created-event-list";
-import { MetricCard } from "@/components/metric-card";
 import { getNextActions } from "@/components/next-action-card";
 import { OrganizerVerificationPanel } from "@/components/organizer-verification-panel";
 import { buildOrganizerDashboardMetrics } from "@/domain/organizer-dashboard-metrics";
 import type { EventSetup, GatherEvent, Registration } from "@/lib/mock-data";
 import { getOrganizerDashboard } from "@/lib/organizer-data";
+import styles from "./organizer.module.css";
 
 function getPrimaryAction(event: GatherEvent, setup: EventSetup, eventRegistrations: Registration[]) {
   return getNextActions({
@@ -28,6 +33,32 @@ function getPrimaryAction(event: GatherEvent, setup: EventSetup, eventRegistrati
   })[0];
 }
 
+function formatEventTime(value: string) {
+  const match = value.match(/\d{4}-(\d{2})-(\d{2})\s+(.+)/);
+
+  if (!match) {
+    return value;
+  }
+
+  return `${Number(match[1])}月${Number(match[2])}日 ${match[3]}`;
+}
+
+function getStatusTone(status: string) {
+  if (status.includes("报名") || status.includes("成团")) {
+    return styles.statusPositive;
+  }
+
+  if (status.includes("付款") || status.includes("截止")) {
+    return styles.statusAttention;
+  }
+
+  if (status.includes("结束")) {
+    return styles.statusNeutral;
+  }
+
+  return styles.statusInfo;
+}
+
 export default async function OrganizerPage() {
   const { eventSetups, events, organizersByEventId, registrations } = await getOrganizerDashboard();
   const metrics = buildOrganizerDashboardMetrics(events, eventSetups, registrations);
@@ -36,204 +67,216 @@ export default async function OrganizerPage() {
   const firstSetupEventId = activeSetups[0]?.eventId ?? events[0]?.id ?? "";
   const firstPaymentEventId = eventSetups.find((setup) => setup.paymentQrStatus === "已配置")?.eventId ?? events[0]?.id ?? "";
   const firstPendingPaymentEventId = pendingPaymentRegistrations[0]?.eventId ?? firstSetupEventId;
-  const setupHref = firstSetupEventId ? "#setup-list" : "/organizer/events/new";
+  const setupHref = firstSetupEventId ? `/organizer/events/${firstSetupEventId}` : "/organizer/events/new";
   const paymentHref = firstPaymentEventId ? `/organizer/events/${firstPaymentEventId}/finance` : "/organizer/events/new";
   const pendingPaymentHref = firstPendingPaymentEventId ? `/organizer/events/${firstPendingPaymentEventId}?panel=orders` : "/organizer/events/new";
 
+  const tasks = [
+    {
+      count: metrics.pendingPaymentCount,
+      detail: metrics.pendingPaymentCount > 0 ? "参与者正在等待主办确认" : "当前没有待审核付款",
+      href: pendingPaymentHref,
+      icon: ClipboardCheck,
+      label: "审核付款",
+      tone: styles.taskAttention
+    },
+    {
+      count: metrics.activeSetupCount,
+      detail: metrics.activeSetupCount > 0 ? "继续确认时间、地点和报名配置" : "所有活动均已完成筹备",
+      href: setupHref,
+      icon: CalendarClock,
+      label: "推进筹备",
+      tone: styles.taskInfo
+    },
+    {
+      count: metrics.refundExposureCount,
+      detail: metrics.refundExposureCount > 0 ? "检查退款或争议订单" : "当前没有退款风险单",
+      href: paymentHref,
+      icon: ReceiptText,
+      label: "处理退款",
+      tone: styles.taskRisk
+    }
+  ];
+
   return (
-    <>
-      <section className="page-header workspace-header">
+    <div className={styles.page}>
+      <header className={styles.header}>
         <div>
-          <p className="eyebrow">组织工作台</p>
-          <h1>今天需要处理什么</h1>
-          <p className="subtle">先处理会阻塞参与者的事项，再检查筹备进度和活动数据。</p>
+          <p className={styles.kicker}>主办方工作区</p>
+          <h1>工作台</h1>
+          <p>先处理会阻塞参与者的事项，再推进活动。</p>
         </div>
-        <div className="button-row">
-          <Link className="button secondary" href="/dev/status">
-            <ServerCog size={17} />
-            后端状态
+        <div className={styles.headerActions}>
+          <Link className={styles.iconButton} href="/dev/status" aria-label="查看系统状态" title="系统状态">
+            <ServerCog size={19} />
           </Link>
-          <Link className="button primary" href="/organizer/events/new">
-            <Plus size={17} />
+          <Link className={styles.createButton} href="/organizer/events/new">
+            <Plus size={18} />
             创建活动
           </Link>
         </div>
-      </section>
+      </header>
 
-      <section className="metrics-grid dashboard-primary-metrics" aria-label="关键运营指标">
-        <MetricCard
-          href={pendingPaymentHref}
-          icon={<ClipboardCheck size={19} />}
-          label="待审核付款"
-          meta={metrics.pendingPaymentCount > 0 ? "优先处理，减少等待" : "当前没有积压"}
-          tone={metrics.pendingPaymentCount > 0 ? "attention" : "positive"}
-          value={metrics.pendingPaymentCount}
-        />
-        <MetricCard
-          href={setupHref}
-          icon={<CalendarCheck size={19} />}
-          label="筹备中活动"
-          meta="尚未开放正式报名"
-          value={metrics.activeSetupCount}
-        />
-        <MetricCard
-          icon={<CircleDollarSign size={19} />}
-          label="已确认收入"
-          meta="以审核通过的付款为准"
-          tone="positive"
-          value={`¥${metrics.confirmedRevenue}`}
-        />
-        <MetricCard
-          icon={<CalendarCheck size={19} />}
-          label="签到率"
-          meta="已确认参与者现场数据"
-          value={`${metrics.checkInRatePercent}%`}
-        />
-      </section>
+      <div className={styles.dashboardGrid}>
+        <section className={styles.activityColumn}>
+          <div className={styles.sectionHeader}>
+            <div>
+              <p>活动</p>
+              <h2>我的活动</h2>
+            </div>
+            <span>{events.length} 场</span>
+          </div>
 
-      <section className="dashboard-health-strip" aria-label="运营健康度">
-        <Link href={paymentHref}>
-          <span><QrCode size={16} />收款配置</span>
-          <strong>{metrics.paymentReadyCount}/{metrics.totalSetups}</strong>
-        </Link>
-        <div>
-          <span><Armchair size={16} />选座进度</span>
-          <strong>{metrics.seatingProgressPercent}%</strong>
-        </div>
-        <div>
-          <span><ShieldCheck size={16} />退款风险单</span>
-          <strong>{metrics.refundExposureCount}</strong>
-        </div>
-      </section>
+          <section className={styles.eventGroup} aria-label="我管理的活动">
+            {events.length === 0 ? (
+              <div className={styles.emptyState}>
+                <CalendarClock size={24} />
+                <strong>还没有活动</strong>
+                <span>创建第一场活动，开始配置报名流程。</span>
+                <Link href="/organizer/events/new">创建活动</Link>
+              </div>
+            ) : null}
 
-      <div className="section-title-row">
-        <div>
-          <p className="eyebrow">行动队列</p>
-          <h2>正在筹备的活动</h2>
-        </div>
-        <span>{activeSetups.length} 场需要推进</span>
-      </div>
+            {events.map((event) => {
+              const setup = eventSetups.find((item) => item.eventId === event.id);
+              const eventRegistrations = registrations.filter((registration) => registration.eventId === event.id);
+              const pendingPaymentCount = eventRegistrations.filter((registration) => registration.paymentStatus === "待审核").length;
+              const organizers = organizersByEventId.get(event.id) ?? [];
+              const primaryAction = setup
+                ? getPrimaryAction(event, setup, eventRegistrations)
+                : {
+                    description: "查看活动配置与运营数据。",
+                    href: `/organizer/events/${event.id}`,
+                    label: "打开活动",
+                    urgent: false
+                  };
+              const displayStatus = setup?.setupStatus ?? event.status;
+              const occupancy = event.capacity > 0 ? Math.min(Math.round((event.registered / event.capacity) * 100), 100) : 0;
 
-      <section className="setup-grid" id="setup-list">
-        {activeSetups.length === 0 ? (
-          <article className="content-card setup-card">
-            <div className="section-heading">
+              return (
+                <article className={styles.eventRow} key={event.id}>
+                  <div className={styles.eventMain}>
+                    <div className={styles.eventTitleLine}>
+                      <Link href={`/organizer/events/${event.id}`}>
+                        <h3>{event.name}</h3>
+                      </Link>
+                      <span className={`${styles.status} ${getStatusTone(displayStatus)}`}>{displayStatus}</span>
+                    </div>
+                    <p className={styles.eventMeta}>
+                      <CalendarClock size={14} />
+                      {formatEventTime(event.startsAt)}
+                      <span>·</span>
+                      <MapPin size={14} />
+                      {event.city}
+                    </p>
+                    <div className={styles.eventProgress}>
+                      <span style={{ width: `${occupancy}%` }} />
+                    </div>
+                    <div className={styles.eventFooter}>
+                      <span>{event.registered}/{event.capacity} 人报名</span>
+                      <span>{organizers.length} 位协作者</span>
+                      {pendingPaymentCount > 0 ? <strong>{pendingPaymentCount} 笔待审核</strong> : null}
+                    </div>
+                  </div>
+
+                  <div className={styles.eventControls}>
+                    <Link className={styles.nextAction} href={primaryAction.href}>
+                      {primaryAction.label}
+                    </Link>
+                    <Link
+                      className={styles.rowIconButton}
+                      href={`/organizer/events/${event.id}/finance`}
+                      aria-label={`查看${event.name}的财务`}
+                      title="财务"
+                    >
+                      <WalletCards size={17} />
+                    </Link>
+                    <Link className={styles.disclosureButton} href={`/organizer/events/${event.id}`} aria-label={`管理${event.name}`}>
+                      <ChevronRight size={19} />
+                    </Link>
+                  </div>
+                </article>
+              );
+            })}
+          </section>
+        </section>
+
+        <aside className={styles.sidebar}>
+          <section>
+            <div className={styles.sectionHeader}>
               <div>
-                <span className="tag">队列已清空</span>
-                <h2>当前没有筹备中的活动</h2>
-                <p className="event-meta compact">新建活动或检查已经开放报名的活动。</p>
+                <p>今天</p>
+                <h2>待处理</h2>
               </div>
-              <QrCode size={20} />
+              <span>{tasks.reduce((sum, task) => sum + task.count, 0)} 项</span>
             </div>
-            <Link className="button primary" href="/organizer/events/new">
-              <Plus size={17} />
-              创建活动
-            </Link>
-          </article>
-        ) : null}
+            <div className={styles.taskGroup}>
+              {tasks.map((task) => {
+                const TaskIcon = task.icon;
 
-        {activeSetups.map((setup) => {
-          const event = events.find((item) => item.id === setup.eventId);
+                return (
+                  <Link className={styles.taskRow} href={task.href} key={task.label}>
+                    <span className={`${styles.taskIcon} ${task.tone}`}><TaskIcon size={18} /></span>
+                    <span className={styles.taskCopy}>
+                      <strong>{task.label}</strong>
+                      <small>{task.detail}</small>
+                    </span>
+                    <span className={styles.taskCount}>{task.count}</span>
+                    <ChevronRight size={17} />
+                  </Link>
+                );
+              })}
+            </div>
+          </section>
 
-          if (!event) {
-            return null;
-          }
-
-          const eventRegistrations = registrations.filter((registration) => registration.eventId === event.id);
-          const selectedTime = setup.surveyOptions.find((option) => option.selected);
-          const selectedVenue = setup.venueOptions.find((option) => option.selected);
-          const primaryAction = getPrimaryAction(event, setup, eventRegistrations);
-
-          return (
-            <article className="content-card setup-card" key={setup.eventId}>
-              <div className="section-heading">
-                <div>
-                  <span className="tag">{setup.setupStatus}</span>
-                  <h2>{event.name}</h2>
-                  <p className="event-meta compact">{event.publicCode}</p>
-                </div>
-                <QrCode size={20} />
+          <section>
+            <div className={styles.sectionHeader}>
+              <div>
+                <p>概览</p>
+                <h2>运营数据</h2>
               </div>
-              <div className="setup-checklist">
-                <span className={setup.paymentQrStatus === "已配置" ? "done" : "pending"}>
-                  <QrCode size={15} />收款二维码：{setup.paymentQrStatus}
-                </span>
-                <span className="done">
-                  <CalendarCheck size={15} />数调领先：{selectedTime?.label ?? "未选择"}
-                </span>
-                <span className="done">
-                  <MapPinned size={15} />地点领先：{selectedVenue?.label ?? "未选择"}
-                </span>
+            </div>
+            <div className={styles.summaryGroup}>
+              <div>
+                <span><CircleDollarSign size={16} />已确认收入</span>
+                <strong>¥{metrics.confirmedRevenue}</strong>
               </div>
-              <p className="subtle">{primaryAction.description}</p>
-              <div className="button-row">
-                <Link className={`button ${primaryAction.urgent ? "primary" : "secondary"}`} href={primaryAction.href}>{primaryAction.label}</Link>
-                <Link className="button secondary" href={`/organizer/events/${event.id}/finance`}><CircleDollarSign size={16} />财务</Link>
+              <div>
+                <span><UsersRound size={16} />签到率</span>
+                <strong>{metrics.checkInRatePercent}%</strong>
               </div>
-            </article>
-          );
-        })}
-      </section>
+              <Link href={paymentHref}>
+                <span><QrCode size={16} />收款已配置</span>
+                <strong>{metrics.paymentReadyCount}/{metrics.totalSetups}</strong>
+              </Link>
+              <div>
+                <span><Armchair size={16} />选座进度</span>
+                <strong>{metrics.seatingProgressPercent}%</strong>
+              </div>
+            </div>
+          </section>
 
-      <div className="section-title-row table-section-title">
-        <div>
-          <p className="eyebrow">活动总览</p>
-          <h2>全部活动</h2>
-        </div>
-        <span>{events.length} 场活动</span>
+          <section className={styles.systemStatus}>
+            <CheckCircle2 size={17} />
+            <span><strong>流程运行正常</strong><small>付款、选座、签到与退款均已接入权限控制</small></span>
+          </section>
+        </aside>
       </div>
 
-      <section className="data-table">
-        <div className="table-row header">
-          <span>活动</span><span>阶段</span><span>报名</span><span>待处理</span><span>操作</span>
-        </div>
-        {events.map((event) => {
-          const setup = eventSetups.find((item) => item.eventId === event.id);
-          const organizers = organizersByEventId.get(event.id) ?? [];
-          const pendingPaymentCount = registrations.filter(
-            (registration) => registration.eventId === event.id && registration.paymentStatus === "待审核"
-          ).length;
+      <div className={styles.secondaryArea}>
+        <LocalCreatedEventList />
 
-          return (
-            <div className="table-row" key={event.id}>
-              <span>
-                <strong>{event.name}</strong>
-                <small>{event.publicCode} · {organizers.map((organizer) => organizer.publicId).join(" / ")}</small>
-              </span>
-              <span>{setup?.setupStatus ?? event.status}</span>
-              <span>{event.registered}/{event.capacity}</span>
-              <span>
-                {pendingPaymentCount > 0 ? (
-                  <Link className="status-badge warning" href={`/organizer/events/${event.id}?panel=orders`}>
-                    {pendingPaymentCount} 笔付款
-                  </Link>
-                ) : (
-                  <span className="status-badge neutral">无待办</span>
-                )}
-              </span>
-              <Link className="button secondary" href={`/organizer/events/${event.id}`}>管理</Link>
-            </div>
-          );
-        })}
-      </section>
-
-      <LocalCreatedEventList />
-
-      <details className="verification-disclosure">
-        <summary>
-          <span>
-            <ShieldCheck size={20} />
-            <span>
-              <strong>收费活动发布资格</strong>
-              <small>仅在需要提交或更新主办认证时展开</small>
-            </span>
-          </span>
-          <span className="status-badge neutral">查看认证</span>
-        </summary>
-        <div className="verification-disclosure-body">
-          <OrganizerVerificationPanel />
-        </div>
-      </details>
-    </>
+        <details className={styles.verificationDisclosure}>
+          <summary>
+            <span className={styles.verificationIcon}><ShieldCheck size={18} /></span>
+            <span><strong>收费活动发布资格</strong><small>主办认证与审核状态</small></span>
+            <ChevronRight size={18} />
+          </summary>
+          <div className={styles.verificationBody}>
+            <OrganizerVerificationPanel />
+          </div>
+        </details>
+      </div>
+    </div>
   );
 }
