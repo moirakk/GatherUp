@@ -5,6 +5,7 @@ import { LocalCreatedEventList } from "@/components/local-created-event-list";
 import { MetricCard } from "@/components/metric-card";
 import { getNextActions } from "@/components/next-action-card";
 import { OrganizerVerificationPanel } from "@/components/organizer-verification-panel";
+import { buildOrganizerDashboardMetrics } from "@/domain/organizer-dashboard-metrics";
 import type { EventSetup, GatherEvent, Registration } from "@/lib/mock-data";
 import { getOrganizerDashboard } from "@/lib/organizer-data";
 
@@ -19,10 +20,9 @@ function getPrimaryAction(event: GatherEvent, setup: EventSetup, eventRegistrati
 
 export default async function OrganizerPage() {
   const { eventSetups, events, organizersByEventId, registrations } = await getOrganizerDashboard();
+  const metrics = buildOrganizerDashboardMetrics(events, eventSetups, registrations);
   const activeSetups = eventSetups.filter((setup) => setup.setupStatus !== "报名已开放");
-  const paymentReadyCount = eventSetups.filter((setup) => setup.paymentQrStatus === "已配置").length;
   const pendingPaymentRegistrations = registrations.filter((registration) => registration.paymentStatus === "待审核");
-  const pendingPaymentCount = pendingPaymentRegistrations.length;
   const firstSetupEventId = activeSetups[0]?.eventId ?? events[0]?.id ?? "";
   const firstPaymentEventId = eventSetups.find((setup) => setup.paymentQrStatus === "已配置")?.eventId ?? events[0]?.id ?? "";
   const firstPendingPaymentEventId = pendingPaymentRegistrations[0]?.eventId ?? firstSetupEventId;
@@ -51,9 +51,13 @@ export default async function OrganizerPage() {
       </section>
 
       <section className="metrics-grid">
-        <MetricCard label="筹备中活动" value={activeSetups.length} href={setupHref} />
-        <MetricCard label="已配置收款" value={`${paymentReadyCount}/${eventSetups.length}`} href={paymentHref} />
-        <MetricCard label="待审核付款" value={pendingPaymentCount} href={pendingPaymentHref} />
+        <MetricCard label="筹备中活动" value={metrics.activeSetupCount} href={setupHref} />
+        <MetricCard label="已配置收款" value={`${metrics.paymentReadyCount}/${metrics.totalSetups}`} href={paymentHref} />
+        <MetricCard label="待审核付款" value={metrics.pendingPaymentCount} href={pendingPaymentHref} />
+        <MetricCard label="签到率" value={`${metrics.checkInRatePercent}%`} />
+        <MetricCard label="退款风险单" value={metrics.refundExposureCount} />
+        <MetricCard label="选座进度" value={`${metrics.seatingProgressPercent}%`} />
+        <MetricCard label="已确认收入" value={`¥${metrics.confirmedRevenue}`} />
       </section>
 
       <section className="setup-grid">

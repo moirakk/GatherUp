@@ -66,6 +66,7 @@ describe("registration and payment proof API contracts", () => {
   const organizerEventPage = readSource("src/app/organizer/events/[eventId]/page.tsx");
   const organizerFinancePage = readSource("src/app/organizer/events/[eventId]/finance/page.tsx");
   const organizerNewEventPage = readSource("src/app/organizer/events/new/page.tsx");
+  const organizerDashboardMetrics = readSource("src/domain/organizer-dashboard-metrics.ts");
   const organizerEventActions = readSource("src/components/organizer-event-actions.tsx");
   const organizerVerificationPanel = readSource("src/components/organizer-verification-panel.tsx");
   const eventIdentityPanel = readSource("src/components/event-identity-panel.tsx");
@@ -414,9 +415,15 @@ describe("registration and payment proof API contracts", () => {
 
   it("keeps the organizer dashboard on the authenticated Supabase organizer adapter", () => {
     expectSource(organizerPage, 'import { getOrganizerDashboard } from "@/lib/organizer-data";');
+    expectSource(organizerPage, 'import { buildOrganizerDashboardMetrics } from "@/domain/organizer-dashboard-metrics";');
     expectSource(organizerPage, 'import { OrganizerVerificationPanel } from "@/components/organizer-verification-panel";');
     expectSource(organizerPage, "await getOrganizerDashboard()");
+    expectSource(organizerPage, "buildOrganizerDashboardMetrics(events, eventSetups, registrations)");
     expectSource(organizerPage, "<OrganizerVerificationPanel />");
+    expectSource(organizerPage, 'label="签到率"');
+    expectSource(organizerPage, 'label="退款风险单"');
+    expectSource(organizerPage, 'label="选座进度"');
+    expectSource(organizerPage, 'label="已确认收入"');
     expectSource(organizerPage, "organizersByEventId.get(event.id)");
     expectSource(organizerPage, 'href="/organizer/events/new"');
     expectSource(organizerData, "export async function getOrganizerDashboard()");
@@ -428,6 +435,10 @@ describe("registration and payment proof API contracts", () => {
     expectSource(organizerData, '.eq("organizer_id", appUser.id)');
     expectSource(organizerData, "eventRowToGatherEvent(row)");
     expectSource(organizerData, "rowToRegistration");
+    expectSource(organizerDashboardMetrics, "export function buildOrganizerDashboardMetrics");
+    expectSource(organizerDashboardMetrics, "checkInRatePercent");
+    expectSource(organizerDashboardMetrics, "refundExposureCount");
+    expectSource(organizerDashboardMetrics, "seatingProgressPercent");
 
     assert.doesNotMatch(organizerPage, /import\s+\{[^}]*eventSetups|import\s+\{[^}]*registrations|getEventOrganizers/);
   });

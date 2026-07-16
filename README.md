@@ -99,7 +99,7 @@ Implemented prototype coverage:
 - Login/register/code/reset UI with Supabase Auth adapter preparation.
 - Activity square, event detail, registration flow, order detail, profile center.
 - Organizer workspace, event creation wizard, event management console, finance center.
-- Organizer workflow stepper and dynamic next-action guidance for the main organizer workspace and per-event management console.
+- Organizer workflow stepper, reusable dashboard metrics, and dynamic next-action guidance for the main organizer workspace and per-event management console.
 - Local event draft saving, publish readiness checks, and local created event records.
 - Organizer promotion center, notification center, payment review prototype, seat management prototype.
 - Venue intelligence prototype.
@@ -339,7 +339,7 @@ Recommended order:
 2. Expand the real data service layer beyond the current event creation, basic event editing, collaborator management RPC, and open-registration baseline: invite acceptance, visibility, review gates, and richer post-publish edit constraints.
 3. Organizer-collected payment workflow: collection-code versions, review queues, top-up, overpayment/underpayment, and finance reconciliation.
 4. Continue refund completion: participant receipt confirmation, disputes, retention policy, and finance export evidence.
-5. Build the organizer dashboard metrics layer for pending reviews, check-in rate, refund exposure, seat progress, and revenue.
+5. Deepen the organizer dashboard metrics layer with richer Supabase finance/refund evidence once refund confirmation, disputes, and export evidence are fully wired.
 6. Execute the API rate-limit migration in the clean validation project and add a live RPC integration check for `consume_rate_limit`.
 
 ## Repository Notes

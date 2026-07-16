@@ -92,6 +92,7 @@ Supabase live 状态：
 - 已新增 `src/domain/status-machine.ts` 作为第一版统一状态机底座：覆盖报名、付款、退款和签到工作流，并用测试反查 `supabase/schema.sql` 的 enum，防止应用层状态规则和数据库契约分叉。
 - 已新增 `src/domain/workflow-events.ts` 作为状态变化事件契约：合法状态跳转可统一派生 `auditAction`、`notificationType`、目标受众和风险级别，为后续通知中心、审计事件和 Dashboard 聚合打底。
 - 已新增 `src/domain/notification-queue.ts` 作为通知队列契约：可把 workflow event 转成站内/邮件/微信 channel 的待投递通知项，并提供 `toNotificationDeliveryInsert()` 映射到 Supabase insert payload。
+- 已新增 `src/domain/organizer-dashboard-metrics.ts` 作为主办工作台指标口径：从活动、筹备配置和报名订单统一计算待审核付款、签到率、退款风险单、选座进度和已确认收入，并用契约测试保护，避免主办首页继续散落临时统计逻辑。
 - `notification_deliveries` 已补齐 `template_key`、`title`、`body`、`metadata`、`read_at` 字段，通知队列内容可以持久化到数据库并支持站内已读状态；当前仍不实际发送外部邮件/微信消息。
 - 新增 `/api/notifications`：通过统一 Supabase 认证读取当前用户站内通知和未读数，并通过 `mark_notification_deliveries_read` RPC 标记单条或全部已读，避免给普通用户开放通知正文 update 权限。
 - 新增 `NotificationBell` 并接入全局 `AppShell`：Supabase session 用户可在顶栏查看未读角标、打开通知列表并一键全部已读；demo session 下安静隐藏该入口。
