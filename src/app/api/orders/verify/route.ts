@@ -36,7 +36,25 @@ export async function POST(request: Request) {
     return jsonError("请求体不是合法 JSON。");
   }
 
-  const checkInCode = typeof body.check_in_code === "string" ? body.check_in_code.trim() : "";
+  const submittedCode = typeof body.check_in_code === "string" ? body.check_in_code.trim() : "";
+  const submittedOrderNumber = typeof body.order_number === "string" ? body.order_number.trim() : "";
+  let checkInCode = submittedCode.replace(/^gatherup:\/\/check-in\//i, "");
+
+  if (submittedOrderNumber) {
+    const { data: order, error: orderLookupError } = await authContext.supabase
+      .from("registrations")
+      .select("check_in_code")
+      .eq("order_number", submittedOrderNumber)
+      .maybeSingle();
+
+    if (orderLookupError) {
+      return jsonError(orderLookupError.message, 500);
+    }
+
+    if (typeof order?.check_in_code === "string" && order.check_in_code.trim()) {
+      checkInCode = order.check_in_code.trim();
+    }
+  }
 
   if (!checkInCode) {
     return jsonError("缺少 check_in_code。");
@@ -77,6 +95,7 @@ export async function POST(request: Request) {
       ok: true,
       order_id: result.registration_id,
       order_number: result.order_number,
+      attendee_count: typeof result.attendee_count === "number" ? result.attendee_count : undefined,
       status: typeof result.status === "string" ? toPublicOrderStatus(result.status) : undefined,
       check_in_status: typeof result.check_in_status === "string" ? toPublicCheckInStatus(result.check_in_status) : undefined
     });

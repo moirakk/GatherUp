@@ -59,6 +59,7 @@ describe("registration and payment proof API contracts", () => {
   const organizerVerificationRoute = readSource("src/app/api/organizer/verification/route.ts");
   const appShell = readSource("src/components/app-shell.tsx");
   const notificationBell = readSource("src/components/notification-bell.tsx");
+  const checkInPanel = readSource("src/components/check-in-panel.tsx");
   const orderSeatSelectionPanel = readSource("src/components/order-seat-selection-panel.tsx");
   const orderPage = readSource("src/app/me/orders/[orderNumber]/page.tsx");
   const myOrdersPage = readSource("src/app/me/page.tsx");
@@ -277,8 +278,13 @@ describe("registration and payment proof API contracts", () => {
     expectSource(orderVerifyRoute, "getAuthenticatedSupabaseClient(request)");
     expectSource(orderVerifyRoute, "enforceRateLimit(request");
     expectSource(orderVerifyRoute, 'keyPrefix: "orders:verify"');
+    expectSource(orderVerifyRoute, 'typeof body.order_number === "string"');
+    expectSource(orderVerifyRoute, '.from("registrations")');
+    expectSource(orderVerifyRoute, '.select("check_in_code")');
+    expectSource(orderVerifyRoute, '.eq("order_number", submittedOrderNumber)');
     expectSource(orderVerifyRoute, 'authContext.supabase.rpc("check_in_order_atomic"');
     expectSource(orderVerifyRoute, "p_check_in_code: checkInCode");
+    expectSource(orderVerifyRoute, "attendee_count");
 
     assert.doesNotMatch(orderVerifyRoute, /getSupabaseServiceClient/);
     assert.doesNotMatch(orderVerifyRoute, /\.from\("registrations"\)\s*\n\s*\.update/);
@@ -501,9 +507,11 @@ describe("registration and payment proof API contracts", () => {
   it("keeps the organizer event workspace on the authenticated Supabase organizer detail adapter", () => {
     expectSource(organizerEventPage, 'import { getOrganizerEventDetail } from "@/lib/organizer-data";');
     expectSource(organizerEventPage, 'import { AuditLogTimeline } from "@/components/audit-log-timeline";');
+    expectSource(organizerEventPage, 'import { CheckInPanel } from "@/components/check-in-panel";');
     expectSource(organizerEventPage, "await getOrganizerEventDetail(eventId)");
     expectSource(organizerEventPage, "const { announcements, auditLogs, event, organizers, registrations, setup } = eventDetail;");
     expectSource(organizerEventPage, "<AuditLogTimeline logs={auditLogs} />");
+    expectSource(organizerEventPage, "<CheckInPanel />");
     expectSource(organizerData, "export async function getOrganizerEventDetail(eventId: string)");
     expectSource(organizerData, "auditLogs: EventAuditLog[];");
     expectSource(organizerData, "await createSupabaseServerClient()");
@@ -524,6 +532,20 @@ describe("registration and payment proof API contracts", () => {
       organizerEventPage,
       /findEvent|getEventAnnouncements|getEventOrganizers|getEventRegistrations|getEventSetup|@\/lib\/mock-data/
     );
+  });
+
+  it("keeps the organizer check-in panel on the authenticated verify API contract", () => {
+    expectSource(checkInPanel, '"use client"');
+    expectSource(checkInPanel, "getSupabaseBrowserClient().auth.getSession()");
+    expectSource(checkInPanel, 'fetch("/api/orders/verify"');
+    expectSource(checkInPanel, "Authorization: `Bearer ${accessToken}`");
+    expectSource(checkInPanel, "check_in_code: submittedValue");
+    expectSource(checkInPanel, "order_number: looksLikeOrderNumber(submittedValue) ? submittedValue : undefined");
+    expectSource(checkInPanel, "attendee_count");
+    expectSource(checkInPanel, "ALREADY_CHECKED_IN");
+    expectSource(checkInPanel, "ORDER_NOT_CONFIRMED");
+    expectSource(checkInPanel, "CHECK_IN_CODE_NOT_FOUND");
+    expectSource(checkInPanel, ".slice(0, 10)");
   });
 
   it("keeps the organizer finance workspace on the finance-scoped Supabase adapter", () => {

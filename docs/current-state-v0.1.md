@@ -109,6 +109,7 @@ Supabase live 状态：
 - 付款审核已新增 `review_payment_atomic` RPC 草案：在数据库函数内校验当前用户具备活动付款管理权限，锁定 registration/payment，更新 registration、payment 和 payment_proofs，并写入 `audit_logs`。`/api/orders/review` 已改为 authenticated Supabase client 调用该 RPC。
 - 选座已新增第一批 RPC、API 入口和订单详情页真实选座面板：`expire_seat_locks_for_event`、`create_seat_lock_atomic` 和 `confirm_seat_assignment_atomic`，以及 `/api/seats/lock`、`/api/seats/confirm`。它们用于释放过期锁、创建座位锁、确认座位分配；并发抢同一座位已在真实 Supabase 集成测试中通过。
 - 核销已新增 `check_in_order_atomic` RPC 草案：现场人员通过 `/api/orders/verify` 提交核销码，数据库函数内校验活动管理权限，更新订单和参与人签到状态，写入 `check_ins` 和 `audit_logs`。
+- 活动管理台已新增第一版现场核销面板：主办/现场人员可输入订单号、核销码或 `gatherup://check-in/` 链接，前端通过 Supabase session 调用 `/api/orders/verify`，展示成功人数和最近 10 条本地核销记录；v0.1 暂不接摄像头扫码。
 - 退款已新增申请、审核、凭证上传三段 RPC/API 草案：`request_refund_atomic` + `/api/orders/refund` 允许参与者为自己的已确认订单申请退款；`review_refund_request_atomic` + `/api/orders/refund/review` 允许主办/财务/管理员审核通过或驳回；`record_refund_proof_atomic` + `/api/orders/refund/proof` 允许退款负责人提交私有 `refund-proofs` 打款凭证并推进到 `proof_uploaded`。数据库函数会同步订单/付款/退款状态并写入 `audit_logs`。参与者确认收款和争议处理仍需继续补齐。
 - 主办敏感 API 已从原型 cookie 身份切换到 Supabase Bearer/SSR cookie 统一验证：活动创建、付款审核、核销、名单导出和财务导出不再信任可被客户端伪造的 `gatherup_id` cookie。
 - 这些 API/RPC 仍是早期产品集成层，但付款凭证 Storage 链路、付款审核 RPC、座位锁 RPC、核销 RPC 和退款申请/审核/凭证 RPC 已经在干净 Supabase 项目中用真实用户 session 通过集成验证；waitlist、参与者确认收款、退款争议、更多 UI 级端到端流程和新增工作流 RLS 仍需要继续补齐。

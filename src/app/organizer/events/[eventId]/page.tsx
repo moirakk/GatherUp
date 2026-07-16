@@ -4,6 +4,7 @@ import { ArrowLeft, AtSign, BellRing, CalendarCheck, CircleDollarSign, MapPinned
 
 import { AnnouncementCenter } from "@/components/announcement-center";
 import { AuditLogTimeline } from "@/components/audit-log-timeline";
+import { CheckInPanel } from "@/components/check-in-panel";
 import { EventBasicsEditor } from "@/components/event-basics-editor";
 import { EventIdentityPanel } from "@/components/event-identity-panel";
 import { MetricCard } from "@/components/metric-card";
@@ -162,6 +163,7 @@ export default async function OrganizerEventPage({ params, searchParams }: Organ
                 <div className="segmented"><span>报名</span><span>付款</span><span>座位</span></div>
               </div>
               <PaymentReviewTable registrations={registrations} />
+              <CheckInPanel />
             </article>
           )}
         </section>
@@ -243,6 +245,7 @@ export default async function OrganizerEventPage({ params, searchParams }: Organ
             <div className="segmented"><span>报名</span><span>付款</span><span>座位</span></div>
           </div>
           <PaymentReviewTable registrations={registrations} />
+          <CheckInPanel />
         </article>
 
         <article className="content-card" id="seats">
