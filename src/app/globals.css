@@ -2778,6 +2778,40 @@ h3 {
   font-size: 30px;
 }
 
+.dashboard-load-error {
+  display: grid;
+  max-width: 720px;
+  grid-template-columns: 44px minmax(0, 1fr);
+  gap: 16px;
+  padding: 22px;
+  border-color: #e1c5be;
+  background: #fffafa;
+  box-shadow: none;
+}
+
+.dashboard-load-error-icon {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  border-radius: 8px;
+  background: #f6e5e1;
+  color: #8f3d2e;
+}
+
+.dashboard-load-error h2 {
+  margin: 2px 0 8px;
+  font-size: 20px;
+}
+
+.dashboard-load-error .subtle {
+  max-width: 560px;
+}
+
+.dashboard-load-error .button-row {
+  margin-top: 18px;
+}
+
 .dashboard-primary-metrics {
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 12px;
