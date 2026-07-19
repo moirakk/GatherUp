@@ -654,6 +654,8 @@ describe("registration and payment proof API contracts", () => {
     expectSource(organizerData, '.from("announcements")');
     expectSource(organizerData, '.from("registrations")');
     expectSource(organizerData, '.from("event_organizers")');
+    expectSource(organizerData, "users:users!event_organizers_user_id_fkey");
+    expectSource(organizerData, 'reportDataAccessFailure("getOrganizerEventDetail.operations"');
     expectSource(organizerData, '.from("audit_logs")');
     expectSource(organizerData, '.from("refund_requests")');
     expectSource(organizerData, "refundRequestRowToEventRefundRequest");

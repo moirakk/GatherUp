@@ -631,7 +631,7 @@ export async function getOrganizerDashboard(): Promise<OrganizerDashboardData> {
         .in("event_id", eventIds),
       supabase
         .from("event_organizers")
-        .select("event_id, role, status, users(id, public_id, name)")
+        .select("event_id, role, status, users:users!event_organizers_user_id_fkey(id, public_id, name)")
         .in("event_id", eventIds)
     ]);
 
@@ -720,7 +720,7 @@ export async function getOrganizerEventDetail(eventId: string): Promise<Organize
         .eq("event_id", eventRow.id),
       supabase
         .from("event_organizers")
-        .select("event_id, role, status, users(id, public_id, name)")
+        .select("event_id, role, status, users:users!event_organizers_user_id_fkey(id, public_id, name)")
         .eq("event_id", eventRow.id),
       supabase
         .from("audit_logs")
@@ -741,7 +741,16 @@ export async function getOrganizerEventDetail(eventId: string): Promise<Organize
         .order("created_at", { ascending: false })
     ]);
 
-    if (announcementResult.error || registrationResult.error || organizerResult.error || auditLogResult.error || refundRequestResult.error || waitlistEntryResult.error) {
+    const operationsError =
+      announcementResult.error ??
+      registrationResult.error ??
+      organizerResult.error ??
+      auditLogResult.error ??
+      refundRequestResult.error ??
+      waitlistEntryResult.error;
+
+    if (operationsError) {
+      reportDataAccessFailure("getOrganizerEventDetail.operations", operationsError);
       return null;
     }
 
@@ -760,7 +769,8 @@ export async function getOrganizerEventDetail(eventId: string): Promise<Organize
       source: "supabase",
       waitlistEntries: ((waitlistEntryResult.data ?? []) as WaitlistEntryRow[]).map(waitlistEntryRowToEventWaitlistEntry)
     };
-  } catch {
+  } catch (error) {
+    reportDataAccessFailure("getOrganizerEventDetail", error);
     return null;
   }
 }

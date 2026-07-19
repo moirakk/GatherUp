@@ -90,7 +90,7 @@ Supabase live 状态：
 - `/events/[eventId]` 活动详情已通过 `getPublicEventDetail()` 优先读取 Supabase，可用 UUID 或 `public_code` 查找；未公开但 link-only 的活动由数据库 RLS 控制直链可见。
 - Supabase 读取已从公开展示面扩展到核心参与者和主办工作台：公开活动、活动详情、参与者订单、主办首页、活动管理台和财务中心均已有真实读取路径；本地 mock fallback 只用于未配置 Supabase 或显式 demo mode。
 - 已新增第一批受控写入/导出 API：活动创建、报名订单、付款审核、核销、名单导出、财务导出。它们要求 Supabase 登录态；主办敏感操作不再信任原型 cookie。
-- 活动创建已从 API Route 内串行写入四张表，收口为 `create_event_atomic` 数据库 RPC：活动、owner 协作者、财务设置、可选收款码版本和审计日志在同一事务中生成；API 使用 authenticated Supabase client 调用，不再用 service role 绕过用户身份链。该 migration 已在 clean-dev 执行，匿名拒绝、完整创建、公开编码冲突和非法输入回滚 4 条真实集成用例全部通过。
+- 活动创建已从 API Route 内串行写入四张表，收口为 `create_event_atomic` 数据库 RPC：活动、owner 协作者、财务设置、可选收款码版本和审计日志在同一事务中生成；API 使用 authenticated Supabase client 调用，不再用 service role 绕过用户身份链。该 migration 已在 clean-dev 执行，匿名拒绝、完整创建、公开编码冲突和非法输入回滚 4 条真实集成用例全部通过；2026-07-19 又以临时真实账号完成浏览器创建并成功进入活动管理台。
 - middleware 已迁移到 `@supabase/ssr`：配置 Supabase 后，页面路由通过 `supabase.auth.getUser()` 验证真实 session，并支持 Supabase session cookie refresh；`/api/*` 由各 Route Handler 自己返回 JSON 鉴权结果。
 - API Route 认证已统一到底层 helper：外部/API 客户端可继续传 Supabase Bearer token；同源浏览器请求也可使用 Supabase SSR session cookie 获取用户和 authenticated Supabase client。
 - API Route 限流已升级为 async 共享入口：配置 `SUPABASE_SERVICE_ROLE_KEY` 时通过 service-role-only `consume_rate_limit` RPC 写入 `api_rate_limits` 表，实现跨 serverless 实例固定窗口限流；未配置或 RPC 临时失败时回退内存限流。
@@ -134,6 +134,7 @@ Supabase live 状态：
 - 平台后台已新增第一版 `/admin` 审核工作台：平台管理员通过 `is_platform_admin()` 校验后，可查看待审核/已驳回主办认证，执行轻量通过、强化通过、驳回或暂停；也可处理活动审核请求，执行通过、要求修改、驳回或暂停，并把主办认证/活动审核决策写入 `audit_logs`。
 - Supabase migrations 已建立初始治理入口：`supabase/migrations/20260705000001_initial_schema.sql` 和 `20260705000002_storage.sql` 冻结当前 schema/storage 基线，`20260705000100_api_rate_limits.sql` 增加跨实例限流表与 RPC，`20260717000000_create_event_atomic.sql` 增加原子活动创建事务，`20260719000000_reconcile_event_organizer_lifecycle.sql` 对账较旧 clean-dev 的协作者邀请生命周期 enum/字段，`20260719000100_public_event_registration_counts.sql` 以只读聚合 RPC 提供公开活动已报名人数且不暴露参与者报名行；`tests/migrations-contract.test.mts` 保护迁移命名、基线一致性、权限边界和关键事务写入范围。
 - 2026-07-19 已确认此前终端网络失败的实际诱因包含 validation 项目处于暂停状态。项目恢复后，Codex 终端可直连 Supabase；补齐活动创建、跨实例限流和协作者生命周期 schema 对账迁移后，完整真实 RPC/并发/Storage RLS 集成套件通过 25/25。
+- 浏览器活动创建冒烟测试曾暴露 `event_organizers` 同时关联成员和邀请人后，PostgREST 无法推断 `users(...)` 嵌套关系；主办数据适配器现显式使用 `event_organizers_user_id_fkey`，新创建活动可正常进入管理台，读取错误也会进入统一数据访问日志而不是静默退化为 404。
 
 ## 3. 本地运行
 

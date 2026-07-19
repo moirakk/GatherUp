@@ -733,6 +733,7 @@ suites 5
 pass 25
 fail 0
 ```
+10. Completed a browser smoke test with a temporary confirmed Supabase Auth user. The create wizard successfully wrote a real event, then exposed a PostgREST ambiguity in the organizer workspace because `event_organizers` now has both `user_id` and `invited_by` relationships to `users`. Updated the adapter to select `users:users!event_organizers_user_id_fkey(...)`; after hot reload, the new activity management workspace rendered the event, owner, finance setup, and `event.created` audit entry successfully.
 
 Validated boundaries:
 
