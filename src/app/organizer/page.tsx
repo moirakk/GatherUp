@@ -7,8 +7,10 @@ import {
   MapPinned,
   Plus,
   QrCode,
+  RefreshCw,
   ServerCog,
-  ShieldCheck
+  ShieldCheck,
+  TriangleAlert
 } from "lucide-react";
 
 import { LocalCreatedEventList } from "@/components/local-created-event-list";
@@ -19,6 +21,8 @@ import { buildOrganizerDashboardMetrics } from "@/domain/organizer-dashboard-met
 import type { EventSetup, GatherEvent, Registration } from "@/lib/mock-data";
 import { getOrganizerDashboard } from "@/lib/organizer-data";
 
+export const dynamic = "force-dynamic";
+
 function getPrimaryAction(event: GatherEvent, setup: EventSetup, eventRegistrations: Registration[]) {
   return getNextActions({
     basePath: `/organizer/events/${event.id}`,
@@ -28,8 +32,58 @@ function getPrimaryAction(event: GatherEvent, setup: EventSetup, eventRegistrati
   })[0];
 }
 
+function OrganizerPageHeader() {
+  return (
+    <section className="page-header workspace-header">
+      <div>
+        <p className="eyebrow">组织工作台</p>
+        <h1>今天需要处理什么</h1>
+        <p className="subtle">先处理会阻塞参与者的事项，再检查筹备进度和活动数据。</p>
+      </div>
+      <div className="button-row">
+        <Link className="button secondary" href="/dev/status">
+          <ServerCog size={17} />
+          后端状态
+        </Link>
+        <Link className="button primary" href="/organizer/events/new">
+          <Plus size={17} />
+          创建活动
+        </Link>
+      </div>
+    </section>
+  );
+}
+
 export default async function OrganizerPage() {
-  const { eventSetups, events, organizersByEventId, registrations } = await getOrganizerDashboard();
+  const dashboard = await getOrganizerDashboard();
+  const { errorMessage, eventSetups, events, organizersByEventId, registrations, status } = dashboard;
+
+  if (status === "error") {
+    return (
+      <>
+        <OrganizerPageHeader />
+        <section className="content-card dashboard-load-error" role="alert">
+          <span className="dashboard-load-error-icon"><TriangleAlert size={22} /></span>
+          <div>
+            <p className="eyebrow">数据载入异常</p>
+            <h2>暂时无法显示主办工作台</h2>
+            <p className="subtle">{errorMessage ?? "请重新加载页面；若问题持续，请检查后端状态。"}</p>
+            <div className="button-row">
+              <Link className="button primary" href="/organizer">
+                <RefreshCw size={16} />
+                重新加载
+              </Link>
+              <Link className="button secondary" href="/dev/status">
+                <ServerCog size={16} />
+                查看系统状态
+              </Link>
+            </div>
+          </div>
+        </section>
+      </>
+    );
+  }
+
   const metrics = buildOrganizerDashboardMetrics(events, eventSetups, registrations);
   const activeSetups = eventSetups.filter((setup) => setup.setupStatus !== "报名已开放");
   const pendingPaymentRegistrations = registrations.filter((registration) => registration.paymentStatus === "待审核");
@@ -42,23 +96,7 @@ export default async function OrganizerPage() {
 
   return (
     <>
-      <section className="page-header workspace-header">
-        <div>
-          <p className="eyebrow">组织工作台</p>
-          <h1>今天需要处理什么</h1>
-          <p className="subtle">先处理会阻塞参与者的事项，再检查筹备进度和活动数据。</p>
-        </div>
-        <div className="button-row">
-          <Link className="button secondary" href="/dev/status">
-            <ServerCog size={17} />
-            后端状态
-          </Link>
-          <Link className="button primary" href="/organizer/events/new">
-            <Plus size={17} />
-            创建活动
-          </Link>
-        </div>
-      </section>
+      <OrganizerPageHeader />
 
       <section className="metrics-grid dashboard-primary-metrics" aria-label="关键运营指标">
         <MetricCard

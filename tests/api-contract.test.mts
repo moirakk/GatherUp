@@ -557,6 +557,22 @@ describe("registration and payment proof API contracts", () => {
     assert.doesNotMatch(organizerPage, /import\s+\{[^}]*eventSetups|import\s+\{[^}]*registrations|getEventOrganizers/);
   });
 
+  it("does not disguise organizer dashboard read failures as an empty workspace", () => {
+    expectSource(organizerData, 'import { reportDataAccessFailure, shouldUseMockData } from "@/lib/data-mode";');
+    expectSource(organizerData, 'status: "empty" | "error" | "ready";');
+    expectSource(organizerData, "function failedSupabaseOrganizerDashboard");
+    expectSource(organizerData, "reportDataAccessFailure(`getOrganizerDashboard:${scope}`, error)");
+    expectSource(organizerData, 'return emptySupabaseOrganizerDashboard("error", errorMessage);');
+    expectSource(organizerData, "catch (error)");
+    expectSource(organizerPage, 'if (status === "error")');
+    expectSource(organizerPage, 'export const dynamic = "force-dynamic";');
+    expectSource(organizerPage, 'role="alert"');
+    expectSource(organizerPage, "暂时无法显示主办工作台");
+    expectSource(organizerPage, "重新加载");
+
+    assert.doesNotMatch(organizerData, /catch\s*\{\s*return emptySupabaseOrganizerDashboard\(\);\s*\}/);
+  });
+
   it("keeps organizer verification applications on an authenticated Supabase path", () => {
     expectSource(organizerVerificationRoute, "export async function GET(request: Request)");
     expectSource(organizerVerificationRoute, "export async function POST(request: Request)");

@@ -23,7 +23,7 @@ import {
   type Registration
 } from "@/lib/mock-data";
 import { eventRowToGatherEvent, eventRowToSetup, type EventRow } from "@/lib/events-data";
-import { shouldUseMockData } from "@/lib/data-mode";
+import { reportDataAccessFailure, shouldUseMockData } from "@/lib/data-mode";
 import { canManageEvent, findUserByAuthUserId } from "@/lib/server/api";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { rowToRegistration, type RegistrationRow } from "@/lib/orders-data";
@@ -158,6 +158,8 @@ export type OrganizerDashboardData = {
   organizersByEventId: Map<string, EventOrganizer[]>;
   registrations: Registration[];
   source: "mock" | "supabase";
+  status: "empty" | "error" | "ready";
+  errorMessage?: string;
 };
 
 export type OrganizerEventDetailData = {
@@ -228,18 +230,30 @@ function mockOrganizerDashboard(): OrganizerDashboardData {
     events,
     organizersByEventId: new Map(events.map((event) => [event.id, getEventOrganizers(event.id)])),
     registrations,
-    source: "mock"
+    source: "mock",
+    status: events.length > 0 ? "ready" : "empty"
   };
 }
 
-function emptySupabaseOrganizerDashboard(): OrganizerDashboardData {
+function emptySupabaseOrganizerDashboard(
+  status: OrganizerDashboardData["status"] = "empty",
+  errorMessage?: string
+): OrganizerDashboardData {
   return {
     eventSetups: [],
     events: [],
     organizersByEventId: new Map(),
     registrations: [],
-    source: "supabase"
+    source: "supabase",
+    status,
+    errorMessage
   };
+}
+
+function failedSupabaseOrganizerDashboard(scope: string, error: unknown, errorMessage: string) {
+  reportDataAccessFailure(`getOrganizerDashboard:${scope}`, error);
+
+  return emptySupabaseOrganizerDashboard("error", errorMessage);
 }
 
 function formatDateTime(value: string | null | undefined) {
@@ -529,13 +543,21 @@ export async function getOrganizerDashboard(): Promise<OrganizerDashboardData> {
     } = await supabase.auth.getUser();
 
     if (authError || !user) {
-      return emptySupabaseOrganizerDashboard();
+      return failedSupabaseOrganizerDashboard(
+        "auth",
+        authError ?? new Error("Authenticated user is unavailable."),
+        "登录状态校验失败，请重新加载页面；若问题持续，请重新登录。"
+      );
     }
 
     const appUser = await findUserByAuthUserId(supabase, user.id);
 
     if (!appUser) {
-      return emptySupabaseOrganizerDashboard();
+      return failedSupabaseOrganizerDashboard(
+        "profile",
+        new Error(`App user profile was not found for auth user ${user.id}.`),
+        "账号资料尚未准备完成，请先检查账号设置后重试。"
+      );
     }
 
     const { data: membershipData, error: membershipError } = await supabase
@@ -545,7 +567,11 @@ export async function getOrganizerDashboard(): Promise<OrganizerDashboardData> {
       .eq("status", "active");
 
     if (membershipError) {
-      return emptySupabaseOrganizerDashboard();
+      return failedSupabaseOrganizerDashboard(
+        "memberships",
+        membershipError,
+        "暂时无法读取活动权限，请稍后重新加载。"
+      );
     }
 
     const memberEventIds = (membershipData ?? []).map((row) => row.event_id as string);
@@ -568,7 +594,11 @@ export async function getOrganizerDashboard(): Promise<OrganizerDashboardData> {
     ]);
 
     if (ownedEventError || memberEventResult.error) {
-      return emptySupabaseOrganizerDashboard();
+      return failedSupabaseOrganizerDashboard(
+        "events",
+        ownedEventError ?? memberEventResult.error,
+        "暂时无法读取主办活动，请稍后重新加载。"
+      );
     }
 
     const eventRowsById = new Map<string, EventRow>();
@@ -596,7 +626,11 @@ export async function getOrganizerDashboard(): Promise<OrganizerDashboardData> {
     ]);
 
     if (registrationResult.error || organizerResult.error) {
-      return emptySupabaseOrganizerDashboard();
+      return failedSupabaseOrganizerDashboard(
+        "operations",
+        registrationResult.error ?? organizerResult.error,
+        "活动已找到，但报名和协作者数据暂时无法载入。"
+      );
     }
 
     const dashboardEvents = eventRows.map((row) => eventRowToGatherEvent(row));
@@ -618,10 +652,15 @@ export async function getOrganizerDashboard(): Promise<OrganizerDashboardData> {
       events: dashboardEvents,
       organizersByEventId: organizerRowsToMap((organizerResult.data ?? []) as EventOrganizerRow[]),
       registrations: dashboardRegistrations,
-      source: "supabase"
+      source: "supabase",
+      status: "ready"
     };
-  } catch {
-    return emptySupabaseOrganizerDashboard();
+  } catch (error) {
+    return failedSupabaseOrganizerDashboard(
+      "unexpected",
+      error,
+      "主办工作台暂时无法载入，请重新加载页面。"
+    );
   }
 }
 
