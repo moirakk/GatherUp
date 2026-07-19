@@ -76,4 +76,26 @@ describe("supabase migrations contract", () => {
     assert.match(migration, /revoke all on function public\.create_event_atomic/);
     assert.match(migration, /grant execute on function public\.create_event_atomic[\s\S]*to authenticated/);
   });
+
+  it("reconciles organizer lifecycle fields for older clean-dev databases", () => {
+    const migration = readMigration("20260719000000_reconcile_event_organizer_lifecycle.sql");
+
+    assert.match(migration, /create type public\.event_organizer_status as enum \('invited', 'active', 'declined'\)/);
+    assert.match(migration, /alter table public\.event_organizers/);
+    assert.match(migration, /add column if not exists status event_organizer_status not null default 'active'/);
+    assert.match(migration, /add column if not exists accepted_at timestamptz/);
+    assert.match(migration, /add column if not exists declined_at timestamptz/);
+    assert.match(migration, /where status = 'active'[\s\S]*and accepted_at is null/);
+  });
+
+  it("publishes aggregate registration counts without exposing registration rows", () => {
+    const migration = readMigration("20260719000100_public_event_registration_counts.sql");
+
+    assert.match(migration, /create or replace function public\.get_public_event_registration_counts/);
+    assert.match(migration, /security definer/);
+    assert.match(migration, /r\.status not in \('cancelled', 'expired', 'refunded'\)/);
+    assert.match(migration, /e\.visibility in \('public', 'unlisted'\)/);
+    assert.match(migration, /revoke all on function public\.get_public_event_registration_counts\(uuid\[\]\) from public/);
+    assert.match(migration, /grant execute on function public\.get_public_event_registration_counts\(uuid\[\]\) to anon, authenticated/);
+  });
 });

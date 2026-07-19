@@ -88,6 +88,7 @@ describe("registration and payment proof API contracts", () => {
   const expenseLedger = readSource("src/components/expense-ledger.tsx");
   const expenseProofList = readSource("src/components/expense-proof-list.tsx");
   const eventsData = readSource("src/lib/events-data.ts");
+  const eventRegistrationCounts = readSource("src/lib/event-registration-counts.ts");
   const organizerData = readSource("src/lib/organizer-data.ts");
   const ordersData = readSource("src/lib/orders-data.ts");
   const dataMode = readSource("src/lib/data-mode.ts");
@@ -822,7 +823,12 @@ describe("registration and payment proof API contracts", () => {
     expectSource(organizerData, "waitlistEntries: EventWaitlistEntry[];");
     expectSource(organizerData, '.from("waitlist_entries")');
     expectSource(organizerData, "waitlistEntryRowToEventWaitlistEntry");
-    expectSource(eventsData, "registered_count, accept_waitlist");
+    expectSource(eventsData, "getActiveRegistrationCounts");
+    expectSource(ordersData, "getActiveRegistrationCounts");
+    expectSource(eventRegistrationCounts, 'supabase.rpc("get_public_event_registration_counts"');
+    assert.doesNotMatch(eventsData, /\.select\([^)]*registered_count/);
+    assert.doesNotMatch(ordersData, /\.select\([^)]*registered_count/);
+    assert.doesNotMatch(organizerData, /\.select\([^)]*registered_count/);
 
     assert.doesNotMatch(waitlistRoute, /getSupabaseServiceClient/);
     assert.doesNotMatch(waitlistInviteRoute, /getSupabaseServiceClient/);

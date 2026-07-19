@@ -123,6 +123,13 @@ describe("GatherUp atomic event creation", { skip: !shouldRun }, () => {
       action: "event.created",
       target_id: data.event_id
     });
+
+    const { data: countData, error: countError } = await anon.rpc("get_public_event_registration_counts", {
+      p_event_ids: [data.event_id]
+    });
+
+    assert.ifError(countError);
+    assert.deepEqual(countData, [{ event_id: data.event_id, registered_count: 0 }]);
   });
 
   it("rejects a duplicate public code without creating another event", async () => {

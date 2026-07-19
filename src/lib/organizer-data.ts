@@ -493,6 +493,16 @@ function buildFinanceSummary(registrations: Registration[], expenses: EventExpen
   };
 }
 
+function applyRegistrationTotals(event: GatherEvent, eventRegistrations: Registration[]) {
+  event.registered = eventRegistrations.reduce((sum, registration) => sum + registration.quantity, 0);
+  event.paid = eventRegistrations
+    .filter((registration) => registration.paymentStatus === "付款已确认")
+    .reduce((sum, registration) => sum + registration.quantity, 0);
+  event.seated = eventRegistrations
+    .filter((registration) => !registration.seatStatus.includes("未"))
+    .reduce((sum, registration) => sum + registration.quantity, 0);
+}
+
 function mapOrganizerRole(role: string): EventOrganizerRole {
   const roles: Record<string, EventOrganizerRole> = {
     owner: "主办",
@@ -577,14 +587,14 @@ export async function getOrganizerDashboard(): Promise<OrganizerDashboardData> {
     const memberEventIds = (membershipData ?? []).map((row) => row.event_id as string);
     const ownedEventsQuery = supabase
       .from("events")
-      .select("id, public_code, name, category, template, custom_type_label, city, venue_name, address, starts_at, registration_deadline, price_cents, custom_form_config, payment_code_img, wechat_group_img, capacity, registered_count, accept_waitlist, description, status, allow_multi_person_registration, max_people_per_registration, order_number_prefix")
+      .select("id, public_code, name, category, template, custom_type_label, city, venue_name, address, starts_at, registration_deadline, price_cents, custom_form_config, payment_code_img, wechat_group_img, capacity, accept_waitlist, description, status, allow_multi_person_registration, max_people_per_registration, order_number_prefix")
       .eq("organizer_id", appUser.id)
       .order("starts_at", { ascending: true });
     const memberEventsQuery =
       memberEventIds.length > 0
         ? supabase
             .from("events")
-            .select("id, public_code, name, category, template, custom_type_label, city, venue_name, address, starts_at, registration_deadline, price_cents, custom_form_config, payment_code_img, wechat_group_img, capacity, registered_count, accept_waitlist, description, status, allow_multi_person_registration, max_people_per_registration, order_number_prefix")
+            .select("id, public_code, name, category, template, custom_type_label, city, venue_name, address, starts_at, registration_deadline, price_cents, custom_form_config, payment_code_img, wechat_group_img, capacity, accept_waitlist, description, status, allow_multi_person_registration, max_people_per_registration, order_number_prefix")
             .in("id", memberEventIds)
             .order("starts_at", { ascending: true })
         : null;
@@ -638,13 +648,7 @@ export async function getOrganizerDashboard(): Promise<OrganizerDashboardData> {
 
     for (const event of dashboardEvents) {
       const eventRegistrations = dashboardRegistrations.filter((registration) => registration.eventId === event.id);
-      event.registered = eventRegistrations.reduce((sum, registration) => sum + registration.quantity, 0);
-      event.paid = eventRegistrations
-        .filter((registration) => registration.paymentStatus === "付款已确认")
-        .reduce((sum, registration) => sum + registration.quantity, 0);
-      event.seated = eventRegistrations
-        .filter((registration) => !registration.seatStatus.includes("未"))
-        .reduce((sum, registration) => sum + registration.quantity, 0);
+      applyRegistrationTotals(event, eventRegistrations);
     }
 
     return {
@@ -688,7 +692,7 @@ export async function getOrganizerEventDetail(eventId: string): Promise<Organize
 
     const eventQuery = supabase
       .from("events")
-      .select("id, public_code, name, category, template, custom_type_label, city, venue_name, address, starts_at, registration_deadline, price_cents, custom_form_config, payment_code_img, wechat_group_img, capacity, registered_count, accept_waitlist, description, status, allow_multi_person_registration, max_people_per_registration, order_number_prefix");
+      .select("id, public_code, name, category, template, custom_type_label, city, venue_name, address, starts_at, registration_deadline, price_cents, custom_form_config, payment_code_img, wechat_group_img, capacity, accept_waitlist, description, status, allow_multi_person_registration, max_people_per_registration, order_number_prefix");
     const { data: eventData, error: eventError } = await (isUuid(eventId)
       ? eventQuery.eq("id", eventId).single()
       : eventQuery.eq("public_code", eventId).single());
@@ -743,13 +747,7 @@ export async function getOrganizerEventDetail(eventId: string): Promise<Organize
 
     const event = eventRowToGatherEvent(eventRow);
     const eventRegistrations = ((registrationResult.data ?? []) as RegistrationRow[]).map(rowToRegistration);
-    event.registered = eventRegistrations.reduce((sum, registration) => sum + registration.quantity, 0);
-    event.paid = eventRegistrations
-      .filter((registration) => registration.paymentStatus === "付款已确认")
-      .reduce((sum, registration) => sum + registration.quantity, 0);
-    event.seated = eventRegistrations
-      .filter((registration) => !registration.seatStatus.includes("未"))
-      .reduce((sum, registration) => sum + registration.quantity, 0);
+    applyRegistrationTotals(event, eventRegistrations);
 
     return {
       announcements: ((announcementResult.data ?? []) as AnnouncementRow[]).map(announcementRowToEventAnnouncement),
@@ -791,7 +789,7 @@ export async function getOrganizerFinanceDetail(eventId: string): Promise<Organi
 
     const eventQuery = supabase
       .from("events")
-      .select("id, public_code, name, category, template, custom_type_label, city, venue_name, address, starts_at, registration_deadline, price_cents, custom_form_config, payment_code_img, wechat_group_img, capacity, registered_count, accept_waitlist, description, status, allow_multi_person_registration, max_people_per_registration, order_number_prefix");
+      .select("id, public_code, name, category, template, custom_type_label, city, venue_name, address, starts_at, registration_deadline, price_cents, custom_form_config, payment_code_img, wechat_group_img, capacity, accept_waitlist, description, status, allow_multi_person_registration, max_people_per_registration, order_number_prefix");
     const { data: eventData, error: eventError } = await (isUuid(eventId)
       ? eventQuery.eq("id", eventId).single()
       : eventQuery.eq("public_code", eventId).single());
@@ -832,6 +830,7 @@ export async function getOrganizerFinanceDetail(eventId: string): Promise<Organi
 
     const event = eventRowToGatherEvent(eventRow);
     const eventRegistrations = ((registrationResult.data ?? []) as RegistrationRow[]).map(rowToRegistration);
+    applyRegistrationTotals(event, eventRegistrations);
     const expenses = ((expenseResult.data ?? []) as ExpenseRow[]).map(expenseRowToExpense);
     const fallbackSetting: FinanceSettingRow = {
       event_id: eventRow.id,

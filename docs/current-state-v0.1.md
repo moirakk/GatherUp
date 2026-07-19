@@ -90,13 +90,13 @@ Supabase live 状态：
 - `/events/[eventId]` 活动详情已通过 `getPublicEventDetail()` 优先读取 Supabase，可用 UUID 或 `public_code` 查找；未公开但 link-only 的活动由数据库 RLS 控制直链可见。
 - Supabase 读取已从公开展示面扩展到核心参与者和主办工作台：公开活动、活动详情、参与者订单、主办首页、活动管理台和财务中心均已有真实读取路径；本地 mock fallback 只用于未配置 Supabase 或显式 demo mode。
 - 已新增第一批受控写入/导出 API：活动创建、报名订单、付款审核、核销、名单导出、财务导出。它们要求 Supabase 登录态；主办敏感操作不再信任原型 cookie。
-- 活动创建已从 API Route 内串行写入四张表，收口为 `create_event_atomic` 数据库 RPC：活动、owner 协作者、财务设置、可选收款码版本和审计日志在同一事务中生成；API 使用 authenticated Supabase client 调用，不再用 service role 绕过用户身份链。对应 migration 和 opt-in clean-dev 集成测试已加入仓库。
+- 活动创建已从 API Route 内串行写入四张表，收口为 `create_event_atomic` 数据库 RPC：活动、owner 协作者、财务设置、可选收款码版本和审计日志在同一事务中生成；API 使用 authenticated Supabase client 调用，不再用 service role 绕过用户身份链。该 migration 已在 clean-dev 执行，匿名拒绝、完整创建、公开编码冲突和非法输入回滚 4 条真实集成用例全部通过。
 - middleware 已迁移到 `@supabase/ssr`：配置 Supabase 后，页面路由通过 `supabase.auth.getUser()` 验证真实 session，并支持 Supabase session cookie refresh；`/api/*` 由各 Route Handler 自己返回 JSON 鉴权结果。
 - API Route 认证已统一到底层 helper：外部/API 客户端可继续传 Supabase Bearer token；同源浏览器请求也可使用 Supabase SSR session cookie 获取用户和 authenticated Supabase client。
 - API Route 限流已升级为 async 共享入口：配置 `SUPABASE_SERVICE_ROLE_KEY` 时通过 service-role-only `consume_rate_limit` RPC 写入 `api_rate_limits` 表，实现跨 serverless 实例固定窗口限流；未配置或 RPC 临时失败时回退内存限流。
 - 已新增 `create_registration_atomic` 数据库 RPC 草案：通过 `public.current_app_user_id()` 获取真实用户，锁定活动行校验容量，用 `event_order_counters.current_number` 原子生成订单号，并在同一事务路径中写入 `registrations`、主参与人和 payment stub。
 - `/api/orders` 已改为 authenticated Supabase client 调用 RPC；前端可附带 access token，同源浏览器请求也可走 SSR session cookie，让数据库内的 `auth.uid()` 和 `current_app_user_id()` 可用。
-- 已新增 opt-in 真实 Supabase RPC 集成测试入口：`GATHERUP_RUN_RPC_INTEGRATION=1 GATHERUP_RPC_INTEGRATION_TARGET=clean-dev GATHERUP_RPC_INTEGRATION_ALLOWED_REF=<clean-dev-project-ref> npm run test:integration:rpc` 会创建隔离临时 Auth 用户和活动，验证 `create_registration_atomic` 的匿名拒绝、正常创建、重复报名拒绝和并发防超卖行为，并验证 `review_payment_atomic` 可审核已提交付款的订单、`check_in_order_atomic` 可核销已确认订单、退款申请/审核/凭证上传三段 RPC 可完成状态推进，以及付款/退款凭证 Storage RLS 的跨用户路径隔离、确认后拒绝补传、畸形路径拒绝和对象不可变边界，最后清理测试数据。该套件已在 `oxbrxkllftyevlzmiydt` 上通过 19/19。
+- 已新增 opt-in 真实 Supabase RPC 集成测试入口：`GATHERUP_RUN_RPC_INTEGRATION=1 GATHERUP_RPC_INTEGRATION_TARGET=clean-dev GATHERUP_RPC_INTEGRATION_ALLOWED_REF=<clean-dev-project-ref> npm run test:integration:rpc` 会创建隔离临时 Auth 用户和活动，验证原子活动创建、原子报名、并发防超卖、并发付款审核、并发核销、并发抢座、退款状态推进、跨实例限流，以及付款/退款凭证 Storage RLS 的跨用户路径隔离、确认后拒绝补传、畸形路径拒绝和对象不可变边界，最后清理测试数据。2026-07-19 已在 `oxbrxkllftyevlzmiydt` 上通过 25/25。
 - 已新增 `src/domain/status-machine.ts` 作为第一版统一状态机底座：覆盖报名、付款、退款和签到工作流，并用测试反查 `supabase/schema.sql` 的 enum，防止应用层状态规则和数据库契约分叉。
 - 已新增 `src/domain/workflow-events.ts` 作为状态变化事件契约：合法状态跳转可统一派生 `auditAction`、`notificationType`、目标受众和风险级别，为后续通知中心、审计事件和 Dashboard 聚合打底。
 - 已新增 `src/domain/notification-queue.ts` 作为通知队列契约：可把 workflow event 转成站内/邮件/微信 channel 的待投递通知项，并提供 `toNotificationDeliveryInsert()` 映射到 Supabase insert payload。
@@ -132,8 +132,8 @@ Supabase live 状态：
 - 收费活动开放报名已新增最小认证和平台审核门槛：`/api/events/publish` 在通过编辑权限后，会检查活动是否有价格或收款码；若是收费活动，则要求活动 owner 的组织者认证状态为 `light_verified` 或 `enhanced_verified`，且没有 `force_review_required` 标记；若活动处于 `pending`、`changes_requested`、`rejected` 或 `suspended` 平台审核状态，也会拒绝开放报名。
 - 组织工作台已新增主办认证申请入口：登录用户可以读取自己的 `organizer_verifications` 状态，并通过 `/api/organizer/verification` 提交或更新待审核资料；已通过或暂停状态会被 API 阻止重复提交。
 - 平台后台已新增第一版 `/admin` 审核工作台：平台管理员通过 `is_platform_admin()` 校验后，可查看待审核/已驳回主办认证，执行轻量通过、强化通过、驳回或暂停；也可处理活动审核请求，执行通过、要求修改、驳回或暂停，并把主办认证/活动审核决策写入 `audit_logs`。
-- Supabase migrations 已建立初始治理入口：`supabase/migrations/20260705000001_initial_schema.sql` 和 `20260705000002_storage.sql` 冻结当前 schema/storage 基线，`20260705000100_api_rate_limits.sql` 增加跨实例限流表与 RPC，`20260717000000_create_event_atomic.sql` 增加原子活动创建事务；`tests/migrations-contract.test.mts` 保护迁移命名、基线一致性、权限边界和关键事务写入范围。
-- 2026-07-17 从 Codex 终端重跑 clean-dev 集成套件时，Supabase 域名被本机代理映射到 `198.18.0.235:443` 后连接超时；除匿名限流拒绝外，其余用例在测试账号创建阶段被取消，属于网络阻塞而非业务断言失败。新活动创建 RPC 仍需在网络恢复后先执行 migration，再运行 `event-creation.test.mts` 完成真实验证。
+- Supabase migrations 已建立初始治理入口：`supabase/migrations/20260705000001_initial_schema.sql` 和 `20260705000002_storage.sql` 冻结当前 schema/storage 基线，`20260705000100_api_rate_limits.sql` 增加跨实例限流表与 RPC，`20260717000000_create_event_atomic.sql` 增加原子活动创建事务，`20260719000000_reconcile_event_organizer_lifecycle.sql` 对账较旧 clean-dev 的协作者邀请生命周期 enum/字段，`20260719000100_public_event_registration_counts.sql` 以只读聚合 RPC 提供公开活动已报名人数且不暴露参与者报名行；`tests/migrations-contract.test.mts` 保护迁移命名、基线一致性、权限边界和关键事务写入范围。
+- 2026-07-19 已确认此前终端网络失败的实际诱因包含 validation 项目处于暂停状态。项目恢复后，Codex 终端可直连 Supabase；补齐活动创建、跨实例限流和协作者生命周期 schema 对账迁移后，完整真实 RPC/并发/Storage RLS 集成套件通过 25/25。
 
 ## 3. 本地运行
 
