@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { describe, it } from "node:test";
 import { fileURLToPath } from "node:url";
@@ -42,6 +42,14 @@ describe("project configuration", () => {
     assert.match(nextConfig, /default-src 'self'/);
     assert.match(nextConfig, /https:\/\/\*\.supabase\.co/);
     assert.match(nextConfig, /frame-ancestors 'none'/);
+  });
+
+  it("keeps the auth middleware inside src/ so Next.js picks it up", () => {
+    assert.ok(existsSync(join(repoRoot, "src", "middleware.ts")), "src/middleware.ts must exist");
+    assert.ok(
+      !existsSync(join(repoRoot, "middleware.ts")),
+      "middleware.ts must not live at the repo root: Next.js silently ignores it when the project uses src/"
+    );
   });
 
   it("allows Supabase-hosted images through the Next image optimizer", () => {
