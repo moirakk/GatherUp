@@ -1,179 +1,45 @@
 # GatherUp
 
-[![CI](https://github.com/moirakk/GatherUp/actions/workflows/ci.yml/badge.svg)](https://github.com/moirakk/GatherUp/actions/workflows/ci.yml)
-[![Next.js](https://img.shields.io/badge/Next.js-App%20Router-black?logo=nextdotjs)](https://nextjs.org/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178c6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![Supabase](https://img.shields.io/badge/Supabase-Postgres%20%2B%20Auth%20%2B%20Storage-3ecf8e?logo=supabase&logoColor=white)](https://supabase.com/)
+线下活动运营平台 —— 从报名、审核、签到到复盘，给主办方一条完整可追溯的运营链路。
 
-GatherUp is an organizer-first operations system for small offline community events.
+组织过线下活动的人都知道，麻烦从来不在"发布活动"那一刻，而在之后：报名信息散落在表单和聊天记录里，转账截图要一张张人工核对，现场签到靠喊名字，活动结束后想复盘收支和到场率，发现数据根本对不上。市面上的活动工具大多只做了"报名"这一层，后面的运营环节全靠主办方自己拿 Excel 硬扛。
 
-It gives organizers one workspace for event setup, participant registration, organizer-collected payment proof review, seating, notifications, check-in, refunds, finance, and operational audit history. Participant-facing pages support that workflow; GatherUp is not primarily an event promotion or discovery product.
+GatherUp 把这条链路完整地搬进一个工作台：主办方创建活动、管理协作者权限，参与者报名并上传付款凭证，主办方审核、锁座、现场签到、处理退款，最后导出财务和运营数据。核心是一套带审计日志的 PostgreSQL RPC 层——报名、审核、锁座、签到、退款这些涉及钱和状态的操作全部走事务边界，每一次状态变更都被记录、可回溯；权限则由 Postgres RLS 在数据库层强制执行，付款凭证存放在路径受限的私有 Storage。当前为 Commercial v0.1 预商业化阶段，数据库与权限地基已完成并在真实 Supabase 环境验证中。
 
-> **Development status:** pre-commercial v0.1. Core database and permission foundations are implemented and under real Supabase validation. The project is not production-ready.
+## 核心功能
 
-## Product Scope
+- **主办方工作台**：活动创建与配置、协作者角色权限、报名与候补管理、付款凭证审核、座位锁定与分配、现场签到、退款流程、财务导出
+- **参与者端**：报名、上传付款凭证、跟踪订单 / 座位 / 签到 / 退款状态
+- **审计日志 RPC**：20+ 个事务性 RPC 覆盖全部关键状态变更，每次操作写入带风险等级的审计记录
+- **数据库层安全**：Postgres RLS 策略 + 私有 Storage 桶 + 契约测试守护 API 与 Schema 边界
 
-### Organizer workspace
+## Stack
 
-- Create and configure free or paid events.
-- Manage collaborators through explicit event roles and permissions.
-- Review organizer-collected payment proofs.
-- Operate registration, waitlist, seating, check-in, refund, and finance workflows.
-- Publish in-app announcements and inspect an audit timeline.
-- Export operational and finance data within permission boundaries.
+![Next.js](https://img.shields.io/badge/Next.js-000000?style=flat-square&logo=nextdotjs&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=flat-square&logo=typescript&logoColor=white)
+![Supabase](https://img.shields.io/badge/Supabase-3FCF8E?style=flat-square&logo=supabase&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?style=flat-square&logo=postgresql&logoColor=white)
 
-### Participant companion
+## 快速开始
 
-- Open a shared event page and register with a verified account.
-- Upload payment proof to private Storage.
-- Follow order, seat, check-in, notification, and refund status.
-
-### Platform controls
-
-- Review paid-event organizer verification and sensitive event changes.
-- Enforce Supabase Auth, PostgreSQL RLS, private Storage policies, and audited RPC transitions.
-
-## Workflow
-
-```mermaid
-flowchart LR
-  Organizer["Organizer workspace"] --> Event["Create and configure event"]
-  Event --> Registration["Registration and waitlist"]
-  Registration --> Payment["Organizer-collected payment proof"]
-  Payment --> Review["Payment review"]
-  Review --> Seat["Seat lock and assignment"]
-  Review --> CheckIn["On-site check-in"]
-  Review --> Refund["Refund workflow"]
-  Seat --> Finance["Finance, export, and audit"]
-  CheckIn --> Finance
-  Refund --> Finance
-
-  Participant["Participant companion"] --> Registration
-  Participant --> Payment
-  Participant --> Seat
-
-  Supabase["Supabase Auth + PostgreSQL + Storage"] --> Registration
-  Supabase --> Review
-  Supabase --> Seat
-  Supabase --> CheckIn
-  Supabase --> Refund
-```
-
-## Engineering Architecture
-
-GatherUp uses database-first transaction boundaries for operations where partial writes or race conditions would create financial or operational risk.
-
-```text
-Browser / Server Components
-            |
-            v
-Next.js Route Handlers + Supabase SSR session validation
-            |
-            v
-PostgreSQL RPCs -------- private Supabase Storage
-            |                         |
-            v                         v
-state transitions, RLS, permissions, audit logs
-```
-
-Key design rules:
-
-- Supabase identity is verified from JWT or SSR session cookies; prototype cookies are not authorization sources.
-- Registration, payment review, seat locking, check-in, refunds, and collaborator changes use transactional PostgreSQL RPCs where needed.
-- Sensitive evidence files live in private, path-constrained Storage buckets.
-- Mutating API routes use shared authentication and rate-limiting helpers.
-- Contract tests scan API, schema, migration, Storage, and workflow boundaries to catch regressions.
-- Mock data is limited to unconfigured local development or explicit demo mode.
-
-## Repository Layout
-
-```text
-GatherUp/
-|-- src/
-|   |-- app/                 Next.js pages, layouts, and API routes
-|   |-- components/          Shared product and workflow components
-|   `-- lib/                 Auth, Supabase, data, and domain helpers
-|-- supabase/
-|   |-- migrations/          Versioned database changes
-|   |-- validation/          Read-only and post-execution checks
-|   |-- schema.sql           Frozen commercial v0.1 schema baseline
-|   `-- storage.sql          Private bucket and RLS policy baseline
-|-- tests/
-|   `-- integration/rpc/     Opt-in real Supabase integration tests
-|-- docs/                    Product decisions, architecture, and runbooks
-`-- .github/                 CI, issue forms, and pull request template
-```
-
-## Current State
-
-| Area | State |
-| --- | --- |
-| Supabase Auth and SSR session foundation | Implemented |
-| Event, registration, payment, seating, check-in, refund schema | Implemented |
-| Transactional RPC and RLS baseline | Implemented and contract-tested |
-| Private proof Storage policies | Implemented with opt-in integration coverage |
-| Organizer and participant workflow wiring | In progress |
-| External delivery channels such as email, SMS, and WeChat | Planned |
-| Production operations, monitoring, and retention jobs | Not ready |
-| Final organizer UI system | In redesign; repository screenshots intentionally withheld |
-
-Detailed and dated progress belongs in [Current project state](./docs/current-state-v0.1.md), not in this README.
-
-## Quality Bar
-
-Every core workflow should be delivered in this order:
-
-1. Confirm the business rule and allowed state transitions.
-2. Define the data model, permissions, RLS, and audit requirements.
-3. Implement the server or transactional RPC boundary.
-4. Connect the UI to the verified data path.
-5. Add focused contract and integration coverage.
-6. Validate high-risk behavior against a clean Supabase project.
-
-Run the local quality gates:
-
-```bash
-npm test
-npm run verify
-npm run build
-git diff --check
-```
-
-Real Supabase integration tests are opt-in and must only target an isolated development or staging project:
-
-```bash
-GATHERUP_RUN_RPC_INTEGRATION=1 \
-GATHERUP_RPC_INTEGRATION_TARGET=clean-dev \
-GATHERUP_RPC_INTEGRATION_ALLOWED_REF=<clean-dev-project-ref> \
-npm run test:integration:rpc
-```
-
-## Local Development
-
-Requirements: Node.js 22 and npm.
+需要 Node.js 22 和 npm。
 
 ```bash
 npm install
 npm run dev:webpack -- --hostname 127.0.0.1 --port 3000
 ```
 
-Open `http://127.0.0.1:3000`.
+打开 `http://127.0.0.1:3000`。接入 Supabase 时复制 `.env.example` 为 `.env.local` 并填写配置（切勿提交 service-role key）；未配置时可使用本地 demo 模式开发界面。
 
-Copy `.env.example` to `.env.local` for Supabase-backed development. Never expose or commit a service-role key. Without Supabase configuration, the app can use its local demo mode for interface development.
+本地质量门禁：
 
-## Documentation
+```bash
+npm run verify   # lint + test + typecheck
+npm run build
+```
 
-- [Documentation index](./docs/index-v0.1.md)
-- [Current project state](./docs/current-state-v0.1.md)
-- [Commercial v0.1 PRD](./docs/commercial-v0.1-prd.md)
-- [Product operating map](./docs/product-operating-map-v0.1.md)
-- [Project architecture brief](./docs/project-architecture-brief-v0.1.md)
-- [Service-layer contract](./docs/service-layer-contract-v0.1.md)
-- [Supabase execution runbook](./docs/supabase-sql-execution-runbook-v0.1.md)
-- [RPC integration testing guide](./docs/rpc-integration-testing-v0.1.md)
-- [Contributing guide](./CONTRIBUTING.md)
-- [Security policy](./SECURITY.md)
+更多设计决策与运行手册见 [docs/](./docs/index-v0.1.md)。本仓库公开供审阅与协作，但现阶段不是开源项目，参与前请先与仓库所有者沟通（[LICENSE](./LICENSE.md) · [CONTRIBUTING](./CONTRIBUTING.md) · [SECURITY](./SECURITY.md)）。
 
-## Repository Policy
+---
 
-GatherUp is public for review and collaboration, but it is not an open-source project at this stage. Contributions should be coordinated with the repository owner before implementation. See [LICENSE.md](./LICENSE.md), [CONTRIBUTING.md](./CONTRIBUTING.md), and [SECURITY.md](./SECURITY.md).
+<sub>涉及钱和状态的每一步，都应该经得起回放。</sub>
