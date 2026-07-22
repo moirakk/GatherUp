@@ -127,6 +127,14 @@ export function AppShell({ children }: { children: ReactNode }) {
         </header>
 
         <main className="page-shell">{children}</main>
+
+        <footer className="app-footer">
+          <span>© 2026 GatherUp</span>
+          <nav aria-label="法律条款">
+            <Link href="/terms">服务条款</Link>
+            <Link href="/privacy">隐私政策</Link>
+          </nav>
+        </footer>
       </div>
     );
   }
@@ -214,6 +222,14 @@ export function AppShell({ children }: { children: ReactNode }) {
           工作台
         </Link>
       </nav>
+
+      <footer className="app-footer">
+        <span>© 2026 GatherUp</span>
+        <nav aria-label="法律条款">
+          <Link href="/terms">服务条款</Link>
+          <Link href="/privacy">隐私政策</Link>
+        </nav>
+      </footer>
     </div>
   );
 }
