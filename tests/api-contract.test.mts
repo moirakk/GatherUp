@@ -128,11 +128,16 @@ describe("registration and payment proof API contracts", () => {
     assert.doesNotMatch(ordersData, /eventError \|\| !eventData\) {\s*return mockOrderDetail/);
   });
 
+  // Vercel Cron invokes this route directly with a `CRON_SECRET` bearer token
+  // instead of a user session, so it is intentionally exempt from the
+  // user-auth and mutating-rate-limit contracts enforced below.
+  const cronOnlyRoutes = new Set(["src/app/api/jobs/run/route.ts"]);
+
   it("requires every mutating API route to enforce rate limiting", () => {
     const mutatingRoutePattern = /export async function (POST|PATCH|PUT|DELETE)\s*\(/;
     const mutatingRoutes = listApiRouteFiles()
       .map((file) => ({ file: relative(repoRoot, file), source: readFileSync(file, "utf8") }))
-      .filter(({ source }) => mutatingRoutePattern.test(source));
+      .filter(({ file, source }) => mutatingRoutePattern.test(source) && !cronOnlyRoutes.has(file));
 
     assert.ok(mutatingRoutes.length > 0, "Expected at least one mutating API route.");
 
@@ -143,10 +148,12 @@ describe("registration and payment proof API contracts", () => {
   });
 
   it("requires every API route to authenticate inside its route handler", () => {
-    const apiRoutes = listApiRouteFiles().map((file) => ({
-      file: relative(repoRoot, file),
-      source: readFileSync(file, "utf8")
-    }));
+    const apiRoutes = listApiRouteFiles()
+      .map((file) => ({
+        file: relative(repoRoot, file),
+        source: readFileSync(file, "utf8")
+      }))
+      .filter(({ file }) => !cronOnlyRoutes.has(file));
 
     assert.ok(apiRoutes.length > 0, "Expected at least one API route.");
 
@@ -161,6 +168,17 @@ describe("registration and payment proof API contracts", () => {
         `${file} must use shared Supabase auth helpers instead of local cookie/session parsing.`
       );
     }
+  });
+
+  it("keeps the cron job endpoint authenticated with a service-role secret and RPC-only cleanup", () => {
+    const cronRoute = readSource("src/app/api/jobs/run/route.ts");
+
+    expectSource(cronRoute, "process.env.CRON_SECRET");
+    expectSource(cronRoute, "authorization === `Bearer ${cronSecret}`");
+    expectSource(cronRoute, "getSupabaseServiceClient");
+    expectSource(cronRoute, 'supabase.rpc("expire_seat_locks_for_event")');
+    expectSource(cronRoute, 'supabase.rpc("expire_waitlist_invitations")');
+    assert.doesNotMatch(cronRoute, /\.from\(/);
   });
 
   it("keeps order creation on the authenticated Supabase atomic registration RPC path", () => {
