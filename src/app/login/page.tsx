@@ -1,6 +1,7 @@
 "use client";
 
 import { Suspense, useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { BadgeCheck, Globe2, KeyRound, LockKeyhole, Mail, ShieldCheck, UserPlus } from "lucide-react";
 
@@ -14,6 +15,7 @@ import {
   getProfileOnboardingStorageKey,
   getAuthSession,
   getSafeInternalPath,
+  isPrototypeAuthEnabled,
   normalizeEmail,
   parsePrototypeAccounts,
   signInWithPassword,
@@ -90,6 +92,8 @@ function LoginForm() {
   const [message, setMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const supabaseEnabled = isSupabaseConfigured();
+  const prototypeAuthAllowed = isPrototypeAuthEnabled();
+  const authUnavailable = !supabaseEnabled && !prototypeAuthAllowed;
 
   useEffect(() => {
     async function redirectExistingSession() {
@@ -152,6 +156,11 @@ function LoginForm() {
       return;
     }
 
+    if (!prototypeAuthAllowed) {
+      setMessage("账号服务暂时不可用，请联系管理员配置 Supabase。");
+      return;
+    }
+
     const prototypeAccounts = parsePrototypeAccounts(window.localStorage.getItem(PROTOTYPE_ACCOUNTS_STORAGE_KEY));
     const result = signInWithPassword(email, password, prototypeAccounts);
 
@@ -184,6 +193,11 @@ function LoginForm() {
       return;
     }
 
+    if (!prototypeAuthAllowed) {
+      setMessage("账号服务暂时不可用，请联系管理员配置 Supabase。");
+      return;
+    }
+
     const prototypeAccounts = parsePrototypeAccounts(window.localStorage.getItem(PROTOTYPE_ACCOUNTS_STORAGE_KEY));
     const result = createPrototypeAccount({ email, password, name }, prototypeAccounts);
 
@@ -211,6 +225,11 @@ function LoginForm() {
       return;
     }
 
+    if (!prototypeAuthAllowed) {
+      setMessage("账号服务暂时不可用，请联系管理员配置 Supabase。");
+      return;
+    }
+
     setVerificationCode("123456");
     setMessage("原型验证码已生成：123456。正式版会通过邮箱服务发送。");
   }
@@ -225,6 +244,11 @@ function LoginForm() {
       }
 
       completeLogin(result.account, nextPath, "supabase");
+      return;
+    }
+
+    if (!prototypeAuthAllowed) {
+      setMessage("账号服务暂时不可用，请联系管理员配置 Supabase。");
       return;
     }
 
@@ -256,6 +280,11 @@ function LoginForm() {
     if (supabaseEnabled) {
       const result = await sendSupabasePasswordReset(email);
       setMessage(result.message);
+      return;
+    }
+
+    if (!prototypeAuthAllowed) {
+      setMessage("账号服务暂时不可用，请联系管理员配置 Supabase。");
       return;
     }
 
@@ -295,7 +324,13 @@ function LoginForm() {
           <span className="brand-mark">G</span>
           <div>
             <strong>GatherUp</strong>
-            <span>{supabaseEnabled ? "已连接真实账号服务。" : "当前使用本地原型账号。"}</span>
+            <span>
+              {supabaseEnabled
+                ? "已连接真实账号服务。"
+                : authUnavailable
+                  ? "账号服务暂时不可用，请联系管理员配置 Supabase。"
+                  : "当前使用本地原型账号。"}
+            </span>
           </div>
         </div>
 
@@ -349,12 +384,12 @@ function LoginForm() {
 
         <div className="auth-action-grid">
           {mode === "code" && (
-            <button className="button secondary full" type="button" onClick={sendCode} disabled={isSubmitting}>
+            <button className="button secondary full" type="button" onClick={sendCode} disabled={isSubmitting || authUnavailable}>
               <Mail size={17} />
               发送验证码
             </button>
           )}
-          <button className="button primary full" type="button" onClick={submitPrimaryAction} disabled={isSubmitting}>
+          <button className="button primary full" type="button" onClick={submitPrimaryAction} disabled={isSubmitting || authUnavailable}>
             {mode === "register" && <UserPlus size={17} />}
             {mode === "reset" && <KeyRound size={17} />}
             {(mode === "login" || mode === "code") && <LockKeyhole size={17} />}
@@ -405,6 +440,14 @@ function LoginForm() {
           ))}
         </div>
       </aside>
+
+      <footer className="app-footer login-footer">
+        <span>© 2026 GatherUp</span>
+        <nav aria-label="法律条款">
+          <Link href="/terms">服务条款</Link>
+          <Link href="/privacy">隐私政策</Link>
+        </nav>
+      </footer>
     </main>
   );
 }

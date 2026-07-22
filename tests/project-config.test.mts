@@ -27,7 +27,9 @@ describe("project configuration", () => {
       "X-Frame-Options",
       "X-Content-Type-Options",
       "Referrer-Policy",
-      "Permissions-Policy"
+      "Permissions-Policy",
+      "Content-Security-Policy",
+      "Strict-Transport-Security"
     ]) {
       assert.match(nextConfig, new RegExp(header), `Missing ${header} header`);
     }
@@ -35,6 +37,11 @@ describe("project configuration", () => {
     assert.match(nextConfig, /value: "DENY"/);
     assert.match(nextConfig, /value: "nosniff"/);
     assert.match(nextConfig, /strict-origin-when-cross-origin/);
+    assert.match(nextConfig, /max-age=63072000/);
+    assert.match(nextConfig, /includeSubDomains/);
+    assert.match(nextConfig, /default-src 'self'/);
+    assert.match(nextConfig, /https:\/\/\*\.supabase\.co/);
+    assert.match(nextConfig, /frame-ancestors 'none'/);
   });
 
   it("allows Supabase-hosted images through the Next image optimizer", () => {

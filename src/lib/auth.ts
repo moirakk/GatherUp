@@ -93,6 +93,10 @@ export const maxPublicIdChanges = 2;
 export const publicIdPattern = /^GU-[A-Z0-9-]{3,18}$/;
 export const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+export function isPrototypeAuthEnabled() {
+  return process.env.NODE_ENV !== "production" || process.env.DEMO_MODE === "true";
+}
+
 export function normalizePublicId(value: string) {
   return value.trim().toUpperCase();
 }
@@ -137,7 +141,12 @@ export function getSafeInternalPath(value: string | null | undefined, fallback =
 }
 
 export function isPublicRoutePath(pathname: string) {
-  return pathname === "/login" || /^\/events\/[^/]+\/?$/.test(pathname);
+  return (
+    pathname === "/login" ||
+    pathname === "/terms" ||
+    pathname === "/privacy" ||
+    /^\/events\/[^/]+\/?$/.test(pathname)
+  );
 }
 
 export const demoAccounts: DemoAccount[] = [

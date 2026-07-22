@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url";
 import {
   createPublicIdFromEmail,
   getSafeInternalPath,
+  isPrototypeAuthEnabled,
   isPublicRoutePath,
   isValidEmail,
   normalizeEmail,
@@ -16,6 +17,7 @@ import {
 
 const repoRoot = dirname(dirname(fileURLToPath(import.meta.url)));
 const middlewareSource = readFileSync(join(repoRoot, "middleware.ts"), "utf8");
+const loginPageSource = readFileSync(join(repoRoot, "src", "app", "login", "page.tsx"), "utf8");
 const appRoot = join(repoRoot, "src", "app");
 
 function listPageRoutes(dir = appRoot, segments: string[] = []): string[] {
@@ -73,8 +75,10 @@ describe("route auth rules", () => {
     assert.equal(getSafeInternalPath("/login?next=/organizer"), "/");
   });
 
-  it("keeps only login and public event detail routes public", () => {
+  it("keeps only login, terms, privacy, and public event detail routes public", () => {
     assert.equal(isPublicRoutePath("/login"), true);
+    assert.equal(isPublicRoutePath("/terms"), true);
+    assert.equal(isPublicRoutePath("/privacy"), true);
     assert.equal(isPublicRoutePath("/events/event-1"), true);
     assert.equal(isPublicRoutePath("/events/event-1/"), true);
     assert.equal(isPublicRoutePath("/events/event-1/register"), false);
@@ -85,7 +89,9 @@ describe("route auth rules", () => {
   it("requires every app page route to be explicitly classified", () => {
     const publicRoutes = new Set([
       "/events/[eventId]",
-      "/login"
+      "/login",
+      "/privacy",
+      "/terms"
     ]);
     const protectedRoutes = new Set([
       "/",
@@ -116,5 +122,60 @@ describe("route auth rules", () => {
     assert.match(middlewareSource, /pathname\.startsWith\("\/api\/"\)/);
     assert.doesNotMatch(middlewareSource, /SESSION_COOKIE/);
     assert.doesNotMatch(middlewareSource, /supabase\.auth\.getSession\(\)/);
+  });
+});
+
+describe("prototype auth production gate", () => {
+  const originalNodeEnv = process.env.NODE_ENV;
+  const originalDemoMode = process.env.DEMO_MODE;
+  const mutableEnv = process.env as Record<string, string | undefined>;
+
+  function setNodeEnv(value: string) {
+    mutableEnv.NODE_ENV = value;
+  }
+
+  function restoreEnv() {
+    mutableEnv.NODE_ENV = originalNodeEnv;
+    if (originalDemoMode === undefined) {
+      delete process.env.DEMO_MODE;
+    } else {
+      process.env.DEMO_MODE = originalDemoMode;
+    }
+  }
+
+  it("enables prototype auth outside production", () => {
+    try {
+      setNodeEnv("development");
+      delete process.env.DEMO_MODE;
+      assert.equal(isPrototypeAuthEnabled(), true);
+
+      setNodeEnv("test");
+      assert.equal(isPrototypeAuthEnabled(), true);
+    } finally {
+      restoreEnv();
+    }
+  });
+
+  it("disables prototype auth in production unless DEMO_MODE is explicitly true", () => {
+    try {
+      setNodeEnv("production");
+      delete process.env.DEMO_MODE;
+      assert.equal(isPrototypeAuthEnabled(), false);
+
+      process.env.DEMO_MODE = "true";
+      assert.equal(isPrototypeAuthEnabled(), true);
+
+      process.env.DEMO_MODE = "1";
+      assert.equal(isPrototypeAuthEnabled(), false);
+    } finally {
+      restoreEnv();
+    }
+  });
+
+  it("gates prototype account flows in the login page behind isPrototypeAuthEnabled", () => {
+    assert.match(loginPageSource, /from "@\/lib\/auth"/);
+    assert.match(loginPageSource, /isPrototypeAuthEnabled/);
+    assert.match(loginPageSource, /prototypeAuthAllowed\s*=\s*isPrototypeAuthEnabled\(\)/);
+    assert.match(loginPageSource, /if \(!prototypeAuthAllowed\)/);
   });
 });
