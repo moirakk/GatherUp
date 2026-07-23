@@ -1,12 +1,13 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { SlidersHorizontal } from "lucide-react";
+import { Search } from "lucide-react";
 
 import { EventCard } from "@/components/event-card";
 import { type EventCategory, type GatherEvent } from "@/lib/mock-data";
 
 const categoryFilters = ["全部", "同好活动", "校园活动", "会议会务", "好友聚会"] as const;
+const cardTones = ["tone-lavender", "tone-sage", "tone-sand"] as const;
 
 type EventBrowserProps = {
   events: GatherEvent[];
@@ -34,19 +35,20 @@ export function EventBrowser({ events }: EventBrowserProps) {
 
   return (
     <>
-      <section className="filter-bar" aria-label="活动筛选">
-        <label className="search-field">
-          <span>⌕</span>
-          <input
-            placeholder="搜索活动、活动ID、城市或场地"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-          />
-        </label>
+      <label className="g2-search">
+        <Search size={16} aria-hidden="true" />
+        <input
+          placeholder="搜索活动、活动ID、城市或场地"
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+        />
+      </label>
+
+      <nav className="g2-tabs" aria-label="活动筛选">
         {categoryFilters.map((category) => (
           <button
             aria-pressed={categoryFilter === category}
-            className={`chip ${categoryFilter === category ? "active" : ""}`}
+            className={`g2-tab ${categoryFilter === category ? "active" : ""}`}
             key={category}
             type="button"
             onClick={() => setCategoryFilter(category)}
@@ -54,27 +56,18 @@ export function EventBrowser({ events }: EventBrowserProps) {
             {category === "全部" ? "全部活动" : category}
           </button>
         ))}
-        <button
-          className="chip icon-chip"
-          type="button"
-          onClick={() => {
-            setCategoryFilter("全部");
-            setQuery("");
-          }}
-        >
-          <SlidersHorizontal size={15} />
-          重置
-        </button>
-      </section>
+      </nav>
+
+      <p className="g2-section-label">本季活动</p>
 
       {filteredEvents.length > 0 ? (
-        <section className="event-grid">
-          {filteredEvents.map((event) => (
-            <EventCard event={event} key={event.id} />
+        <section className="g2-cards">
+          {filteredEvents.map((event, index) => (
+            <EventCard event={event} key={event.id} tone={cardTones[index % cardTones.length]} />
           ))}
         </section>
       ) : (
-        <section className="empty-state">
+        <section className="g2-empty">
           <strong>没有找到匹配的活动</strong>
           <span>换个关键词，或者切回全部活动看看。</span>
         </section>
