@@ -7,7 +7,6 @@ import { EventCard } from "@/components/event-card";
 import { type EventCategory, type GatherEvent } from "@/lib/mock-data";
 
 const categoryFilters = ["全部", "同好活动", "校园活动", "会议会务", "好友聚会"] as const;
-const cardTones = ["tone-lavender", "tone-sage", "tone-sand"] as const;
 
 type EventBrowserProps = {
   events: GatherEvent[];
@@ -62,8 +61,8 @@ export function EventBrowser({ events }: EventBrowserProps) {
 
       {filteredEvents.length > 0 ? (
         <section className="g2-cards">
-          {filteredEvents.map((event, index) => (
-            <EventCard event={event} key={event.id} tone={cardTones[index % cardTones.length]} />
+          {filteredEvents.map((event) => (
+            <EventCard event={event} key={event.id} />
           ))}
         </section>
       ) : (

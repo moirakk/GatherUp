@@ -71,7 +71,7 @@ export default async function EventPage({ params }: EventPageProps) {
 
       <p className="g2-section-label">票档</p>
       <div className="g2-tickets">
-        <div className="g2-ticket tone-sand">
+        <div className="g2-ticket">
           <div>
             <p className="g2-ticket-name">{event.price > 0 ? "标准票 · 单人" : "免费参与"}</p>
             <p className="g2-ticket-note">{event.template} · {setup.paymentQrStatus === "已配置" ? "线上确认付款" : "无需付款"}</p>
@@ -79,7 +79,7 @@ export default async function EventPage({ params }: EventPageProps) {
           <p className="g2-ticket-price"><small>¥</small>{event.price}</p>
         </div>
         {event.allowMulti && (
-          <div className="g2-ticket tone-sage">
+          <div className="g2-ticket">
             <div>
               <p className="g2-ticket-name">多人同行</p>
               <p className="g2-ticket-note">一单最多 {event.maxPeoplePerOrder} 人，同行优先相邻安排</p>
