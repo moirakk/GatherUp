@@ -133,7 +133,7 @@ export function AdminEventReviewPanel() {
     <article className="content-card">
       <div className="section-heading">
         <div>
-          <p className="eyebrow">Event review</p>
+          <p className="eyebrow">活动上线</p>
           <h2>活动审核</h2>
           <p className="subtle">处理需要平台确认的活动上线、修改或风险审核。</p>
         </div>

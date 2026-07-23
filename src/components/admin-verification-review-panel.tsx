@@ -122,7 +122,7 @@ export function AdminVerificationReviewPanel() {
     <article className="content-card">
       <div className="section-heading">
         <div>
-          <p className="eyebrow">Admin review</p>
+          <p className="eyebrow">主办认证</p>
           <h2>主办认证审核</h2>
           <p className="subtle">先完成认证审核，再允许收费活动开放报名。</p>
         </div>
